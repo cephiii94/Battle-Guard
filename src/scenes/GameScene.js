@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
 import Player from '../entities/Player.js';
+import baseHeroStats from '../data/baseHero.js';
+import skins from '../data/skins.js';
 import CombatSystem from '../systems/CombatSystem.js';
 import GameStats from '../systems/GameStats.js';
+import { calculateFinalStats } from '../systems/HeroStats.js';
 import LootSystem from '../systems/LootSystem.js';
 import SpawnSystem from '../systems/SpawnSystem.js';
 import UpgradeSystem from '../systems/UpgradeSystem.js';
@@ -11,6 +14,18 @@ export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
     this.isGameplayPaused = false;
+  }
+
+  init(data) {
+    this.baseHeroStats = data.baseHeroStats || baseHeroStats;
+    this.equippedItems = data.equippedItems || [];
+    this.activeSkin = data.activeSkin || skins[0];
+    this.finalStats = data.finalStats || calculateFinalStats(
+      this.baseHeroStats,
+      this.equippedItems,
+      this.activeSkin,
+      1
+    );
   }
 
   create() {
@@ -54,11 +69,14 @@ export default class GameScene extends Phaser.Scene {
       this,
       this.mapBounds.width / 2,
       this.mapBounds.height / 2,
-      this.mapBounds
+      this.mapBounds,
+      this.finalStats,
+      this.activeSkin
     );
 
     this.gameStats = new GameStats();
-    this.statsPanel = new StatsPanel(this, this.gameStats);
+    this.statsPanel = new StatsPanel(this, this.gameStats, this.activeSkin);
+    this.gameStats.on('levelUp', (level) => this.applyLevelScaling(level));
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.spawnSystem = new SpawnSystem(this, this.player, this.mapBounds);
@@ -92,6 +110,26 @@ export default class GameScene extends Phaser.Scene {
       this.physics.pause();
     } else {
       this.physics.resume();
+    }
+  }
+
+  applyLevelScaling(level) {
+    const nextStats = calculateFinalStats(
+      this.baseHeroStats,
+      this.equippedItems,
+      this.activeSkin,
+      level
+    );
+    const hpIncrease = nextStats.hp - this.finalStats.hp;
+
+    this.finalStats = nextStats;
+    this.player.baseDamage = nextStats.damage;
+    this.player.attackRange = nextStats.attackRange;
+    this.combatSystem.attackRadius = nextStats.attackRange;
+
+    if (hpIncrease > 0) {
+      this.player.maxHp += hpIncrease;
+      this.player.hp += hpIncrease;
     }
   }
 }

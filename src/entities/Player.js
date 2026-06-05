@@ -1,17 +1,23 @@
 import Phaser from 'phaser';
 
 export default class Player extends Phaser.GameObjects.Arc {
-  constructor(scene, x, y, mapBounds) {
-    super(scene, x, y, 24, 0, 360, false, 0x2f6dff);
+  constructor(scene, x, y, mapBounds, finalStats, activeSkin) {
+    const skinColors = activeSkin.colors;
 
-    this.setStrokeStyle(4, 0xbfdbfe);
+    super(scene, x, y, 24, 0, 360, false, skinColors.hero);
 
-    this.speed = 280;
-    this.maxHp = 100;
+    this.setStrokeStyle(4, skinColors.border);
+
+    this.finalStats = finalStats;
+    this.activeSkin = activeSkin;
+    this.speed = finalStats.moveSpeed;
+    this.maxHp = finalStats.hp;
     this.hp = this.maxHp;
     this.damageMultiplier = 1;
     this.attackSpeedMultiplier = 1;
-    this.criticalChance = 0;
+    this.baseDamage = finalStats.damage;
+    this.attackRange = finalStats.attackRange;
+    this.criticalChance = finalStats.criticalChance;
     this.mapBounds = mapBounds;
     this.keys = scene.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -25,6 +31,13 @@ export default class Player extends Phaser.GameObjects.Arc {
     });
 
     scene.add.existing(this);
+    this.createAura(scene, skinColors.aura);
+  }
+
+  createAura(scene, auraColor) {
+    this.aura = scene.add.circle(this.x, this.y, 38, auraColor, 0.22);
+    this.aura.setStrokeStyle(2, auraColor, 0.4);
+    this.aura.setDepth(this.depth - 1);
   }
 
   update(delta) {
@@ -54,6 +67,15 @@ export default class Player extends Phaser.GameObjects.Arc {
     }
 
     this.keepInsideMap();
+    this.updateAura();
+  }
+
+  updateAura() {
+    if (!this.aura) {
+      return;
+    }
+
+    this.aura.setPosition(this.x, this.y);
   }
 
   keepInsideMap() {

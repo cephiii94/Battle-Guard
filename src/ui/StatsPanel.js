@@ -1,7 +1,8 @@
 export default class StatsPanel {
-  constructor(scene, gameStats) {
+  constructor(scene, gameStats, activeSkin) {
     this.scene = scene;
     this.gameStats = gameStats;
+    this.activeSkin = activeSkin;
     this.text = scene.add.text(24, 20, '', {
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: '22px',
@@ -25,6 +26,7 @@ export default class StatsPanel {
 
   update(stats) {
     this.text.setText([
+      `Skin: ${this.activeSkin.name}`,
       `Level: ${stats.level}`,
       `EXP: ${stats.exp}/${stats.expToNextLevel}`,
       `Gold: ${stats.gold}`

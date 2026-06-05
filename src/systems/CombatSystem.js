@@ -8,9 +8,9 @@ export default class CombatSystem {
     this.spawnSystem = spawnSystem;
     this.gameStats = gameStats;
     this.lootSystem = lootSystem;
-    this.attackRadius = 420;
+    this.attackRadius = player.attackRange;
     this.attackCooldown = 650;
-    this.baseDamage = 10;
+    this.baseDamage = player.baseDamage;
     this.projectileSpeed = 520;
     this.cooldownRemaining = 0;
     this.projectiles = [];
