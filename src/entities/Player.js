@@ -116,4 +116,9 @@ export default class Player extends Phaser.GameObjects.Arc {
   increaseCriticalChance(amount) {
     this.criticalChance += amount;
   }
+
+  takeDamage(amount) {
+    this.hp = Math.max(0, this.hp - amount);
+    return this.hp;
+  }
 }

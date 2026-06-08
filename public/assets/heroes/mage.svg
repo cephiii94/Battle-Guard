@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Mage hero portrait">
+  <defs>
+    <radialGradient id="mage-bg" cx="50%" cy="36%" r="68%">
+      <stop offset="0" stop-color="#fca5a5"/>
+      <stop offset="0.48" stop-color="#dc2626"/>
+      <stop offset="1" stop-color="#160b0b"/>
+    </radialGradient>
+    <linearGradient id="mage-robe" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fb7185"/>
+      <stop offset="0.48" stop-color="#7f1d1d"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+  </defs>
+  <circle cx="80" cy="80" r="74" fill="url(#mage-bg)" opacity=".97"/>
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#fecaca" stroke-width="5"/>
+  <path d="M80 18c-17 23-25 41-25 56 0 26 18 45 25 65 7-20 25-39 25-65 0-15-8-33-25-56Z" fill="url(#mage-robe)" stroke="#fecaca" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M63 83c7 8 27 8 34 0-1 19-8 30-17 39-9-9-16-20-17-39Z" fill="#020617" opacity=".62"/>
+  <circle cx="80" cy="61" r="13" fill="#fef2f2"/>
+  <path d="M80 38v-16M66 45 55 34M94 45l11-11" stroke="#fef2f2" stroke-width="5" stroke-linecap="round"/>
+  <path d="M50 127c20-9 40-9 60 0" stroke="#fb7185" stroke-width="8" stroke-linecap="round"/>
+</svg>

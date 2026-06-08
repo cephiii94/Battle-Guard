@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Guardian hero portrait">
+  <defs>
+    <radialGradient id="guardian-bg" cx="50%" cy="34%" r="64%">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="0.5" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </radialGradient>
+    <linearGradient id="guardian-armor" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#dbeafe"/>
+      <stop offset="0.45" stop-color="#60a5fa"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <circle cx="80" cy="80" r="74" fill="url(#guardian-bg)" opacity=".96"/>
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#bfdbfe" stroke-width="5"/>
+  <path d="M80 19 45 34v31c0 30 14 53 35 70 21-17 35-40 35-70V34L80 19Z" fill="#082f49" stroke="#e0f2fe" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M80 31 56 42v24c0 20 9 36 24 49 15-13 24-29 24-49V42L80 31Z" fill="url(#guardian-armor)"/>
+  <path d="M80 36v73" stroke="#dbeafe" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+  <path d="M61 67h38" stroke="#facc15" stroke-width="7" stroke-linecap="round"/>
+  <path d="M49 111c9 15 20 23 31 28 11-5 22-13 31-28-9 8-19 13-31 13s-22-5-31-13Z" fill="#0f172a" opacity=".42"/>
+</svg>

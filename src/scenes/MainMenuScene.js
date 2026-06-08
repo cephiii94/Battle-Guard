@@ -1,4 +1,23 @@
 import Phaser from 'phaser';
+import skins from '../data/skins.js';
+import {
+  EQUIPMENT_SLOTS,
+  equipItem,
+  formatEquipmentBonus,
+  getEquipmentInventory,
+  getEquippedItemBySlot,
+  getEquippedItems,
+  getInventoryItems,
+  unequipSlot
+} from '../systems/EquipmentInventory.js';
+import {
+  getAvailableHeroes,
+  getSelectedHero,
+  getSelectedHeroBaseStats,
+  setSelectedHero
+} from '../systems/HeroSelection.js';
+import { calculateFinalStats } from '../systems/HeroStats.js';
+import { getPlayerProgress } from '../systems/PlayerProgress.js';
 
 const UI = {
   white: '#ffffff',
@@ -15,6 +34,10 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   preload() {
+    getAvailableHeroes().forEach((hero) => {
+      this.load.svg(hero.assetKey, hero.assetPath, { width: 160, height: 160 });
+    });
+
     this.load.image('ui-settings-dot', '/assets/ui/settings-gear.svg');
     this.load.image('ui-icon-gem', '/assets/ui/icon-gem.svg');
     this.load.image('ui-icon-gold', '/assets/ui/icon-gold.svg');
@@ -33,6 +56,12 @@ export default class MainMenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    this.playerProgress = getPlayerProgress(this);
+    this.activeSkin = skins[0];
+    this.inventoryLayer = [];
+    this.loadoutSlotAnchors = [];
+    this.loadoutSlotLayer = [];
+    this.refreshHeroLoadout();
 
     this.drawGalaxyBackground(width, height);
     this.addTopBar(width);
@@ -80,7 +109,7 @@ export default class MainMenuScene extends Phaser.Scene {
     this.drawProgressBar(122, 34, 154, 18, 100, 1500);
 
     this.add.image(width - 118, 24, 'ui-currency-bar').setDisplaySize(242, 46);
-    this.addCurrency(width - 208, 24, 'ui-icon-gold', '230 560');
+    this.addCurrency(width - 208, 24, 'ui-icon-gold', this.formatCurrency(this.playerProgress.gold));
     this.addCurrency(width - 94, 24, 'ui-icon-gem', '640');
     this.add.text(width - 24, 20, '+', {
       fontFamily: 'Arial, sans-serif',
@@ -248,7 +277,7 @@ export default class MainMenuScene extends Phaser.Scene {
       stroke: '#1b1b77',
       strokeThickness: 4,
     }).setOrigin(0.5);
-    this.add.text(cx, 101, 'MODIFIKASI HERO', {
+    this.heroClassText = this.add.text(cx, 101, this.selectedHero.name.toUpperCase(), {
       fontFamily: 'Arial, sans-serif',
       fontSize: '15px',
       color: UI.yellow,
@@ -267,7 +296,10 @@ export default class MainMenuScene extends Phaser.Scene {
 
     this.addEquipmentSlots(cx - 178, cy + 3, -1);
     this.addEquipmentSlots(cx + 178, cy + 3, 1);
+    this.refreshMainMenuLoadoutDisplay();
     this.add.image(cx, cy, 'ui-character-orb').setDisplaySize(188, 188);
+    this.heroPortrait = this.add.image(cx, cy - 2, this.selectedHero.assetKey)
+      .setDisplaySize(138, 138);
 
     this.add.text(cx + 68, cy + 75, '1/999', {
       fontFamily: 'Arial, sans-serif',
@@ -281,6 +313,18 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   addEquipmentSlots(x, y, side) {
+    const slots = side < 0
+      ? [
+        { slot: 'weapon', label: 'WEAPON', yOffset: -73, xOffset: 0 },
+        { slot: 'accessory', label: 'RING', yOffset: -15, xOffset: 8 },
+        { slot: null, label: 'SLOT', yOffset: 43, xOffset: 0 }
+      ]
+      : [
+        { slot: 'armor', label: 'ARMOR', yOffset: -73, xOffset: 0 },
+        { slot: null, label: 'SLOT', yOffset: -15, xOffset: -8 },
+        { slot: null, label: 'SLOT', yOffset: 43, xOffset: 0 }
+      ];
+
     this.add.text(x, y - 124, side < 0 ? 'WEAPON' : 'ARMOR', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '11px',
@@ -290,12 +334,19 @@ export default class MainMenuScene extends Phaser.Scene {
       strokeThickness: 3,
     }).setOrigin(0.5);
 
-    this.add.image(x, y - 73, 'ui-hex-active').setDisplaySize(66, 66);
+    slots.forEach((slotConfig, index) => {
+      const slotX = x + (side * slotConfig.xOffset);
+      const slotY = y + slotConfig.yOffset;
+      const texture = index === 0 ? 'ui-hex-active' : 'ui-hex-slot';
+      const size = index === 0 ? 66 : 58;
 
-    for (let i = 0; i < 3; i += 1) {
-      const slotX = x + side * Math.abs(i - 1) * 8;
-      this.add.image(slotX, y - 15 + i * 58, 'ui-hex-slot').setDisplaySize(58, 58).setAlpha(0.95);
-    }
+      this.add.image(slotX, slotY, texture).setDisplaySize(size, size).setAlpha(0.95);
+      this.loadoutSlotAnchors.push({
+        ...slotConfig,
+        x: slotX,
+        y: slotY
+      });
+    });
   }
 
   addBottomActions(width, height) {
@@ -315,11 +366,14 @@ export default class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     cells.on('pointerover', () => cells.setScale(1.04));
     cells.on('pointerout', () => cells.setScale(1));
+    cells.on('pointerup', () => this.showInventoryTab());
 
     this.add.image(cx, statusY, 'ui-bottom-panel').setDisplaySize(332, 66);
-    this.addStat(cx - 104, statusY, 'ui-stat-damage', 'DMG', '320');
-    this.addStat(cx, statusY, 'ui-stat-hp', 'HP', '220');
-    this.addStat(cx + 104, statusY, 'ui-stat-aspd', 'ASPD', '460');
+    this.bottomStatTexts = {
+      damage: this.addStat(cx - 104, statusY, 'ui-stat-damage', 'DMG', this.finalHeroStats.damage),
+      hp: this.addStat(cx, statusY, 'ui-stat-hp', 'HP', this.finalHeroStats.hp),
+      attackSpeed: this.addStat(cx + 104, statusY, 'ui-stat-aspd', 'ASPD', this.finalHeroStats.attackSpeed)
+    };
 
     const battle = this.add.image(width - 92, height - 54, 'ui-battle-button').setInteractive({ useHandCursor: true });
     this.add.text(width - 92, height - 54, 'BATTLE', {
@@ -333,7 +387,14 @@ export default class MainMenuScene extends Phaser.Scene {
     battle.on('pointerover', () => battle.setScale(1.04));
     battle.on('pointerout', () => battle.setScale(1));
     battle.on('pointerdown', () => battle.setScale(0.98));
-    battle.on('pointerup', () => this.scene.start('GameScene'));
+    battle.on('pointerup', () => this.scene.start('GameScene', {
+      stageId: 1,
+      selectedHero: this.selectedHero,
+      baseHeroStats: this.selectedHeroBaseStats,
+      equippedItems: this.equippedItems,
+      activeSkin: this.activeSkin,
+      finalStats: this.finalHeroStats
+    }));
 
     this.addEventOffer(height);
   }
@@ -348,7 +409,7 @@ export default class MainMenuScene extends Phaser.Scene {
       stroke: '#0c1648',
       strokeThickness: 2,
     }).setOrigin(0.5);
-    this.add.text(x + 12, y + 9, value, {
+    const valueText = this.add.text(x + 12, y + 9, value, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '16px',
       color: UI.cyan,
@@ -356,6 +417,8 @@ export default class MainMenuScene extends Phaser.Scene {
       stroke: '#0c1648',
       strokeThickness: 3,
     }).setOrigin(0.5);
+
+    return valueText;
   }
 
   addEventOffer(height) {
@@ -374,5 +437,295 @@ export default class MainMenuScene extends Phaser.Scene {
       stroke: '#0c1648',
       strokeThickness: 3,
     }).setOrigin(0, 0.5);
+  }
+
+  formatCurrency(value) {
+    return new Intl.NumberFormat('id-ID').format(value);
+  }
+
+  refreshHeroLoadout() {
+    getEquipmentInventory(this);
+    this.selectedHero = getSelectedHero(this);
+    this.selectedHeroBaseStats = getSelectedHeroBaseStats(this);
+    this.activeSkin = this.getDefaultSkinForHero(this.selectedHero);
+    this.equippedItems = getEquippedItems(this);
+    this.finalHeroStats = calculateFinalStats(this.selectedHeroBaseStats, this.equippedItems, this.activeSkin, 1);
+  }
+
+  refreshBottomStats() {
+    if (!this.bottomStatTexts) {
+      return;
+    }
+
+    this.bottomStatTexts.damage.setText(this.finalHeroStats.damage);
+    this.bottomStatTexts.hp.setText(this.finalHeroStats.hp);
+    this.bottomStatTexts.attackSpeed.setText(this.finalHeroStats.attackSpeed);
+
+    if (this.heroClassText) {
+      this.heroClassText.setText(this.selectedHero.name.toUpperCase());
+    }
+
+    if (this.heroPortrait) {
+      this.heroPortrait.setTexture(this.selectedHero.assetKey);
+    }
+  }
+
+  showInventoryTab() {
+    this.clearInventoryTab();
+    this.refreshHeroLoadout();
+    this.refreshBottomStats();
+
+    const { width, height } = this.scale;
+    this.addInventoryItem(this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.62));
+    this.addInventoryItem(this.add.rectangle(width / 2, height / 2, 820, 590, 0x101a3a, 0.98))
+      .setStrokeStyle(3, 0x69e6ff, 0.9);
+    this.addInventoryItem(this.add.text(width / 2, 88, 'INVENTORY', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '30px',
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#0c1648',
+      strokeThickness: 4,
+    }).setOrigin(0.5));
+
+    this.addInventoryCloseButton(width / 2 + 372, 90);
+    this.addHeroSelectionPanel(width / 2 - 330, 158);
+    this.addEquipmentSlotPanel(width / 2 - 245, 286);
+    this.addInventoryList(width / 2 + 20, 286);
+    this.addTotalStatsPanel(width / 2 - 245, 508);
+  }
+
+  addHeroSelectionPanel(x, y) {
+    this.addInventoryItem(this.add.text(x, y - 34, 'HERO CLASS', this.getInventoryTitleStyle()));
+
+    getAvailableHeroes().forEach((hero, index) => {
+      const heroX = x + 92 + (index * 170);
+      const isSelected = hero.id === this.selectedHero.id;
+      const card = this.addInventoryItem(this.add.rectangle(heroX, y + 20, 154, 74, isSelected ? 0x1e3a8a : 0x111827, 0.96))
+        .setStrokeStyle(2, isSelected ? 0xfacc15 : 0x64748b, 0.9)
+        .setInteractive({ useHandCursor: true });
+
+      this.addInventoryItem(this.add.image(heroX - 54, y + 20, hero.assetKey)
+        .setDisplaySize(46, 46));
+      this.addInventoryItem(this.add.text(heroX - 24, y - 4, hero.name, this.getInventoryTextStyle(isSelected ? UI.yellow : UI.white, 16))
+        .setOrigin(0.5));
+      this.addInventoryItem(this.add.text(heroX - 24, y + 18, hero.description, this.getInventoryTextStyle('#bfdbfe', 10))
+        .setOrigin(0.5));
+      this.addInventoryItem(this.add.text(heroX - 24, y + 38, this.formatPassiveBonus(hero), this.getInventoryTextStyle(UI.cyan, 10))
+        .setOrigin(0.5));
+
+      card.on('pointerup', () => {
+        setSelectedHero(this, hero.id);
+        this.refreshHeroLoadout();
+        this.refreshBottomStats();
+        this.showInventoryTab();
+      });
+    });
+  }
+
+  formatPassiveBonus(hero) {
+    const passiveEntries = Object.entries(hero.passiveBonus || {});
+
+    if (passiveEntries.length === 0) {
+      return 'Passive: none';
+    }
+
+    return `Passive: ${passiveEntries
+      .map(([statName, value]) => `${this.getStatShortLabel(statName)} ${this.formatHeroBonus(statName, value)}`)
+      .join(', ')}`;
+  }
+
+  getStatShortLabel(statName) {
+    const labels = {
+      hp: 'HP',
+      damage: 'ATK',
+      attackSpeed: 'ASPD',
+      attackRange: 'RANGE',
+      moveSpeed: 'MOVE',
+      criticalChance: 'CRIT'
+    };
+
+    return labels[statName] || statName;
+  }
+
+  formatHeroBonus(statName, value) {
+    if (statName === 'criticalChance') {
+      return `+${Math.round(value * 100)}%`;
+    }
+
+    return `+${value}`;
+  }
+
+  getDefaultSkinForHero(hero) {
+    return skins.find((skin) => skin.id === hero.cosmeticSkinId) || skins[0];
+  }
+
+  addEquipmentSlotPanel(x, y) {
+    this.addInventoryItem(this.add.text(x, y - 38, 'EQUIPPED', this.getInventoryTitleStyle()));
+
+    EQUIPMENT_SLOTS.forEach((slot, index) => {
+      const item = getEquippedItemBySlot(this, slot);
+      const slotY = y + (index * 62);
+      const button = this.addInventoryItem(this.add.rectangle(x + 118, slotY, 270, 48, 0x172554, 0.96))
+        .setStrokeStyle(2, item ? 0xfacc15 : 0x38bdf8, 0.85)
+        .setInteractive({ useHandCursor: true });
+
+      this.addInventoryItem(this.add.text(x - 2, slotY, slot.toUpperCase(), this.getInventoryTextStyle('#9af2ff', 13))
+        .setOrigin(0, 0.5));
+      this.addInventoryItem(this.add.text(x + 96, slotY, item ? item.name : 'Empty', this.getInventoryTextStyle(UI.white, 16))
+        .setOrigin(0, 0.5));
+
+      button.on('pointerup', () => {
+        if (item) {
+          unequipSlot(this, slot);
+          this.refreshHeroLoadout();
+          this.refreshBottomStats();
+          this.refreshMainMenuLoadoutDisplay();
+          this.showInventoryTab();
+        }
+      });
+    });
+  }
+
+  addInventoryList(x, y) {
+    this.addInventoryItem(this.add.text(x, y - 38, 'ITEMS', this.getInventoryTitleStyle()));
+
+    getInventoryItems(this).forEach((item, index) => {
+      const rowY = y + (index * 58);
+      const isEquipped = getEquippedItemBySlot(this, item.slot)?.id === item.id;
+      const row = this.addInventoryItem(this.add.rectangle(x + 170, rowY, 320, 46, isEquipped ? 0x1e3a8a : 0x111827, 0.96))
+        .setStrokeStyle(2, isEquipped ? 0xfacc15 : 0x64748b, 0.9)
+        .setInteractive({ useHandCursor: true });
+
+      this.addInventoryItem(this.add.text(x + 22, rowY - 8, item.name, this.getInventoryTextStyle(UI.white, 16)));
+      this.addInventoryItem(this.add.text(x + 22, rowY + 12, `${item.slot.toUpperCase()}  ${formatEquipmentBonus(item)}`, this.getInventoryTextStyle('#bfdbfe', 12)));
+      this.addInventoryItem(this.add.text(x + 296, rowY, isEquipped ? 'EQUIPPED' : 'EQUIP', this.getInventoryTextStyle(isEquipped ? '#facc15' : UI.cyan, 12))
+        .setOrigin(0.5));
+
+      row.on('pointerup', () => {
+        equipItem(this, item.id);
+        this.refreshHeroLoadout();
+        this.refreshBottomStats();
+        this.refreshMainMenuLoadoutDisplay();
+        this.showInventoryTab();
+      });
+    });
+  }
+
+  addTotalStatsPanel(x, y) {
+    const stats = [
+      ['HP', this.finalHeroStats.hp],
+      ['Attack', this.finalHeroStats.damage],
+      ['Attack Speed', this.finalHeroStats.attackSpeed],
+      ['Move Speed', this.finalHeroStats.moveSpeed],
+      ['Crit Chance', `${Math.round(this.finalHeroStats.criticalChance * 100)}%`]
+    ];
+
+    this.addInventoryItem(this.add.text(x, y - 34, 'TOTAL STATUS', this.getInventoryTitleStyle()));
+    this.addInventoryItem(this.add.rectangle(x + 162, y + 58, 326, 164, 0x07111f, 0.9))
+      .setStrokeStyle(2, 0x38bdf8, 0.65);
+
+    stats.forEach(([label, value], index) => {
+      const statY = y + (index * 29);
+      this.addInventoryItem(this.add.text(x + 24, statY, label, this.getInventoryTextStyle('#bfdbfe', 15)));
+      this.addInventoryItem(this.add.text(x + 280, statY, value, this.getInventoryTextStyle(UI.yellow, 15))
+        .setOrigin(1, 0));
+    });
+  }
+
+  addInventoryCloseButton(x, y) {
+    const button = this.addInventoryItem(this.add.rectangle(x, y, 38, 38, 0x1d4ed8, 1))
+      .setStrokeStyle(2, 0x93c5fd, 1)
+      .setInteractive({ useHandCursor: true });
+    this.addInventoryItem(this.add.text(x, y, 'X', this.getInventoryTextStyle(UI.white, 18)).setOrigin(0.5));
+
+    button.on('pointerup', () => this.clearInventoryTab());
+  }
+
+  refreshMainMenuLoadoutDisplay() {
+    this.loadoutSlotLayer.forEach((item) => item.destroy());
+    this.loadoutSlotLayer = [];
+
+    this.loadoutSlotAnchors.forEach((anchor) => {
+      const equippedItem = anchor.slot ? getEquippedItemBySlot(this, anchor.slot) : null;
+
+      if (equippedItem) {
+        this.addLoadoutSlotItem(this.add.circle(anchor.x, anchor.y, 21, 0x07111f, 0.9))
+          .setStrokeStyle(2, 0xfacc15, 0.95);
+        this.addLoadoutSlotItem(this.add.text(anchor.x, anchor.y - 2, equippedItem.icon || '?', {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '24px',
+          color: UI.yellow,
+          fontStyle: '900',
+          stroke: '#0c1648',
+          strokeThickness: 4,
+        }).setOrigin(0.5));
+        this.addLoadoutSlotItem(this.add.text(anchor.x, anchor.y + 33, this.getShortEquipmentName(equippedItem.name), {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '10px',
+          color: UI.white,
+          fontStyle: '900',
+          stroke: '#0c1648',
+          strokeThickness: 3,
+        }).setOrigin(0.5));
+        return;
+      }
+
+      this.addLoadoutSlotItem(this.add.text(anchor.x, anchor.y, anchor.label, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '9px',
+        color: '#67e8f9',
+        fontStyle: '900',
+        stroke: '#0c1648',
+        strokeThickness: 3,
+      }).setOrigin(0.5));
+    });
+  }
+
+  addLoadoutSlotItem(item) {
+    item.setDepth(850);
+    this.loadoutSlotLayer.push(item);
+    return item;
+  }
+
+  getShortEquipmentName(name) {
+    return name
+      .split(' ')
+      .map((word) => word[0])
+      .join('');
+  }
+
+  getInventoryTitleStyle() {
+    return {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '18px',
+      color: UI.yellow,
+      fontStyle: '900',
+      stroke: '#0c1648',
+      strokeThickness: 3,
+    };
+  }
+
+  getInventoryTextStyle(color, fontSize) {
+    return {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: `${fontSize}px`,
+      color,
+      fontStyle: '800',
+      stroke: '#0c1648',
+      strokeThickness: 3,
+    };
+  }
+
+  addInventoryItem(item) {
+    item.setScrollFactor(0);
+    item.setDepth(2000);
+    this.inventoryLayer.push(item);
+    return item;
+  }
+
+  clearInventoryTab() {
+    this.inventoryLayer.forEach((item) => item.destroy());
+    this.inventoryLayer = [];
   }
 }

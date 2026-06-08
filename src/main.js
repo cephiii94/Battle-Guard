@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import MainMenuScene from './scenes/MainMenuScene.js';
 import GameScene from './scenes/GameScene.js';
+import { applyPlayerDataToRegistry, loadPlayerData, savePlayerData } from './services/saveService.js';
 import './style.css';
 
 const config = {
@@ -22,4 +23,8 @@ const config = {
   scene: [MainMenuScene, GameScene]
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+const playerData = loadPlayerData();
+
+savePlayerData(playerData);
+applyPlayerDataToRegistry(game.registry, playerData);

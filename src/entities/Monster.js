@@ -3,14 +3,15 @@ import Phaser from 'phaser';
 const MONSTER_TEXTURE = 'monster-circle';
 
 export default class Monster extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, player) {
+  constructor(scene, x, y, player, options = {}) {
     Monster.createTexture(scene);
 
     super(scene, x, y, MONSTER_TEXTURE);
 
     this.player = player;
     this.speed = 140;
-    this.hp = 30;
+    this.hp = Math.round(30 * (options.hpMultiplier || 1));
+    this.damage = Math.round(12 * (options.damageMultiplier || 1));
     this.isDying = false;
     this.isDead = false;
 

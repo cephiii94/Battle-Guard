@@ -2,13 +2,14 @@ import Phaser from 'phaser';
 import Monster from '../entities/Monster.js';
 
 export default class SpawnSystem {
-  constructor(scene, player, mapBounds) {
+  constructor(scene, player, mapBounds, stage) {
     this.scene = scene;
     this.player = player;
     this.mapBounds = mapBounds;
+    this.stage = stage;
     this.monsters = [];
     this.maxMonsters = 20;
-    this.spawnDelay = 2000;
+    this.spawnDelay = stage.enemySpawnRate;
 
     this.spawnTimer = scene.time.addEvent({
       delay: this.spawnDelay,
@@ -26,14 +27,17 @@ export default class SpawnSystem {
     }
 
     const spawnPoint = this.getSpawnPointOutsideCamera();
-    const monster = new Monster(this.scene, spawnPoint.x, spawnPoint.y, this.player);
+    const monster = new Monster(this.scene, spawnPoint.x, spawnPoint.y, this.player, {
+      hpMultiplier: this.stage.enemyHpMultiplier,
+      damageMultiplier: this.stage.enemyDamageMultiplier
+    });
 
     this.monsters.push(monster);
   }
 
   update() {
     this.monsters = this.monsters.filter((monster) => monster.active && !monster.isDead);
-    this.monsters.forEach((monster) => monster.update());
+    this.monsters.forEach((monster) => monster.update(this.scene.game.loop.delta));
   }
 
   setPaused(isPaused) {
@@ -46,6 +50,10 @@ export default class SpawnSystem {
       !monster.isDead &&
       !monster.isDying
     ));
+  }
+
+  addMonster(monster) {
+    this.monsters.push(monster);
   }
 
   getSpawnPointOutsideCamera() {

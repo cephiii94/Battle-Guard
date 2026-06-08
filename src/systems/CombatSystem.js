@@ -100,6 +100,11 @@ export default class CombatSystem {
   }
 
   killMonster(monster) {
+    if (monster.isBoss && this.scene.bossSystem) {
+      this.scene.bossSystem.handleBossKilled(monster);
+      return;
+    }
+
     this.gameStats.addKill();
     this.lootSystem.tryDropGold(monster.x, monster.y);
     this.lootSystem.dropExpOrb(monster.x, monster.y);
