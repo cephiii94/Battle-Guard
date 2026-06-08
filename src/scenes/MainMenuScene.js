@@ -1,354 +1,378 @@
 import Phaser from 'phaser';
-import baseHeroStats from '../data/baseHero.js';
-import equipment from '../data/equipment.js';
-import skins from '../data/skins.js';
-import { calculateFinalStats } from '../systems/HeroStats.js';
+
+const UI = {
+  white: '#ffffff',
+  cyan: '#69e6ff',
+  cyanDark: '#0c86bd',
+  blueText: '#dff8ff',
+  yellow: '#ffdc5a',
+  purple: '#b53cff',
+};
 
 export default class MainMenuScene extends Phaser.Scene {
   constructor() {
     super('MainMenuScene');
   }
 
+  preload() {
+    this.load.image('ui-settings-dot', '/assets/ui/settings-gear.svg');
+    this.load.image('ui-icon-gem', '/assets/ui/icon-gem.svg');
+    this.load.image('ui-icon-gold', '/assets/ui/icon-gold.svg');
+    this.load.image('ui-currency-bar', '/assets/ui/currency-bar.svg');
+    this.load.image('ui-side-button', '/assets/ui/neon-side-button.svg');
+    this.load.image('ui-battle-button', '/assets/ui/neon-battle-button.svg');
+    this.load.image('ui-purple-button', '/assets/ui/neon-purple-button.svg');
+    this.load.image('ui-hex-slot', '/assets/ui/neon-hex-slot.svg');
+    this.load.image('ui-hex-active', '/assets/ui/neon-hex-active.svg');
+    this.load.image('ui-character-orb', '/assets/ui/neon-character-orb.svg');
+    this.load.image('ui-bottom-panel', '/assets/ui/neon-panel-bottom.svg');
+    this.load.image('ui-stat-damage', '/assets/ui/icon-damage.svg');
+    this.load.image('ui-stat-hp', '/assets/ui/icon-hp.svg');
+    this.load.image('ui-stat-aspd', '/assets/ui/icon-aspd.svg');
+  }
+
   create() {
-    this.activeTab = 'home';
-    this.equippedItemIds = new Set();
-    this.activeSkinId = 'default-guard';
-    this.uiItems = [];
-
-    this.cameras.main.setBackgroundColor('#0b1020');
-    this.render();
-  }
-
-  render() {
-    this.clearUi();
-
     const { width, height } = this.scale;
-    const contentX = 82;
-    const contentY = 164;
-    const contentWidth = width - 164;
 
-    this.drawMenuBackdrop(width, height);
+    this.drawGalaxyBackground(width, height);
+    this.addTopBar(width);
+    this.addLeftMenu();
+    this.addRightRewards(width);
+    this.addHeroFocus(width, height);
+    this.addBottomActions(width, height);
+  }
 
-    this.addUi(this.add.text(86, 42, 'BATTLE GUARD', {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '58px',
-      color: '#f8fafc',
-      fontStyle: 'bold',
-      stroke: '#020617',
-      strokeThickness: 8
-    }));
+  drawGalaxyBackground(width, height) {
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x151038, 0x081c42, 0x10125c, 0x061c35, 1);
+    bg.fillRect(0, 0, width, height);
 
-    this.addUi(this.add.text(90, 103, 'ARMORY DECK // Prepare your guard before entering the field', {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
+    bg.fillStyle(0x7d39ff, 0.18);
+    bg.fillCircle(width * 0.56, height * 0.38, 170);
+    bg.fillStyle(0x00d6ff, 0.12);
+    bg.fillCircle(width * 0.53, height * 0.45, 230);
+    bg.lineStyle(3, 0x4bdbff, 0.25);
+    bg.strokeEllipse(width * 0.54, height * 0.5, 430, 270);
+    bg.lineStyle(2, 0xd543ff, 0.28);
+    bg.strokeEllipse(width * 0.55, height * 0.47, 300, 210);
+
+    const stars = [
+      [78, 42, 2], [148, 91, 1], [224, 42, 1], [313, 88, 2], [420, 33, 1],
+      [510, 96, 2], [610, 45, 1], [690, 112, 1], [64, 270, 1], [176, 310, 2],
+      [298, 302, 1], [438, 276, 1], [548, 318, 2], [705, 286, 1],
+    ];
+
+    bg.fillStyle(0xffffff, 0.7);
+    stars.forEach(([x, y, r]) => bg.fillCircle(x, y, r));
+  }
+
+  addTopBar(width) {
+    this.add.image(26, 26, 'ui-settings-dot').setDisplaySize(38, 38).setInteractive({ useHandCursor: true });
+
+    this.drawLevelBadge(91, 27);
+    this.add.text(122, 12, 'Player6634', {
+      fontFamily: 'Arial, sans-serif',
       fontSize: '17px',
-      color: '#facc15',
-      fontStyle: 'bold'
-    }));
-
-    this.createTabButton(width - 486, 112, 218, 'Command', 'home');
-    this.createTabButton(width - 250, 112, 218, 'Loadout', 'inventory');
-
-    if (this.activeTab === 'home') {
-      this.renderHomeTab(contentX, contentY, contentWidth);
-    } else {
-      this.renderInventoryTab(contentX, contentY, contentWidth);
-    }
-  }
-
-  renderHomeTab(x, y, width) {
-    const activeSkin = this.getActiveSkin();
-    const equippedItems = this.getEquippedItems();
-    const finalStats = this.getFinalStats();
-    const leftWidth = Math.round(width * 0.53);
-    const rightWidth = width - leftWidth - 28;
-
-    this.createCard(x, y, leftWidth, 370, 'Active Hero');
-    this.drawHeroPreview(x + 54, y + 96, activeSkin);
-    this.addUi(this.add.text(x + 148, y + 82, activeSkin.name.toUpperCase(), this.valueStyle()));
-    this.addUi(this.add.text(x + 148, y + 116, 'Guard skin online', this.labelStyle()));
-    this.addUi(this.add.text(x + 148, y + 154, activeSkin.description, {
-      ...this.bodyStyle(),
-      color: '#cbd5e1',
-      wordWrap: { width: leftWidth - 188 }
-    }));
-    this.addUi(this.add.text(x + 34, y + 242, 'EQUIPPED MODULES', this.labelStyle()));
-    this.addUi(this.add.text(x + 34, y + 280, equippedItems.length
-      ? equippedItems.map((item) => `> ${item.name}`).join('\n')
-      : '> Empty slots', {
-        ...this.bodyStyle(),
-        lineSpacing: 10
-      }));
-
-    this.createCard(x + leftWidth + 28, y, rightWidth, 370, 'Combat Readout');
-    this.drawStatsGrid(x + leftWidth + 58, y + 78, rightWidth - 88, finalStats);
-
-    this.createButton(
-      x + (width / 2) - 175,
-      y + 428,
-      350,
-      82,
-      'Deploy',
-      () => {
-        this.scene.start('GameScene', {
-          baseHeroStats,
-          equippedItems,
-          activeSkin,
-          finalStats
-        });
-      },
-      'primary'
-    );
-  }
-
-  renderInventoryTab(x, y, width) {
-    const activeSkin = this.getActiveSkin();
-    const finalStats = this.getFinalStats();
-    const leftWidth = Math.round(width * 0.5);
-    const rightX = x + leftWidth + 28;
-    const rightWidth = width - leftWidth - 28;
-
-    this.createCard(x, y, leftWidth, 286, 'Equipment Rack');
-    equipment.forEach((item, index) => {
-      const isEquipped = this.equippedItemIds.has(item.id);
-      const rowY = y + 76 + (index * 68);
-
-      this.addUi(this.add.rectangle(x + 28, rowY, 14, 40, isEquipped ? 0xfacc15 : 0x475569, 1));
-      this.addUi(this.add.text(x + 52, rowY - 17, item.name, this.valueStyle()));
-      this.addUi(this.add.text(x + 250, rowY - 13, this.formatBonus(item.bonus), this.bodyStyle()));
-      this.createButton(x + leftWidth - 165, rowY, 128, 42, isEquipped ? 'Unequip' : 'Equip', () => {
-        this.toggleEquipment(item.id);
-      }, isEquipped ? 'active' : 'secondary');
+      color: UI.white,
+      fontStyle: '800',
     });
 
-    this.createCard(x, y + 312, leftWidth, 264, 'Hero Skin Bay');
-    skins.forEach((skin, index) => {
-      const column = index % 2;
-      const row = Math.floor(index / 2);
-      const skinX = x + 30 + (column * ((leftWidth - 80) / 2));
-      const skinY = y + 378 + (row * 88);
-      const isActive = skin.id === activeSkin.id;
+    this.drawProgressBar(122, 34, 154, 18, 100, 1500);
 
-      this.createButton(skinX, skinY, 226, 44, isActive ? `Active: ${skin.name}` : skin.name, () => {
-        this.activeSkinId = skin.id;
-        this.render();
-      }, isActive ? 'active' : 'secondary');
-      this.addUi(this.add.text(skinX, skinY + 30, skin.description, {
-        ...this.bodyStyle(),
-        fontSize: '14px',
-        color: '#94a3b8',
-        wordWrap: { width: 220 }
-      }));
+    this.add.image(width - 118, 24, 'ui-currency-bar').setDisplaySize(242, 46);
+    this.addCurrency(width - 208, 24, 'ui-icon-gold', '230 560');
+    this.addCurrency(width - 94, 24, 'ui-icon-gem', '640');
+    this.add.text(width - 24, 20, '+', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '30px',
+      color: UI.cyan,
+      fontStyle: '800',
+      stroke: '#17246c',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+  }
+
+  drawLevelBadge(x, y) {
+    const badge = this.add.graphics();
+    badge.fillStyle(0x2f2a8f, 1);
+    badge.lineStyle(3, 0xd8e7ff, 1);
+    badge.beginPath();
+    badge.moveTo(x, y - 25);
+    badge.lineTo(x + 26, y - 10);
+    badge.lineTo(x + 20, y + 20);
+    badge.lineTo(x, y + 30);
+    badge.lineTo(x - 20, y + 20);
+    badge.lineTo(x - 26, y - 10);
+    badge.closePath();
+    badge.fillPath();
+    badge.strokePath();
+
+    this.add.text(x, y + 1, '12', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '18px',
+      color: UI.white,
+      fontStyle: '900',
+    }).setOrigin(0.5);
+  }
+
+  drawProgressBar(x, y, width, height, current, max) {
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x17205f, 1);
+    graphics.fillRoundedRect(x, y, width, height, 3);
+    graphics.fillStyle(0x23c7ff, 1);
+    graphics.fillRoundedRect(x + 2, y + 2, Math.max(20, (width - 4) * (current / max)), height - 4, 3);
+    graphics.lineStyle(2, 0x70eaff, 1);
+    graphics.strokeRoundedRect(x, y, width, height, 3);
+
+    this.add.text(x + width / 2, y + height / 2, `${current}/${max}`, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '11px',
+      color: UI.blueText,
+      fontStyle: '800',
+    }).setOrigin(0.5);
+  }
+
+  addCurrency(x, y, iconKey, value) {
+    this.add.image(x, y, iconKey).setDisplaySize(26, 26);
+    this.add.text(x + 22, y, value, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '16px',
+      color: UI.white,
+      fontStyle: '800',
+      stroke: '#0c1648',
+      strokeThickness: 3,
+    }).setOrigin(0, 0.5);
+  }
+
+  addLeftMenu() {
+    const items = [
+      { y: 105, icon: '🛒', label: 'TOKO' },
+      { y: 177, icon: '🏆', label: 'RANK' },
+      { y: 249, icon: '⚗', label: 'LAB' },
+    ];
+
+    items.forEach((item) => {
+      const button = this.add.image(62, item.y, 'ui-side-button').setInteractive({ useHandCursor: true });
+      button.on('pointerover', () => button.setScale(1.05));
+      button.on('pointerout', () => button.setScale(1));
+
+      this.add.text(62, item.y - 8, item.icon, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '24px',
+        color: UI.white,
+      }).setOrigin(0.5);
+      this.add.text(62, item.y + 22, item.label, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '12px',
+        color: UI.white,
+        fontStyle: '900',
+      }).setOrigin(0.5);
     });
-
-    this.createCard(rightX, y, rightWidth, 576, 'Loadout Preview');
-    this.drawHeroPreview(rightX + 52, y + 94, activeSkin);
-    this.addUi(this.add.text(rightX + 134, y + 76, activeSkin.name.toUpperCase(), this.valueStyle()));
-    this.addUi(this.add.text(rightX + 134, y + 118, 'SKIN BONUS', this.labelStyle()));
-    this.addUi(this.add.text(rightX + 134, y + 154, activeSkin.description, {
-      ...this.bodyStyle(),
-      color: '#cbd5e1',
-      wordWrap: { width: rightWidth - 168 }
-    }));
-    this.drawStatsGrid(rightX + 34, y + 246, rightWidth - 68, finalStats);
   }
 
-  createTabButton(x, y, width, label, tab) {
-    this.createButton(x - (width / 2), y, width, 46, label, () => {
-      this.activeTab = tab;
-      this.render();
-    }, this.activeTab === tab ? 'active' : 'tab');
-  }
-
-  createCard(x, y, width, height, title) {
-    const shadow = this.add.rectangle(x + (width / 2) + 8, y + (height / 2) + 8, width, height, 0x020617, 0.45);
-    const card = this.add.rectangle(x + (width / 2), y + (height / 2), width, height, 0x0d1828, 0.96);
-    const topLine = this.add.rectangle(x + (width / 2), y + 1, width, 4, 0xf59e0b, 0.95);
-    const sideLine = this.add.rectangle(x + 2, y + (height / 2), 4, height - 18, 0x38bdf8, 0.55);
-    const titleText = this.add.text(x + 28, y + 22, title.toUpperCase(), this.headingStyle());
-
-    card.setStrokeStyle(2, 0x334155, 1);
-    this.addUi(shadow);
-    this.addUi(card);
-    this.addUi(topLine);
-    this.addUi(sideLine);
-    this.addUi(titleText);
-  }
-
-  createButton(x, y, width, height, label, onClick, variant = 'secondary') {
-    const colors = {
-      primary: { fill: 0x9a3412, hover: 0xc2410c, stroke: 0xfacc15 },
-      active: { fill: 0x0f766e, hover: 0x0d9488, stroke: 0x5eead4 },
-      tab: { fill: 0x111827, hover: 0x1f2937, stroke: 0x64748b },
-      secondary: { fill: 0x172033, hover: 0x26384f, stroke: 0x64748b }
-    };
-    const palette = colors[variant] || colors.secondary;
-    const button = this.add.rectangle(x + (width / 2), y, width, height, palette.fill, 1);
-    const shine = this.add.rectangle(x + (width / 2), y - (height / 2) + 5, width - 18, 4, 0xffffff, 0.18);
-    const text = this.add.text(x + (width / 2), y, label, {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: variant === 'primary' ? '28px' : '16px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      align: 'center'
+  addRightRewards(width) {
+    this.addRewardBadge(width - 103, 88, '1D 16H');
+    this.addCup(width - 43, 92);
+    this.add.text(width - 44, 130, '1 526', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '15px',
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#0c1648',
+      strokeThickness: 3,
     }).setOrigin(0.5);
 
-    button.setStrokeStyle(2, palette.stroke);
-    button.setInteractive({ useHandCursor: true });
-    button.on('pointerover', () => button.setFillStyle(palette.hover, 1));
-    button.on('pointerout', () => button.setFillStyle(palette.fill, 1));
-    button.on('pointerdown', onClick);
-    text.setInteractive({ useHandCursor: true });
-    text.on('pointerdown', onClick);
-
-    this.addUi(button);
-    this.addUi(shine);
-    this.addUi(text);
+    this.addSmallQuest(width - 43, 178, '!');
+    this.addSmallQuest(width - 43, 232, '!');
+    this.addSmallQuest(width - 43, 304, '3');
   }
 
-  drawMenuBackdrop(width, height) {
-    this.addUi(this.add.rectangle(width / 2, height / 2, width, height, 0x07111f));
-    for (let x = -80; x < width + 80; x += 96) {
-      this.addUi(this.add.line(0, 0, x, 0, x + 260, height, 0x1e3a5f, 0.32));
-    }
-    for (let y = 140; y < height; y += 86) {
-      this.addUi(this.add.line(0, 0, 0, y, width, y, 0x23384f, 0.26));
-    }
-    this.addUi(this.add.circle(width * 0.76, height * 0.28, 210, 0x7c2d12, 0.18));
-    this.addUi(this.add.circle(width * 0.18, height * 0.82, 170, 0x0f766e, 0.18));
-    this.addUi(this.add.rectangle(width / 2, height / 2, width - 44, height - 38, 0x020617, 0).setStrokeStyle(4, 0x334155, 0.8));
+  addRewardBadge(x, y, label) {
+    const g = this.add.graphics();
+    g.fillStyle(0xff7a0b, 1);
+    g.fillCircle(x, y, 27);
+    g.lineStyle(3, 0xffd84d, 1);
+    g.strokeCircle(x, y, 27);
+    this.add.text(x, y + 36, label, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '14px',
+      color: UI.white,
+      fontStyle: '800',
+      stroke: '#0c1648',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
   }
 
-  drawHeroPreview(x, y, skin) {
-    this.addUi(this.add.circle(x, y, 50, skin.colors.aura, 0.22));
-    this.addUi(this.add.circle(x, y, 28, skin.colors.hero, 1).setStrokeStyle(4, skin.colors.border, 1));
-    this.addUi(this.add.rectangle(x, y + 44, 78, 10, skin.colors.border, 0.8));
-    this.addUi(this.add.rectangle(x, y + 58, 54, 8, 0xfacc15, 0.85));
+  addCup(x, y) {
+    const g = this.add.graphics();
+    g.fillStyle(0xffcc32, 1);
+    g.fillEllipse(x, y - 4, 38, 22);
+    g.fillRect(x - 12, y - 2, 24, 26);
+    g.fillEllipse(x, y + 24, 34, 11);
+    g.lineStyle(3, 0xfff2a8, 1);
+    g.strokeEllipse(x, y - 4, 38, 22);
   }
 
-  drawStatsGrid(x, y, width, stats) {
-    const rows = [
-      ['HP', stats.hp],
-      ['DMG', stats.damage],
-      ['MOVE', stats.moveSpeed],
-      ['ATK SPD', stats.attackSpeed],
-      ['RANGE', stats.attackRange],
-      ['CRIT', `${Math.round(stats.criticalChance * 100)}%`]
-    ];
-    const colWidth = width / 2;
+  addSmallQuest(x, y, notice) {
+    const panel = this.add.graphics();
+    panel.fillStyle(0x29339a, 1);
+    panel.fillRoundedRect(x - 24, y - 22, 48, 44, 7);
+    panel.lineStyle(2, 0x65e8ff, 1);
+    panel.strokeRoundedRect(x - 24, y - 22, 48, 44, 7);
 
-    rows.forEach(([label, value], index) => {
-      const col = index % 2;
-      const row = Math.floor(index / 2);
-      const chipX = x + (col * colWidth);
-      const chipY = y + (row * 76);
-      const chip = this.add.rectangle(chipX + (colWidth / 2) - 8, chipY + 26, colWidth - 18, 58, 0x111827, 0.9);
-      chip.setStrokeStyle(2, 0x334155, 1);
-      this.addUi(chip);
-      this.addUi(this.add.text(chipX + 18, chipY + 8, label, this.labelStyle()));
-      this.addUi(this.add.text(chipX + 18, chipY + 31, `${value}`, {
-        ...this.valueStyle(),
-        fontSize: '22px',
-        color: '#facc15'
-      }));
-    });
+    this.add.text(x, y, '✓', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: UI.cyan,
+      fontStyle: '900',
+    }).setOrigin(0.5);
+
+    this.add.circle(x + 23, y - 20, 10, 0xff3131);
+    this.add.text(x + 23, y - 20, notice, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '12px',
+      color: UI.white,
+      fontStyle: '900',
+    }).setOrigin(0.5);
   }
 
-  toggleEquipment(itemId) {
-    if (this.equippedItemIds.has(itemId)) {
-      this.equippedItemIds.delete(itemId);
-    } else {
-      this.equippedItemIds.add(itemId);
-    }
+  addHeroFocus(width, height) {
+    const cx = width / 2 + 20;
+    const cy = height / 2 - 18;
 
-    this.render();
-  }
-
-  getEquippedItems() {
-    return equipment.filter((item) => this.equippedItemIds.has(item.id));
-  }
-
-  getActiveSkin() {
-    return skins.find((skin) => skin.id === this.activeSkinId) || skins[0];
-  }
-
-  getFinalStats() {
-    return calculateFinalStats(baseHeroStats, this.getEquippedItems(), this.getActiveSkin(), 1);
-  }
-
-  formatStats(stats) {
-    return [
-      `HP: ${stats.hp}`,
-      `Damage: ${stats.damage}`,
-      `Move Speed: ${stats.moveSpeed}`,
-      `Attack Speed: ${stats.attackSpeed}`,
-      `Attack Range: ${stats.attackRange}`,
-      `Critical Chance: ${Math.round(stats.criticalChance * 100)}%`
-    ].join('\n');
-  }
-
-  formatBonus(bonus) {
-    return Object.entries(bonus)
-      .map(([statName, value]) => `${this.formatStatName(statName)} +${value}`)
-      .join(', ');
-  }
-
-  formatStatName(statName) {
-    const names = {
-      hp: 'HP',
-      damage: 'Damage',
-      moveSpeed: 'Move Speed',
-      attackSpeed: 'Attack Speed',
-      attackRange: 'Attack Range',
-      criticalChance: 'Critical Chance'
-    };
-
-    return names[statName] || statName;
-  }
-
-  headingStyle() {
-    return {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '22px',
-      color: '#facc15',
-      fontStyle: 'bold'
-    };
-  }
-
-  labelStyle() {
-    return {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
+    this.add.text(cx, 72, 'BATTLE GUARD', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '30px',
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#1b1b77',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+    this.add.text(cx, 101, 'MODIFIKASI HERO', {
+      fontFamily: 'Arial, sans-serif',
       fontSize: '15px',
-      color: '#94a3b8',
-      fontStyle: 'bold'
-    };
+      color: UI.yellow,
+      fontStyle: '800',
+      stroke: '#1b1b77',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    this.add.text(cx - 88, 135, 'Lv. 46', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#1b1b77',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+
+    this.addEquipmentSlots(cx - 178, cy + 3, -1);
+    this.addEquipmentSlots(cx + 178, cy + 3, 1);
+    this.add.image(cx, cy, 'ui-character-orb').setDisplaySize(188, 188);
+
+    this.add.text(cx + 68, cy + 75, '1/999', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '14px',
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#1b1b77',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    this.add.image(cx + 112, cy + 75, 'ui-icon-gold').setDisplaySize(30, 30);
   }
 
-  valueStyle() {
-    return {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
+  addEquipmentSlots(x, y, side) {
+    this.add.text(x, y - 124, side < 0 ? 'WEAPON' : 'ARMOR', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '11px',
+      color: UI.cyan,
+      fontStyle: '900',
+      stroke: '#0c1648',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
+    this.add.image(x, y - 73, 'ui-hex-active').setDisplaySize(66, 66);
+
+    for (let i = 0; i < 3; i += 1) {
+      const slotX = x + side * Math.abs(i - 1) * 8;
+      this.add.image(slotX, y - 15 + i * 58, 'ui-hex-slot').setDisplaySize(58, 58).setAlpha(0.95);
+    }
+  }
+
+  addBottomActions(width, height) {
+    const cx = width / 2 + 20;
+
+    const loadoutY = height - 118;
+    const statusY = height - 43;
+
+    const cells = this.add.image(cx, loadoutY, 'ui-purple-button').setInteractive({ useHandCursor: true });
+    this.add.text(cx, loadoutY, '▦ LOADOUT', {
+      fontFamily: 'Arial, sans-serif',
       fontSize: '19px',
-      color: '#f8fafc',
-      fontStyle: 'bold'
-    };
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#39106a',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    cells.on('pointerover', () => cells.setScale(1.04));
+    cells.on('pointerout', () => cells.setScale(1));
+
+    this.add.image(cx, statusY, 'ui-bottom-panel').setDisplaySize(332, 66);
+    this.addStat(cx - 104, statusY, 'ui-stat-damage', 'DMG', '320');
+    this.addStat(cx, statusY, 'ui-stat-hp', 'HP', '220');
+    this.addStat(cx + 104, statusY, 'ui-stat-aspd', 'ASPD', '460');
+
+    const battle = this.add.image(width - 92, height - 54, 'ui-battle-button').setInteractive({ useHandCursor: true });
+    this.add.text(width - 92, height - 54, 'BATTLE', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#9d3300',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+    battle.on('pointerover', () => battle.setScale(1.04));
+    battle.on('pointerout', () => battle.setScale(1));
+    battle.on('pointerdown', () => battle.setScale(0.98));
+    battle.on('pointerup', () => this.scene.start('GameScene'));
+
+    this.addEventOffer(height);
   }
 
-  bodyStyle() {
-    return {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '17px',
-      color: '#dbe3ef',
-      lineSpacing: 8
-    };
+  addStat(x, y, iconKey, label, value) {
+    this.add.image(x - 28, y, iconKey).setDisplaySize(24, 24);
+    this.add.text(x + 12, y - 9, label, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '9px',
+      color: '#9af2ff',
+      fontStyle: '900',
+      stroke: '#0c1648',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+    this.add.text(x + 12, y + 9, value, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '16px',
+      color: UI.cyan,
+      fontStyle: '900',
+      stroke: '#0c1648',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
   }
 
-  addUi(item) {
-    this.uiItems.push(item);
+  addEventOffer(height) {
+    const g = this.add.graphics();
+    g.fillStyle(0x21aaff, 1);
+    g.fillRoundedRect(24, height - 70, 170, 50, 8);
+    g.lineStyle(2, 0x9af2ff, 1);
+    g.strokeRoundedRect(24, height - 70, 170, 50, 8);
 
-    return item;
-  }
-
-  clearUi() {
-    this.uiItems.forEach((item) => item.destroy());
-    this.uiItems = [];
+    this.add.circle(47, height - 45, 18, 0xff7a0b);
+    this.add.text(74, height - 45, 'EVENT HARIAN', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '15px',
+      color: UI.white,
+      fontStyle: '900',
+      stroke: '#0c1648',
+      strokeThickness: 3,
+    }).setOrigin(0, 0.5);
   }
 }
