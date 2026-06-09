@@ -29,6 +29,9 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
     this.body.setAllowGravity(false);
     this.setDepth(20);
+
+    this.hpBar = scene.add.graphics();
+    this.hpBar.setDepth(this.depth + 1);
   }
 
   static createTexture(scene) {
@@ -55,11 +58,49 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
   update(delta = 16) {
     if (!this.active || this.isDying || this.isDead) {
       this.setVelocity(0, 0);
+      if (this.hpBar) {
+        this.hpBar.clear();
+      }
       return;
     }
 
     this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - delta);
     this.chasePlayer();
+    this.updateHpBar();
+  }
+
+  updateHpBar() {
+    if (!this.hpBar) return;
+    this.hpBar.clear();
+
+    const radius = 38; // half of displayWidth (76)
+    const hpPercent = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1);
+
+    // Deep purple border background
+    this.hpBar.lineStyle(3.5, 0x3b0764, 0.7);
+    this.hpBar.strokeCircle(this.x, this.y, radius);
+
+    // Bright magenta active HP border
+    if (hpPercent > 0) {
+      this.hpBar.lineStyle(3.5, 0xd946ef, 0.95);
+      this.hpBar.beginPath();
+      this.hpBar.arc(
+        this.x,
+        this.y,
+        radius,
+        Phaser.Math.DegToRad(-90),
+        Phaser.Math.DegToRad(-90 + 360 * hpPercent),
+        false
+      );
+      this.hpBar.strokePath();
+    }
+  }
+
+  destroy(fromScene) {
+    if (this.hpBar) {
+      this.hpBar.destroy();
+    }
+    super.destroy(fromScene);
   }
 
   chasePlayer() {
@@ -92,6 +133,10 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
 
     this.isDying = true;
     this.setVelocity(0, 0);
+    if (this.hpBar) {
+      this.hpBar.destroy();
+      this.hpBar = null;
+    }
 
     if (this.body) {
       this.body.enable = false;

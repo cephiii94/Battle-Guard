@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Battle Guard</title>
+    <script>
+      window.addEventListener('error', function(e) {
+        var errDiv = document.createElement('div');
+        errDiv.style.position = 'fixed';
+        errDiv.style.top = '0';
+        errDiv.style.left = '0';
+        errDiv.style.background = 'rgba(0,0,0,0.9)';
+        errDiv.style.color = '#ff6b6b';
+        errDiv.style.zIndex = '10000';
+        errDiv.style.padding = '20px';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.style.fontSize = '14px';
+        errDiv.style.whiteSpace = 'pre-wrap';
+        errDiv.innerText = 'Error: ' + e.message + '\nAt: ' + e.filename + ':' + e.lineno + '\n\nStack:\n' + (e.error ? e.error.stack : '');
+        document.body.appendChild(errDiv);
+      });
+    </script>
   </head>
   <body>
     <div id="game"></div>

@@ -11,6 +11,7 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
     this.player = player;
     this.speed = 140;
     this.hp = Math.round(30 * (options.hpMultiplier || 1));
+    this.maxHp = this.hp;
     this.damage = Math.round(12 * (options.damageMultiplier || 1));
     this.isDying = false;
     this.isDead = false;
@@ -21,6 +22,9 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(20, 2, 2);
     this.setCollideWorldBounds(true);
     this.body.setAllowGravity(false);
+
+    this.hpBar = scene.add.graphics();
+    this.hpBar.setDepth(this.depth + 1);
   }
 
   static createTexture(scene) {
@@ -41,6 +45,9 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
   update() {
     if (!this.active || this.isDying || this.isDead) {
       this.setVelocity(0, 0);
+      if (this.hpBar) {
+        this.hpBar.clear();
+      }
       return;
     }
 
@@ -51,11 +58,50 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
 
     if (direction.lengthSq() === 0) {
       this.setVelocity(0, 0);
+      this.updateHpBar();
       return;
     }
 
     direction.normalize();
     this.setVelocity(direction.x * this.speed, direction.y * this.speed);
+    this.updateHpBar();
+  }
+
+  updateHpBar() {
+    if (!this.hpBar) return;
+    this.hpBar.clear();
+    
+    // Only draw HP bar if damaged (less than 100% HP) to keep the screen clean
+    if (this.hp >= this.maxHp) return;
+
+    const radius = 22; // half of displayWidth (44)
+    const hpPercent = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1);
+
+    // Dark red border background
+    this.hpBar.lineStyle(2.5, 0x450a0a, 0.65);
+    this.hpBar.strokeCircle(this.x, this.y, radius);
+
+    // Neon red active HP border
+    if (hpPercent > 0) {
+      this.hpBar.lineStyle(2.5, 0xef4444, 0.9);
+      this.hpBar.beginPath();
+      this.hpBar.arc(
+        this.x,
+        this.y,
+        radius,
+        Phaser.Math.DegToRad(-90),
+        Phaser.Math.DegToRad(-90 + 360 * hpPercent),
+        false
+      );
+      this.hpBar.strokePath();
+    }
+  }
+
+  destroy(fromScene) {
+    if (this.hpBar) {
+      this.hpBar.destroy();
+    }
+    super.destroy(fromScene);
   }
 
   die(onComplete) {
@@ -65,6 +111,10 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
 
     this.isDying = true;
     this.setVelocity(0, 0);
+    if (this.hpBar) {
+      this.hpBar.destroy();
+      this.hpBar = null;
+    }
 
     if (this.body) {
       this.body.enable = false;

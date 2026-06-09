@@ -32,6 +32,9 @@ export default class Player extends Phaser.GameObjects.Arc {
 
     scene.add.existing(this);
     this.createAura(scene, skinColors.aura);
+
+    this.hpBar = scene.add.graphics();
+    this.hpBar.setDepth(10);
   }
 
   createAura(scene, auraColor) {
@@ -68,6 +71,43 @@ export default class Player extends Phaser.GameObjects.Arc {
 
     this.keepInsideMap();
     this.updateAura();
+    this.updateHpBar();
+  }
+
+  updateHpBar() {
+    if (!this.hpBar) return;
+    this.hpBar.clear();
+    const radius = this.radius + 9;
+    const hpPercent = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1);
+
+    // Faint dark border background
+    this.hpBar.lineStyle(3.5, 0x1e293b, 0.7);
+    this.hpBar.strokeCircle(this.x, this.y, radius);
+
+    // Glowing green active HP border
+    if (hpPercent > 0) {
+      this.hpBar.lineStyle(3.5, 0x10b981, 0.95);
+      this.hpBar.beginPath();
+      this.hpBar.arc(
+        this.x,
+        this.y,
+        radius,
+        Phaser.Math.DegToRad(-90),
+        Phaser.Math.DegToRad(-90 + 360 * hpPercent),
+        false
+      );
+      this.hpBar.strokePath();
+    }
+  }
+
+  destroy(fromScene) {
+    if (this.hpBar) {
+      this.hpBar.destroy();
+    }
+    if (this.aura) {
+      this.aura.destroy();
+    }
+    super.destroy(fromScene);
   }
 
   updateAura() {
