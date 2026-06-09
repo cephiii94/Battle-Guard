@@ -45,6 +45,20 @@ export default class GameScene extends Phaser.Scene {
     skills.forEach((skill) => {
       this.load.svg(skill.assetKey, skill.assetPath, { width: 96, height: 96 });
     });
+
+    this.loadHeroAsset(this.selectedHero);
+  }
+
+  loadHeroAsset(hero) {
+    if (!hero || !hero.assetKey || !hero.assetPath) {
+      return;
+    }
+
+    if (hero.assetPath.endsWith('.svg')) {
+      this.load.svg(hero.assetKey, hero.assetPath, { width: 160, height: 160 });
+    } else {
+      this.load.image(hero.assetKey, hero.assetPath);
+    }
   }
 
   create() {
@@ -87,6 +101,13 @@ export default class GameScene extends Phaser.Scene {
       this.finalStats,
       this.activeSkin
     );
+
+    if (this.textures.exists(this.selectedHero.assetKey)) {
+      this.heroSprite = this.add.image(this.player.x, this.player.y, this.selectedHero.assetKey)
+        .setOrigin(0.5)
+        .setDisplaySize(60, 60)
+        .setDepth(2);
+    }
 
     this.gameStats = new GameStats();
     this.statsPanel = new StatsPanel(this, this.gameStats, this.activeSkin);
@@ -156,6 +177,11 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.player.update(delta);
+
+    if (this.heroSprite) {
+      this.heroSprite.setPosition(this.player.x, this.player.y);
+    }
+
     this.spawnSystem.update();
     this.bossSystem.update(delta);
     this.combatSystem.update(delta);

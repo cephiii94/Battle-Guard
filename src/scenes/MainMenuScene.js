@@ -35,7 +35,12 @@ export default class MainMenuScene extends Phaser.Scene {
 
   preload() {
     getAvailableHeroes().forEach((hero) => {
-      this.load.svg(hero.assetKey, hero.assetPath, { width: 160, height: 160 });
+      if (hero.assetPath.endsWith('.svg')) {
+        this.load.svg(hero.assetKey, hero.assetPath, { width: 160, height: 160 });
+        return;
+      }
+
+      this.load.image(hero.assetKey, hero.assetPath);
     });
 
     this.load.image('ui-settings-dot', '/assets/ui/settings-gear.svg');
