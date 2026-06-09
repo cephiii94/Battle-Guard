@@ -1,3 +1,5 @@
+import { saveToFirestore, resetInFirestore, isFirebaseConfigured } from './firebase.js';
+
 const SAVE_KEY = 'battle-guard-player-data';
 
 export const defaultPlayerData = {
@@ -53,6 +55,31 @@ const localStorageAdapter = {
   reset() {
     if (isLocalStorageAvailable()) {
       window.localStorage.removeItem(SAVE_KEY);
+    }
+  }
+};
+
+export const firebaseAdapter = {
+  load() {
+    return localStorageAdapter.load();
+  },
+
+  save(playerData) {
+    localStorageAdapter.save(playerData);
+    if (isFirebaseConfigured) {
+      saveToFirestore(playerData).catch(err => {
+        console.error('Failed to sync save to Firestore:', err);
+      });
+    }
+    return playerData;
+  },
+
+  reset() {
+    localStorageAdapter.reset();
+    if (isFirebaseConfigured) {
+      resetInFirestore().catch(err => {
+        console.error('Failed to reset Firestore save:', err);
+      });
     }
   }
 };
