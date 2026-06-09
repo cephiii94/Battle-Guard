@@ -1,17 +1,15 @@
 import Phaser from 'phaser';
 
 export default class Player extends Phaser.GameObjects.Arc {
-  constructor(scene, x, y, mapBounds, finalStats, activeSkin, selectedHero = null) {
+  constructor(scene, x, y, mapBounds, finalStats, activeSkin) {
     const skinColors = activeSkin.colors;
 
     super(scene, x, y, 24, 0, 360, false, skinColors.hero);
 
     this.setStrokeStyle(4, skinColors.border);
-    this.setAlpha(selectedHero?.assetKey && scene.textures.exists(selectedHero.assetKey) ? 0 : 1);
 
     this.finalStats = finalStats;
     this.activeSkin = activeSkin;
-    this.selectedHero = selectedHero;
     this.speed = finalStats.moveSpeed;
     this.maxHp = finalStats.hp;
     this.hp = this.maxHp;
@@ -34,23 +32,12 @@ export default class Player extends Phaser.GameObjects.Arc {
 
     scene.add.existing(this);
     this.createAura(scene, skinColors.aura);
-    this.createHeroSprite(scene);
   }
 
   createAura(scene, auraColor) {
     this.aura = scene.add.circle(this.x, this.y, 38, auraColor, 0.22);
     this.aura.setStrokeStyle(2, auraColor, 0.4);
     this.aura.setDepth(this.depth - 1);
-  }
-
-  createHeroSprite(scene) {
-    if (!this.selectedHero?.assetKey || !scene.textures.exists(this.selectedHero.assetKey)) {
-      return;
-    }
-
-    this.heroSprite = scene.add.image(this.x, this.y, this.selectedHero.assetKey)
-      .setDisplaySize(72, 72)
-      .setDepth(this.depth + 1);
   }
 
   update(delta) {
@@ -81,7 +68,6 @@ export default class Player extends Phaser.GameObjects.Arc {
 
     this.keepInsideMap();
     this.updateAura();
-    this.updateHeroSprite();
   }
 
   updateAura() {
@@ -90,14 +76,6 @@ export default class Player extends Phaser.GameObjects.Arc {
     }
 
     this.aura.setPosition(this.x, this.y);
-  }
-
-  updateHeroSprite() {
-    if (!this.heroSprite) {
-      return;
-    }
-
-    this.heroSprite.setPosition(this.x, this.y);
   }
 
   keepInsideMap() {
