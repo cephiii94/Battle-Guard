@@ -42,6 +42,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    if (this.selectedHero?.assetKey && this.selectedHero?.assetPath && !this.textures.exists(this.selectedHero.assetKey)) {
+      if (this.selectedHero.assetPath.endsWith('.svg')) {
+        this.load.svg(this.selectedHero.assetKey, this.selectedHero.assetPath, { width: 160, height: 160 });
+      } else {
+        this.load.image(this.selectedHero.assetKey, this.selectedHero.assetPath);
+      }
+    }
+
     skills.forEach((skill) => {
       this.load.svg(skill.assetKey, skill.assetPath, { width: 96, height: 96 });
     });
@@ -85,7 +93,8 @@ export default class GameScene extends Phaser.Scene {
       this.mapBounds.height / 2,
       this.mapBounds,
       this.finalStats,
-      this.activeSkin
+      this.activeSkin,
+      this.selectedHero
     );
 
     this.gameStats = new GameStats();
