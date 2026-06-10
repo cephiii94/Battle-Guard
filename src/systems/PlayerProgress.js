@@ -131,7 +131,12 @@ export function consumeDailyAttempt(scene, mode) {
   const key = mode === 'gold_farm' ? 'gold' : (mode === 'looting' ? 'boss' : 'survival');
   
   if (!progress.dailyAttempts) {
-    progress.dailyAttempts = { date: new Date().toISOString().split('T')[0], survival: 3, gold: 3, boss: 3 };
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const currentDate = `${year}-${month}-${day}`;
+    progress.dailyAttempts = { date: currentDate, survival: 3, gold: 3, boss: 3 };
   }
   
   const currentAttempts = progress.dailyAttempts[key] !== undefined ? progress.dailyAttempts[key] : 3;
