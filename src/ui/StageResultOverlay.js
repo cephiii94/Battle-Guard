@@ -1,3 +1,5 @@
+import { soundManager } from '../services/soundManager.js';
+
 export default class StageResultOverlay {
   constructor(scene) {
     this.scene = scene;
@@ -83,13 +85,19 @@ export default class StageResultOverlay {
       strokeThickness: 4
     }).setOrigin(0.5));
 
-    button.on('pointerover', () => button.setFillStyle(0x1d4ed8));
+    button.on('pointerover', () => {
+      button.setFillStyle(0x1d4ed8);
+      soundManager.playSFX(this.scene, 'hover');
+    });
     button.on('pointerout', () => button.setFillStyle(0x2563eb));
     button.on('pointerdown', () => {
       button.setScale(0.97);
       text.setScale(0.97);
     });
-    button.on('pointerup', () => onClick());
+    button.on('pointerup', () => {
+      soundManager.playSFX(this.scene, 'click');
+      onClick();
+    });
   }
 
   add(item) {

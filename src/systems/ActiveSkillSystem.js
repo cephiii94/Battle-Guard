@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import skills, { createSkillState, getSkillLevelStats } from '../data/skills.js';
 import Projectile from '../entities/Projectile.js';
 import SkillChoicePopup from '../ui/SkillChoicePopup.js';
+import { soundManager } from '../services/soundManager.js';
 
 export default class ActiveSkillSystem {
   constructor(scene, player, spawnSystem, combatSystem, gameStats) {
@@ -62,6 +63,7 @@ export default class ActiveSkillSystem {
   }
 
   chooseSkill(skillChoice) {
+    soundManager.playSFX(this.scene, 'click');
     const ownedSkill = this.ownedSkills.find((skill) => skill.id === skillChoice.id);
 
     if (ownedSkill) {
@@ -106,6 +108,7 @@ export default class ActiveSkillSystem {
       return;
     }
 
+    soundManager.playSFX(this.scene, 'skill');
     skill.cooldownRemaining = stats.cooldown;
   }
 

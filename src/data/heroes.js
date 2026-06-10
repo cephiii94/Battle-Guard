@@ -54,6 +54,22 @@ const heroes = [
     cosmeticSkinId: 'crimson-shadow',
     assetKey: 'hero-mage',
     assetPath: '/assets/heroes/mage.svg'
+  },
+  {
+    id: 'antman',
+    name: 'Ant-Man',
+    description: 'Ukuran dinamis, kecepatan tinggi.',
+    baseHp: 120,
+    baseAttack: 14,
+    attackSpeed: 1.1,
+    attackRange: 260,
+    moveSpeed: 210,
+    passiveBonus: {
+      moveSpeed: 15
+    },
+    cosmeticSkinId: 'antman-skin',
+    assetKey: 'hero-antman',
+    assetPath: '/assets/heroes/antman.png'
   }
 ];
 

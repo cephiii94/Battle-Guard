@@ -48,6 +48,22 @@ const skins = [
     getScalingBonus: (level, baseStats) => ({
       damage: baseStats.damage * 0.06 * level * 0.5
     })
+  },
+  {
+    id: 'antman-skin',
+    name: 'Ant-Man Suit',
+    description: 'Nano dynamic: Area +20%, Speed +15%',
+    assetKey: 'skin-antman',
+    assetPath: '/assets/heroes/antman.png',
+    colors: {
+      hero: 0x991b1b,
+      border: 0xef4444,
+      aura: 0xef4444
+    },
+    getScalingBonus: (level, baseStats) => ({
+      moveSpeed: baseStats.moveSpeed * 0.15,
+      attackRange: baseStats.attackRange * 0.20
+    })
   }
 ];
 

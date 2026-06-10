@@ -18,6 +18,7 @@ import StatsPanel from '../ui/StatsPanel.js';
 import StageHud from '../ui/StageHud.js';
 import StageResultOverlay from '../ui/StageResultOverlay.js';
 import SkillHud from '../ui/SkillHud.js';
+import { soundManager } from '../services/soundManager.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -47,6 +48,15 @@ export default class GameScene extends Phaser.Scene {
     });
 
     this.loadHeroAsset(this.selectedHero);
+
+    // Also load the active skin asset if it defines a custom key and path
+    if (this.activeSkin && this.activeSkin.assetKey && this.activeSkin.assetPath) {
+      if (this.activeSkin.assetPath.endsWith('.svg')) {
+        this.load.svg(this.activeSkin.assetKey, this.activeSkin.assetPath, { width: 160, height: 160 });
+      } else {
+        this.load.image(this.activeSkin.assetKey, this.activeSkin.assetPath);
+      }
+    }
   }
 
   loadHeroAsset(hero) {
@@ -102,21 +112,19 @@ export default class GameScene extends Phaser.Scene {
       this.activeSkin
     );
 
-    if (this.textures.exists(this.selectedHero.assetKey)) {
-      this.heroSprite = this.add.image(this.player.x, this.player.y, this.selectedHero.assetKey)
-        .setOrigin(0.5)
-        .setDisplaySize(60, 60)
-        .setDepth(2);
-    }
-
     this.gameStats = new GameStats();
     this.statsPanel = new StatsPanel(this, this.gameStats, this.activeSkin);
     this.stageSystem = new StageSystem(this, this.stage, this.gameStats);
     this.stageHud = new StageHud(this, this.stageSystem, this.gameStats);
     this.resultOverlay = new StageResultOverlay(this);
-    this.gameStats.on('levelUp', (level) => this.applyLevelScaling(level));
+    this.gameStats.on('levelUp', (level) => {
+      this.applyLevelScaling(level);
+      soundManager.playSFX(this, 'upgrade');
+    });
     this.stageSystem.on('victory', (result) => this.showVictory(result));
     this.stageSystem.on('defeat', (result) => this.showDefeat(result));
+
+    soundManager.playBGM(this, 'battle-bgm');
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.spawnSystem = new SpawnSystem(this, this.player, this.mapBounds, this.stage);
@@ -178,10 +186,6 @@ export default class GameScene extends Phaser.Scene {
 
     this.player.update(delta);
 
-    if (this.heroSprite) {
-      this.heroSprite.setPosition(this.player.x, this.player.y);
-    }
-
     this.spawnSystem.update();
     this.bossSystem.update(delta);
     this.combatSystem.update(delta);
@@ -240,6 +244,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.player.takeDamage(attacker.damage);
     this.showPlayerHit(attacker.damage);
+    soundManager.playSFX(this, 'hit');
     this.enemyDamageCooldown = 700;
 
     if (this.player.hp <= 0) {
@@ -270,12 +275,16 @@ export default class GameScene extends Phaser.Scene {
   showVictory(result) {
     this.isStageFinished = true;
     this.setGameplayPaused(true);
+    soundManager.stopBGM();
+    soundManager.playSFX(this, 'victory');
     this.resultOverlay.showVictory(result);
   }
 
   showDefeat(result) {
     this.isStageFinished = true;
     this.setGameplayPaused(true);
+    soundManager.stopBGM();
+    soundManager.playSFX(this, 'defeat');
     this.resultOverlay.showDefeat(result);
   }
 }

@@ -21,7 +21,13 @@ export const defaultPlayerData = {
   unlockedHeroes: ['guardian', 'ranger', 'mage'],
   unlockedPets: [],
   highestStage: 1,
-  completedStages: []
+  completedStages: [],
+  heroLevels: {
+    guardian: 1,
+    ranger: 1,
+    mage: 1,
+    antman: 1
+  }
 };
 
 const localStorageAdapter = {
@@ -152,6 +158,18 @@ export function saveStageProgress({ highestStage, completedStageId }) {
   });
 }
 
+export function saveHeroLevel(heroId, level) {
+  const playerData = loadPlayerData();
+  const nextHeroLevels = {
+    ...(playerData.heroLevels || {}),
+    [heroId]: level
+  };
+  return savePlayerData({
+    ...playerData,
+    heroLevels: nextHeroLevels
+  });
+}
+
 export function resetSaveData() {
   storageAdapter.reset();
   return savePlayerData(defaultPlayerData);
@@ -172,6 +190,7 @@ export function applyPlayerDataToRegistry(registry, playerData = loadPlayerData(
   });
   registry.set('unlockedHeroes', [...playerData.unlockedHeroes]);
   registry.set('unlockedPets', [...playerData.unlockedPets]);
+  registry.set('heroLevels', { ...playerData.heroLevels });
 }
 
 function normalizePlayerData(playerData) {
@@ -189,7 +208,8 @@ function normalizePlayerData(playerData) {
     unlockedHeroes: uniqueIds(safeData.unlockedHeroes || defaultPlayerData.unlockedHeroes),
     unlockedPets: uniqueIds(safeData.unlockedPets || defaultPlayerData.unlockedPets),
     highestStage: Math.max(1, safeData.highestStage || defaultPlayerData.highestStage),
-    completedStages: uniqueIds(safeData.completedStages || defaultPlayerData.completedStages)
+    completedStages: uniqueIds(safeData.completedStages || defaultPlayerData.completedStages),
+    heroLevels: safeData.heroLevels || { ...defaultPlayerData.heroLevels }
   };
 }
 

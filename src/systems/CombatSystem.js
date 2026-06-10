@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import Projectile from '../entities/Projectile.js';
+import { soundManager } from '../services/soundManager.js';
 
 export default class CombatSystem {
   constructor(scene, player, spawnSystem, gameStats, lootSystem) {
@@ -61,6 +62,8 @@ export default class CombatSystem {
       this.getProjectileDamage()
     );
 
+    soundManager.playSFX(this.scene, 'attack');
+
     this.projectiles.push(projectile);
     this.scene.physics.add.overlap(projectile, target, () => {
       if (!projectile.active || !target.active || target.isDying || target.isDead) {
@@ -93,6 +96,7 @@ export default class CombatSystem {
 
     monster.hp -= damage;
     this.showDamageText(monster, damage);
+    soundManager.playSFX(this.scene, 'hit');
 
     if (monster.hp <= 0) {
       this.killMonster(monster);
@@ -108,6 +112,7 @@ export default class CombatSystem {
     this.gameStats.addKill();
     this.lootSystem.tryDropGold(monster.x, monster.y);
     this.lootSystem.dropExpOrb(monster.x, monster.y);
+    soundManager.playSFX(this.scene, 'kill');
     monster.die();
   }
 
