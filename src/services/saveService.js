@@ -202,7 +202,7 @@ export function saveEquipment({ ownedEquipment, equippedItems }) {
   });
 }
 
-export function saveStageProgress({ highestStage, completedStageId }) {
+export function saveStageProgress({ highestStage, completedStageId, stageTimes }) {
   const playerData = loadPlayerData();
   const completedStages = completedStageId
     ? uniqueIds([...playerData.completedStages, completedStageId])
@@ -211,7 +211,8 @@ export function saveStageProgress({ highestStage, completedStageId }) {
   return savePlayerData({
     ...playerData,
     highestStage: Math.max(playerData.highestStage, highestStage || playerData.highestStage),
-    completedStages
+    completedStages,
+    stageTimes: stageTimes || playerData.stageTimes || {}
   });
 }
 
@@ -263,7 +264,8 @@ export function applyPlayerDataToRegistry(registry, playerData = loadPlayerData(
     completedStages: [...playerData.completedStages],
     materials: { ...playerData.materials },
     tickets: { ...playerData.tickets },
-    dailyAttempts: { ...playerData.dailyAttempts }
+    dailyAttempts: { ...playerData.dailyAttempts },
+    stageTimes: { ...(playerData.stageTimes || {}) }
   });
   registry.set('selectedHeroId', playerData.selectedHeroId);
   registry.set('selectedPetId', playerData.selectedPetId);
@@ -313,6 +315,7 @@ function normalizePlayerData(playerData) {
     unlockedPets: uniqueIds(safeData.unlockedPets || defaultPlayerData.unlockedPets),
     highestStage: Math.max(1, safeData.highestStage || defaultPlayerData.highestStage),
     completedStages: uniqueIds(safeData.completedStages || defaultPlayerData.completedStages),
+    stageTimes: safeData.stageTimes || {},
     heroLevels: safeData.heroLevels || { ...defaultPlayerData.heroLevels },
     skillLevels: safeData.skillLevels || { ...defaultPlayerData.skillLevels },
     materials: {

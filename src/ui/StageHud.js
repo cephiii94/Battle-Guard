@@ -21,7 +21,9 @@ export default class StageHud {
 
   update(snapshot) {
     this.stageText.setText(snapshot.stage.stageName);
-    this.timerText.setText(this.formatTime(snapshot.remainingTime));
+    const gameMode = this.scene.gameMode || 'campaign';
+    const timeToDisplay = gameMode === 'campaign' ? (snapshot.elapsedTime || 0) : snapshot.remainingTime;
+    this.timerText.setText(this.formatTime(timeToDisplay));
     this.killsText.setText(`Kills ${snapshot.kills}`);
     this.goldText.setText(`Gold ${snapshot.temporaryGold}`);
   }

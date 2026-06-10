@@ -179,14 +179,24 @@ export function consumeTicket(scene, ticketId) {
   return false;
 }
 
-export function unlockStage(scene, stageId, completedStageId = null) {
+export function unlockStage(scene, stageId, completedStageId = null, clearTime = null) {
   const progress = getPlayerProgress(scene);
+  const stageTimes = { ...(progress.stageTimes || {}) };
+
+  if (completedStageId !== null && clearTime !== null) {
+    const existingTime = stageTimes[completedStageId];
+    if (existingTime === undefined || clearTime < existingTime) {
+      stageTimes[completedStageId] = clearTime;
+    }
+  }
+
   const nextProgress = {
     ...progress,
-    highestStageUnlocked: Math.max(progress.highestStageUnlocked, stageId)
+    highestStageUnlocked: Math.max(progress.highestStageUnlocked, stageId),
+    stageTimes
   };
 
   scene.registry.set('playerProgress', nextProgress);
-  saveStageProgress({ highestStage: nextProgress.highestStageUnlocked, completedStageId });
+  saveStageProgress({ highestStage: nextProgress.highestStageUnlocked, completedStageId, stageTimes });
   return nextProgress.highestStageUnlocked;
 }

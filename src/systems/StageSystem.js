@@ -7,6 +7,7 @@ export default class StageSystem {
     this.stage = stage;
     this.gameStats = gameStats;
     this.remainingTime = stage.duration;
+    this.elapsedTime = 0;
     this.isFinished = false;
     this.isTimerVictoryBlocked = false;
     this.listeners = {
@@ -28,10 +29,15 @@ export default class StageSystem {
       return;
     }
 
-    this.remainingTime = Math.max(0, this.remainingTime - 1);
+    const gameMode = this.scene.gameMode || 'campaign';
+    if (gameMode === 'campaign') {
+      this.elapsedTime += 1;
+    } else {
+      this.remainingTime = Math.max(0, this.remainingTime - 1);
+    }
     this.emit('tick', this.getSnapshot());
 
-    if (this.remainingTime <= 0 && !this.isTimerVictoryBlocked) {
+    if (gameMode !== 'campaign' && this.remainingTime <= 0 && !this.isTimerVictoryBlocked) {
       this.completeVictory();
     }
   }
@@ -65,7 +71,7 @@ export default class StageSystem {
 
     // Only unlock next campaign stage if we are playing campaign mode!
     if (gameMode === 'campaign') {
-      unlockStage(this.scene, nextStage.stageId, this.stage.stageId);
+      unlockStage(this.scene, nextStage.stageId, this.stage.stageId, this.elapsedTime);
     }
 
     // Roll ticket drop (e.g., 25% chance to drop one random entry ticket on victory of campaign/survival)
@@ -130,6 +136,7 @@ export default class StageSystem {
     return {
       stage: this.stage,
       remainingTime: this.remainingTime,
+      elapsedTime: this.elapsedTime,
       kills: this.gameStats.killCount,
       temporaryGold: this.gameStats.gold
     };

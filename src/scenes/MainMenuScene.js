@@ -1522,8 +1522,17 @@ export default class MainMenuScene extends Phaser.Scene {
         }).setOrigin(0.5)
       );
 
+      const stageTimes = this.playerProgress.stageTimes || {};
+      const clearTime = stageTimes[stageId];
+      let timeLabel = '⏱ Best Time: --:--';
+      if (clearTime !== undefined && clearTime !== null) {
+        const mins = Math.floor(clearTime / 60).toString().padStart(2, '0');
+        const secs = (clearTime % 60).toString().padStart(2, '0');
+        timeLabel = `⏱ Best Time: ${mins}:${secs}`;
+      }
+
       const durationText = this.addStageSelectionItem(
-        this.add.text(x, y - 12, `⏱ Duration: ${stage.duration}s`, {
+        this.add.text(x, y - 12, timeLabel, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '13px',
           color: '#bfdbfe',

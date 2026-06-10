@@ -19,6 +19,10 @@ export default class BossSystem {
     this.boss = null;
     this.hpBar = new BossHpBar(scene);
 
+    this.bossesSpawned = 0;
+    this.bossesDefeated = 0;
+    this.activeBosses = [];
+
     const gameMode = scene.gameMode || 'campaign';
     const isBossMode = gameMode === 'campaign' || gameMode === 'looting';
     stageSystem.setTimerVictoryBlocked(isBossMode);
@@ -26,16 +30,33 @@ export default class BossSystem {
   }
 
   update(delta) {
-    if (!this.boss || !this.boss.active || this.boss.isDead) {
+    if (this.activeBosses.length === 0) {
       return;
     }
 
     this.hpBar.update();
-    this.updateBossAttack(delta);
+    
+    this.activeBosses.forEach((boss) => {
+      if (boss && boss.active && !boss.isDead) {
+        this.updateBossAttack(boss, delta);
+      }
+    });
   }
 
   handleStageTick(snapshot) {
     const gameMode = this.scene.gameMode || 'campaign';
+    
+    if (gameMode === 'campaign') {
+      const totalBosses = this.stageSystem.stage.bossCount || 1;
+      const interval = this.stageSystem.stage.bossInterval || 60;
+      const nextSpawnTime = (this.bossesSpawned + 1) * interval;
+      
+      if (this.bossesSpawned < totalBosses && snapshot.elapsedTime >= nextSpawnTime) {
+        this.spawnBoss();
+      }
+      return;
+    }
+
     const isBossMode = gameMode === 'campaign' || gameMode === 'looting';
     if (!isBossMode) {
       return;
@@ -52,26 +73,34 @@ export default class BossSystem {
   }
 
   spawnBoss() {
-    if (this.hasSpawned) {
+    const gameMode = this.scene.gameMode || 'campaign';
+    if (gameMode !== 'campaign' && this.hasSpawned) {
       return;
     }
 
     const bossData = getBossForStage(this.stageSystem.stage);
     const spawnPoint = this.getBossSpawnPoint();
-    this.boss = new Boss(this.scene, spawnPoint.x, spawnPoint.y, this.player, bossData);
+    const newBoss = new Boss(this.scene, spawnPoint.x, spawnPoint.y, this.player, bossData);
+    
+    this.bossesSpawned++;
     this.hasSpawned = true;
-    this.spawnSystem.addMonster(this.boss);
-    this.hpBar.show(this.boss);
+    this.activeBosses.push(newBoss);
+    
+    // Default current tracked boss for health bar
+    this.boss = newBoss;
+    
+    this.spawnSystem.addMonster(newBoss);
+    this.hpBar.show(newBoss);
     this.showWarning(`${bossData.name} muncul!`);
   }
 
   handleBossKilled(boss) {
-    if (this.isDefeated || boss !== this.boss) {
-      return;
+    const index = this.activeBosses.indexOf(boss);
+    if (index !== -1) {
+      this.activeBosses.splice(index, 1);
     }
-
-    this.isDefeated = true;
-    this.hpBar.hide();
+    
+    this.bossesDefeated++;
 
     const equipmentDrop = this.rollEquipmentDrop(boss.bossData);
     
@@ -98,28 +127,43 @@ export default class BossSystem {
       }
     }
 
+    if (this.boss === boss) {
+      if (this.activeBosses.length > 0) {
+        this.boss = this.activeBosses[0];
+        this.hpBar.show(this.boss);
+      } else {
+        this.boss = null;
+        this.hpBar.hide();
+      }
+    }
+
+    const totalBossesToDefeat = gameMode === 'campaign' ? (this.stageSystem.stage.bossCount || 1) : 1;
+
     boss.die(() => {
-      this.stageSystem.completeVictory({
-        bossGoldReward: boss.bossData.goldReward,
-        equipmentDrop,
-        materialDrops
-      });
+      if (this.bossesDefeated >= totalBossesToDefeat) {
+        this.isDefeated = true;
+        this.stageSystem.completeVictory({
+          bossGoldReward: boss.bossData.goldReward,
+          equipmentDrop,
+          materialDrops
+        });
+      }
     });
   }
 
-  updateBossAttack() {
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.boss.x, this.boss.y);
+  updateBossAttack(boss, delta) {
+    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, boss.x, boss.y);
 
-    if (distance > this.boss.attackRange || !this.boss.canUseSlam()) {
+    if (distance > boss.attackRange || !boss.canUseSlam()) {
       return;
     }
 
-    this.boss.resetSlamCooldown();
-    this.showSlamArea();
+    boss.resetSlamCooldown();
+    this.showSlamArea(boss);
 
-    if (distance <= this.boss.slamArea) {
-      this.player.takeDamage(this.boss.damage);
-      this.scene.showPlayerHit(this.boss.damage);
+    if (distance <= boss.slamArea) {
+      this.player.takeDamage(boss.damage);
+      this.scene.showPlayerHit(boss.damage);
 
       if (this.player.hp <= 0) {
         this.stageSystem.completeDefeat();
@@ -173,8 +217,8 @@ export default class BossSystem {
     });
   }
 
-  showSlamArea() {
-    const ring = this.scene.add.circle(this.boss.x, this.boss.y, this.boss.slamArea, 0xf97316, 0.12)
+  showSlamArea(boss) {
+    const ring = this.scene.add.circle(boss.x, boss.y, boss.slamArea, 0xf97316, 0.12)
       .setStrokeStyle(4, 0xfb923c, 0.75);
 
     this.scene.tweens.add({
