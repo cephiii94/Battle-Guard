@@ -17,8 +17,10 @@ const heroes = [
     attackRange: 240,
     moveSpeed: 185,
     baseHealthRegen: 1.5,
+    baseArmor: 3,
     passiveBonus: {
-      hp: 20
+      hp: 20,
+      armor: 2
     },
     cosmeticSkinId: 'default-guard',
     assetKey: 'hero-guardian',
@@ -34,6 +36,7 @@ const heroes = [
     attackRange: 330,
     moveSpeed: 220,
     baseHealthRegen: 0.8,
+    baseEvasion: 0.05,
     passiveBonus: {
       criticalChance: 0.03
     },
@@ -52,7 +55,8 @@ const heroes = [
     moveSpeed: 200,
     baseHealthRegen: 0.5,
     passiveBonus: {
-      damage: 4
+      damage: 4,
+      cooldownReduction: 0.08
     },
     cosmeticSkinId: 'crimson-shadow',
     assetKey: 'hero-mage',
@@ -68,6 +72,7 @@ const heroes = [
     attackRange: 260,
     moveSpeed: 210,
     baseHealthRegen: 1.0,
+    baseLifesteal: 0.04,
     passiveBonus: {
       moveSpeed: 15
     },
@@ -89,7 +94,11 @@ export function getHeroBaseStats(hero) {
     attackSpeed: hero.attackSpeed,
     attackRange: hero.attackRange,
     criticalChance: 0,
-    healthRegen: hero.baseHealthRegen || 1.0
+    healthRegen: hero.baseHealthRegen || 1.0,
+    armor: hero.baseArmor || 0,
+    lifesteal: hero.baseLifesteal || 0,
+    evasion: hero.baseEvasion || 0,
+    cooldownReduction: hero.baseCooldownReduction || 0
   };
 
   Object.entries(hero.passiveBonus || {}).forEach(([statName, value]) => {

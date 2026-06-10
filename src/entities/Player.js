@@ -20,6 +20,10 @@ export default class Player extends Phaser.GameObjects.Container {
     this.attackRange = finalStats.attackRange;
     this.criticalChance = finalStats.criticalChance;
     this.healthRegen = finalStats.healthRegen || 0;
+    this.armor = finalStats.armor || 0;
+    this.lifesteal = finalStats.lifesteal || 0;
+    this.evasion = finalStats.evasion || 0;
+    this.cooldownReduction = finalStats.cooldownReduction || 0;
     this.mapBounds = mapBounds;
 
     this.keys = scene.input.keyboard.addKeys({
@@ -247,6 +251,22 @@ export default class Player extends Phaser.GameObjects.Container {
 
   increaseHealthRegen(amount) {
     this.healthRegen += amount;
+  }
+
+  increaseArmor(amount) {
+    this.armor += amount;
+  }
+
+  increaseLifesteal(amount) {
+    this.lifesteal += amount;
+  }
+
+  increaseEvasion(amount) {
+    this.evasion += amount;
+  }
+
+  increaseCooldownReduction(amount) {
+    this.cooldownReduction += amount;
   }
 
   takeDamage(amount) {

@@ -37,6 +37,30 @@ const UPGRADE_DEFINITIONS = [
     title: 'HP Regen +1.0/s',
     description: 'Kecepatan regenerasi HP bertambah.',
     apply: ({ player }) => player.increaseHealthRegen(1.0)
+  },
+  {
+    id: 'armor',
+    title: 'Armor +2',
+    description: 'Ketahanan fisik bertambah.',
+    apply: ({ player }) => player.increaseArmor(2)
+  },
+  {
+    id: 'lifesteal',
+    title: 'Lifesteal +3%',
+    description: 'Menyerap HP dari damage serangan.',
+    apply: ({ player }) => player.increaseLifesteal(0.03)
+  },
+  {
+    id: 'evasion',
+    title: 'Evasion +4%',
+    description: 'Peluang menghindari tabrakan monster.',
+    apply: ({ player }) => player.increaseEvasion(0.04)
+  },
+  {
+    id: 'cooldown-reduction',
+    title: 'CDR +5%',
+    description: 'Cooldown skill aktif lebih cepat.',
+    apply: ({ player }) => player.increaseCooldownReduction(0.05)
   }
 ];
 

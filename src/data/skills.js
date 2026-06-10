@@ -10,7 +10,9 @@ const skills = [
     range: 360,
     area: 0,
     assetKey: 'skill-fireball',
-    assetPath: '/assets/skills/fireball.svg'
+    assetPath: '/assets/skills/fireball.svg',
+    requiredPlayerLevel: 1,
+    dependsOn: null
   },
   {
     id: 'multi-shot',
@@ -23,7 +25,9 @@ const skills = [
     range: 330,
     area: 0,
     assetKey: 'skill-multi-shot',
-    assetPath: '/assets/skills/multi-shot.svg'
+    assetPath: '/assets/skills/multi-shot.svg',
+    requiredPlayerLevel: 2,
+    dependsOn: null
   },
   {
     id: 'lightning-strike',
@@ -36,7 +40,9 @@ const skills = [
     range: 430,
     area: 70,
     assetKey: 'skill-lightning-strike',
-    assetPath: '/assets/skills/lightning-strike.svg'
+    assetPath: '/assets/skills/lightning-strike.svg',
+    requiredPlayerLevel: 3,
+    dependsOn: 'fireball'
   },
   {
     id: 'spin-attack',
@@ -49,7 +55,9 @@ const skills = [
     range: 0,
     area: 145,
     assetKey: 'skill-spin-attack',
-    assetPath: '/assets/skills/spin-attack.svg'
+    assetPath: '/assets/skills/spin-attack.svg',
+    requiredPlayerLevel: 4,
+    dependsOn: 'multi-shot'
   }
 ];
 

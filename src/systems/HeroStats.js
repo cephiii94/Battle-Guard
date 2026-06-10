@@ -1,12 +1,18 @@
 export function calculateFinalStats(baseHeroStats, equippedItems, activeSkin, level = 1) {
   const finalStats = { ...baseHeroStats };
 
-  // Base level scaling: +5% HP, Damage, and HP Regen per level
+  // Base level scaling: +5% HP, Damage, HP Regen, Armor, and Lifesteal per level
   const levelMultiplier = 1 + (level - 1) * 0.05;
   finalStats.hp *= levelMultiplier;
   finalStats.damage *= levelMultiplier;
   if (finalStats.healthRegen) {
     finalStats.healthRegen *= levelMultiplier;
+  }
+  if (finalStats.armor) {
+    finalStats.armor *= levelMultiplier;
+  }
+  if (finalStats.lifesteal) {
+    finalStats.lifesteal *= levelMultiplier;
   }
 
   equippedItems.forEach((item) => {
@@ -32,7 +38,11 @@ export function roundStats(stats) {
     attackSpeed: roundTo(stats.attackSpeed, 2),
     attackRange: Math.round(stats.attackRange),
     criticalChance: roundTo(stats.criticalChance, 2),
-    healthRegen: roundTo(stats.healthRegen || 0, 1)
+    healthRegen: roundTo(stats.healthRegen || 0, 1),
+    armor: Math.round(stats.armor || 0),
+    lifesteal: roundTo(stats.lifesteal || 0, 2),
+    evasion: roundTo(stats.evasion || 0, 2),
+    cooldownReduction: roundTo(stats.cooldownReduction || 0, 2)
   };
 }
 

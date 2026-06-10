@@ -24,9 +24,30 @@ function getAudioContext() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    audioCtx.resume().catch(err => console.warn('AudioContext resume failed:', err));
   }
   return audioCtx;
+}
+
+// Global listener to unlock AudioContext on first user interaction (browser policy workaround)
+if (typeof window !== 'undefined') {
+  const resumeAudio = () => {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        window.removeEventListener('click', resumeAudio);
+        window.removeEventListener('touchstart', resumeAudio);
+        window.removeEventListener('keydown', resumeAudio);
+      }).catch(err => console.warn('Unlock AudioContext failed:', err));
+    } else if (ctx) {
+      window.removeEventListener('click', resumeAudio);
+      window.removeEventListener('touchstart', resumeAudio);
+      window.removeEventListener('keydown', resumeAudio);
+    }
+  };
+  window.addEventListener('click', resumeAudio);
+  window.addEventListener('touchstart', resumeAudio);
+  window.addEventListener('keydown', resumeAudio);
 }
 
 // Synthesizer functions for various game events
@@ -62,12 +83,13 @@ const synths = {
     
     osc.type = 'sine';
     osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.08);
     
-    gain.gain.setValueAtTime(0.03, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
     
     osc.start();
-    osc.stop(ctx.currentTime + 0.03);
+    osc.stop(ctx.currentTime + 0.08);
   },
   
   upgrade: () => {

@@ -96,6 +96,19 @@ export default class ActiveSkillSystem {
 
   castSkill(skill) {
     const stats = getSkillLevelStats(skill);
+    
+    // Apply passive buffs from main menu skill levels
+    const playerData = this.scene.registry.get('playerData');
+    const mainMenuSkillLevels = playerData?.skillLevels || {};
+    const buffLvl = mainMenuSkillLevels[skill.id] || 0;
+    
+    if (buffLvl > 0) {
+      stats.damage = Math.round(stats.damage * (1 + buffLvl * 0.08));
+      stats.cooldown = Math.max(400, Math.round(stats.cooldown * (1 - buffLvl * 0.05)));
+      stats.range = Math.round(stats.range * (1 + buffLvl * 0.04));
+      stats.area = Math.round(stats.area * (1 + buffLvl * 0.04));
+    }
+
     const castMap = {
       fireball: () => this.castFireball(skill, stats),
       'multi-shot': () => this.castMultiShot(skill, stats),
@@ -109,7 +122,8 @@ export default class ActiveSkillSystem {
     }
 
     soundManager.playSFX(this.scene, 'skill');
-    skill.cooldownRemaining = stats.cooldown;
+    const cdrMultiplier = Math.max(0.4, 1 - (this.player.cooldownReduction || 0));
+    skill.cooldownRemaining = stats.cooldown * cdrMultiplier;
   }
 
   castFireball(skill, stats) {

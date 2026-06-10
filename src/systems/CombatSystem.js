@@ -98,9 +98,38 @@ export default class CombatSystem {
     this.showDamageText(monster, damage);
     soundManager.playSFX(this.scene, 'hit');
 
+    // Lifesteal Mechanic
+    if (this.player.lifesteal > 0 && this.player.hp < this.player.maxHp) {
+      const healAmount = Math.max(1, Math.round(damage * this.player.lifesteal));
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmount);
+      this.showHealText(healAmount);
+    }
+
     if (monster.hp <= 0) {
       this.killMonster(monster);
     }
+  }
+
+  showHealText(amount) {
+    const healText = this.scene.add.text(this.player.x, this.player.y - 74, `+${amount} HP`, {
+      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
+      fontSize: '18px',
+      color: '#4ade80',
+      fontStyle: 'bold',
+      stroke: '#020617',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.scene.tweens.add({
+      targets: healText,
+      y: healText.y - 28,
+      alpha: 0,
+      duration: 500,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        healText.destroy();
+      }
+    });
   }
 
   killMonster(monster) {

@@ -23,7 +23,9 @@ const equipment = [
     slot: 'armor',
     icon: 'V',
     bonus: {
-      hp: 20
+      hp: 20,
+      armor: 2,
+      evasion: 0.02
     }
   },
   {
@@ -32,7 +34,8 @@ const equipment = [
     slot: 'armor',
     icon: 'A',
     bonus: {
-      hp: 50
+      hp: 50,
+      armor: 5
     }
   },
   {
@@ -41,7 +44,39 @@ const equipment = [
     slot: 'accessory',
     icon: 'O',
     bonus: {
-      criticalChance: 0.05
+      criticalChance: 0.05,
+      cooldownReduction: 0.05,
+      evasion: 0.03
+    }
+  },
+  {
+    id: 'dragon-slayer',
+    name: 'Dragon Slayer',
+    slot: 'weapon',
+    icon: '⚔️',
+    bonus: {
+      damage: 30,
+      criticalChance: 0.10
+    }
+  },
+  {
+    id: 'dragon-mail',
+    name: 'Dragon Mail',
+    slot: 'armor',
+    icon: '🛡️',
+    bonus: {
+      hp: 150,
+      armor: 12
+    }
+  },
+  {
+    id: 'magic-necklace',
+    name: 'Magic Necklace',
+    slot: 'accessory',
+    icon: '📿',
+    bonus: {
+      cooldownReduction: 0.15,
+      healthRegen: 5
     }
   }
 ];

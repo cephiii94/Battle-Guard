@@ -131,14 +131,18 @@ export function getStatLabel(statName) {
     attackSpeed: 'Attack Speed',
     moveSpeed: 'Move Speed',
     criticalChance: 'Crit Chance',
-    healthRegen: 'HP Regen'
+    healthRegen: 'HP Regen',
+    armor: 'Armor',
+    lifesteal: 'Lifesteal',
+    evasion: 'Evasion',
+    cooldownReduction: 'CDR'
   };
 
   return labels[statName] || statName;
 }
 
 function formatSignedValue(statName, value) {
-  if (statName === 'criticalChance') {
+  if (statName === 'criticalChance' || statName === 'lifesteal' || statName === 'evasion' || statName === 'cooldownReduction') {
     return `+${Math.round(value * 100)}%`;
   }
   if (statName === 'healthRegen') {

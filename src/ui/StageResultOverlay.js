@@ -9,36 +9,79 @@ export default class StageResultOverlay {
   showVictory(result) {
     this.clear();
     this.showBasePanel('VICTORY', '#facc15');
-    this.addSummary([
-      result.stage.stageName,
-      `Kills ${result.kills}`,
-      `Gold sementara ${result.temporaryGold}`,
-      `Stage reward +${result.stageGoldReward || result.goldReward}`,
-      `Boss reward +${result.bossGoldReward || 0}`,
-      result.equipmentDrop ? `Drop ${result.equipmentDrop.name}` : 'Drop equipment -',
-      `Total Gold ${result.totalGold}`
-    ]);
+    
+    const gameMode = result.gameMode || 'campaign';
+    const summaryLines = [
+      result.stage.stageName.toUpperCase() + ` (${gameMode.replace('_', ' ').toUpperCase()})`,
+      `Kills: ${result.kills}`,
+    ];
 
-    this.addButton(540, 560, 'NEXT STAGE', () => {
-      this.scene.scene.start('GameScene', { stageId: result.nextStage.stageId });
-    });
-    this.addButton(740, 560, 'MAIN MENU', () => {
-      this.scene.scene.start('MainMenuScene');
-    });
+    if (gameMode === 'gold_farm') {
+      summaryLines.push(`Gold Farmed: +${result.temporaryGold}`);
+    } else {
+      summaryLines.push(`Gold gathered: ${result.temporaryGold}`);
+    }
+    
+    summaryLines.push(`Clear Reward: +${result.stageGoldReward || result.goldReward}`);
+    if (result.bossGoldReward > 0) {
+      summaryLines.push(`Boss Bonus: +${result.bossGoldReward}`);
+    }
+
+    if (result.equipmentDrop) {
+      summaryLines.push(`Equipment Drop: ${result.equipmentDrop.name}`);
+    }
+
+    if (result.materialDrops) {
+      Object.entries(result.materialDrops).forEach(([matId, qty]) => {
+        const labels = { 'iron-ore': 'Iron Ore 🪨', 'magic-gem': 'Magic Gem 💎', 'dragon-scale': 'Dragon Scale 🐉' };
+        summaryLines.push(`Loot: +${qty} ${labels[matId] || matId}`);
+      });
+    }
+
+    if (result.ticketDrop) {
+      const labels = { 'survival-ticket': 'Survival Ticket 🎟️', 'gold-ticket': 'Gold Ticket 🎟️', 'boss-ticket': 'Boss Ticket 🎫' };
+      summaryLines.push(`Bonus: +1 ${labels[result.ticketDrop] || result.ticketDrop}`);
+    }
+
+    summaryLines.push(`Total Gold: ${result.totalGold}`);
+    summaryLines.push(`EXP Gained: +${result.expGained}`);
+    if (result.playerLeveledUp) {
+      summaryLines.push(`GLOBAL LEVEL UP! Now Lv. ${result.playerLevel} 🌟`);
+    }
+
+    this.addSummary(summaryLines);
+
+    if (gameMode === 'campaign') {
+      this.addButton(540, 560, 'NEXT STAGE', () => {
+        this.scene.scene.start('GameScene', { stageId: result.nextStage.stageId, gameMode: 'campaign' });
+      });
+      this.addButton(740, 560, 'MAIN MENU', () => {
+        this.scene.scene.start('MainMenuScene');
+      });
+    } else {
+      this.addButton(540, 560, 'RETRY', () => {
+        this.scene.scene.start('GameScene', { stageId: result.stage.stageId, gameMode });
+      });
+      this.addButton(740, 560, 'MAIN MENU', () => {
+        this.scene.scene.start('MainMenuScene');
+      });
+    }
   }
 
   showDefeat(result) {
     this.clear();
     this.showBasePanel('DEFEAT', '#f87171');
+    
+    const gameMode = this.scene.gameMode || 'campaign';
     this.addSummary([
-      result.stage.stageName,
-      `Kills ${result.kills}`,
-      `Gold sementara ${result.temporaryGold}`,
+      result.stage.stageName.toUpperCase() + ` (${gameMode.replace('_', ' ').toUpperCase()})`,
+      `Kills: ${result.kills}`,
+      `Gold gathered: ${result.temporaryGold}`,
       'Reward stage tidak didapat'
     ]);
 
     this.addButton(540, 494, 'RETRY', () => {
-      this.scene.scene.start('GameScene', { stageId: result.stage.stageId });
+      this.scene.scene.start('GameScene', { stageId: result.stage.stageId, gameMode });
     });
     this.addButton(740, 494, 'MAIN MENU', () => {
       this.scene.scene.start('MainMenuScene');

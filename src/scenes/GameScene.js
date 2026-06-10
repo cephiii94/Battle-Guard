@@ -27,7 +27,26 @@ export default class GameScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.stage = getStageById(data.stageId || 1);
+    this.gameMode = data.gameMode || 'campaign';
+    const rawStage = getStageById(data.stageId || 1);
+    
+    // Clone stage to avoid mutating global data
+    this.stage = { ...rawStage };
+    
+    if (this.gameMode === 'survival') {
+      this.stage.stageName = 'Survival Mode';
+      this.stage.duration = 90;
+      this.stage.enemyHpMultiplier = (rawStage.enemyHpMultiplier || 1) * 1.35;
+      this.stage.enemyDamageMultiplier = (rawStage.enemyDamageMultiplier || 1) * 1.35;
+    } else if (this.gameMode === 'gold_farm') {
+      this.stage.stageName = 'Gold Farming';
+      this.stage.duration = 60;
+    } else if (this.gameMode === 'looting') {
+      this.stage.stageName = 'Looting Boss';
+      this.stage.duration = 120;
+      this.stage.enemyHpMultiplier = (rawStage.enemyHpMultiplier || 1) * 1.5;
+    }
+
     this.selectedHero = data.selectedHero || getSelectedHero(this);
     this.baseHeroStats = data.baseHeroStats || getSelectedHeroBaseStats(this) || baseHeroStats;
     this.equippedItems = data.equippedItems || getEquippedItems(this);
@@ -130,6 +149,12 @@ export default class GameScene extends Phaser.Scene {
     this.spawnSystem = new SpawnSystem(this, this.player, this.mapBounds, this.stage);
     this.bossSystem = new BossSystem(this, this.player, this.spawnSystem, this.stageSystem, this.mapBounds);
     this.lootSystem = new LootSystem(this, this.player, this.gameStats);
+    
+    if (this.gameMode === 'gold_farm') {
+      this.lootSystem.goldValue = 15;
+      this.lootSystem.goldDropChance = 1.0;
+    }
+    
     this.combatSystem = new CombatSystem(
       this,
       this.player,
@@ -219,6 +244,10 @@ export default class GameScene extends Phaser.Scene {
     this.player.baseDamage = nextStats.damage;
     this.player.attackRange = nextStats.attackRange;
     this.player.healthRegen = nextStats.healthRegen || 0;
+    this.player.armor = nextStats.armor || 0;
+    this.player.lifesteal = nextStats.lifesteal || 0;
+    this.player.evasion = nextStats.evasion || 0;
+    this.player.cooldownReduction = nextStats.cooldownReduction || 0;
     this.combatSystem.attackRadius = nextStats.attackRange;
     this.combatSystem.baseDamage = nextStats.damage;
 
@@ -243,14 +272,44 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.player.takeDamage(attacker.damage);
-    this.showPlayerHit(attacker.damage);
+    // 1. Check Evasion (Dodge)
+    if (Math.random() < this.player.evasion) {
+      this.showPlayerMiss();
+      this.enemyDamageCooldown = 700;
+      return;
+    }
+
+    // 2. Reduce damage using Armor
+    const finalDamage = Math.max(1, Math.round(attacker.damage - this.player.armor));
+
+    this.player.takeDamage(finalDamage);
+    this.showPlayerHit(finalDamage);
     soundManager.playSFX(this, 'hit');
     this.enemyDamageCooldown = 700;
 
     if (this.player.hp <= 0) {
       this.stageSystem.completeDefeat();
     }
+  }
+
+  showPlayerMiss() {
+    const missText = this.add.text(this.player.x, this.player.y - 54, 'MISS', {
+      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
+      fontSize: '18px',
+      color: '#60a5fa',
+      fontStyle: 'bold',
+      stroke: '#020617',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: missText,
+      y: missText.y - 28,
+      alpha: 0,
+      duration: 500,
+      ease: 'Cubic.easeOut',
+      onComplete: () => missText.destroy()
+    });
   }
 
   showPlayerHit(damage) {

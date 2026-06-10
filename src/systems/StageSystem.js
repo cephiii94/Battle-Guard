@@ -1,4 +1,4 @@
-import { addPlayerGold, unlockStage } from './PlayerProgress.js';
+import { addPlayerGold, unlockStage, addPlayerTicket, addPlayerExp } from './PlayerProgress.js';
 import { getNextStage } from '../data/stages.js';
 
 export default class StageSystem {
@@ -44,23 +44,54 @@ export default class StageSystem {
     this.isFinished = true;
     this.timer.paused = true;
 
+    const gameMode = this.scene.gameMode || 'campaign';
     const bossGoldReward = rewards.bossGoldReward || 0;
-    const goldReward = this.stage.goldReward + bossGoldReward;
+    
+    // Scale gold rewards in gold_farm mode (10x gold)
+    let baseGoldReward = this.stage.goldReward;
+    if (gameMode === 'gold_farm') {
+      baseGoldReward = this.stage.goldReward * 3; // 3x base gold reward
+    }
+    
+    // Let's count collected gold from the gameplay!
+    const collectedGold = this.gameStats.gold;
+    const goldReward = baseGoldReward + bossGoldReward + (gameMode === 'gold_farm' ? collectedGold : 0);
     const totalGold = addPlayerGold(this.scene, goldReward);
     const nextStage = getNextStage(this.stage.stageId);
 
-    unlockStage(this.scene, nextStage.stageId, this.stage.stageId);
+    // Give Player EXP on victory
+    const expReward = this.stage.stageId * 50 + this.gameStats.killCount * 2;
+    const expResult = addPlayerExp(this.scene, expReward);
+
+    // Only unlock next campaign stage if we are playing campaign mode!
+    if (gameMode === 'campaign') {
+      unlockStage(this.scene, nextStage.stageId, this.stage.stageId);
+    }
+
+    // Roll ticket drop (e.g., 25% chance to drop one random entry ticket on victory of campaign/survival)
+    let ticketDrop = null;
+    if ((gameMode === 'campaign' || gameMode === 'survival') && Math.random() < 0.25) {
+      const tickets = ['survival-ticket', 'gold-ticket', 'boss-ticket'];
+      ticketDrop = Phaser.Utils.Array.GetRandom(tickets);
+      addPlayerTicket(this.scene, ticketDrop, 1);
+    }
 
     const result = {
       stage: this.stage,
+      gameMode,
       nextStage,
       totalGold,
       temporaryGold: this.gameStats.gold,
       goldReward,
-      stageGoldReward: this.stage.goldReward,
+      stageGoldReward: baseGoldReward,
       bossGoldReward,
       equipmentDrop: rewards.equipmentDrop || null,
-      kills: this.gameStats.killCount
+      materialDrops: rewards.materialDrops || null,
+      ticketDrop,
+      kills: this.gameStats.killCount,
+      expGained: expReward,
+      playerLevel: expResult.level,
+      playerLeveledUp: expResult.leveledUp
     };
 
     this.emit('victory', result);

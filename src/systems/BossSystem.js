@@ -3,6 +3,7 @@ import equipment from '../data/equipment.js';
 import { getBossForStage } from '../data/bosses.js';
 import Boss from '../entities/Boss.js';
 import { addEquipmentToInventory } from './EquipmentInventory.js';
+import { addPlayerMaterial } from './PlayerProgress.js';
 import BossHpBar from '../ui/BossHpBar.js';
 
 export default class BossSystem {
@@ -18,7 +19,9 @@ export default class BossSystem {
     this.boss = null;
     this.hpBar = new BossHpBar(scene);
 
-    stageSystem.setTimerVictoryBlocked(true);
+    const gameMode = scene.gameMode || 'campaign';
+    const isBossMode = gameMode === 'campaign' || gameMode === 'looting';
+    stageSystem.setTimerVictoryBlocked(isBossMode);
     stageSystem.on('tick', (snapshot) => this.handleStageTick(snapshot));
   }
 
@@ -32,10 +35,17 @@ export default class BossSystem {
   }
 
   handleStageTick(snapshot) {
+    const gameMode = this.scene.gameMode || 'campaign';
+    const isBossMode = gameMode === 'campaign' || gameMode === 'looting';
+    if (!isBossMode) {
+      return;
+    }
+
+    const threshold = gameMode === 'looting' ? (this.stageSystem.stage.duration - 5) : this.spawnThreshold;
     if (
       !this.hasSpawned &&
       !this.stageSystem.isFinished &&
-      snapshot.remainingTime <= this.spawnThreshold
+      snapshot.remainingTime <= threshold
     ) {
       this.spawnBoss();
     }
@@ -64,11 +74,35 @@ export default class BossSystem {
     this.hpBar.hide();
 
     const equipmentDrop = this.rollEquipmentDrop(boss.bossData);
+    
+    // Looting Mode Crafting Materials Rewards
+    let materialDrops = null;
+    const gameMode = this.scene.gameMode || 'campaign';
+    if (gameMode === 'looting') {
+      const ironOreAmount = Phaser.Math.Between(3, 6);
+      const magicGemAmount = Math.random() < 0.5 ? Phaser.Math.Between(1, 3) : 0;
+      const dragonScaleAmount = Math.random() < 0.25 ? 1 : 0;
+
+      materialDrops = {};
+      if (ironOreAmount > 0) {
+        addPlayerMaterial(this.scene, 'iron-ore', ironOreAmount);
+        materialDrops['iron-ore'] = ironOreAmount;
+      }
+      if (magicGemAmount > 0) {
+        addPlayerMaterial(this.scene, 'magic-gem', magicGemAmount);
+        materialDrops['magic-gem'] = magicGemAmount;
+      }
+      if (dragonScaleAmount > 0) {
+        addPlayerMaterial(this.scene, 'dragon-scale', dragonScaleAmount);
+        materialDrops['dragon-scale'] = dragonScaleAmount;
+      }
+    }
 
     boss.die(() => {
       this.stageSystem.completeVictory({
         bossGoldReward: boss.bossData.goldReward,
-        equipmentDrop
+        equipmentDrop,
+        materialDrops
       });
     });
   }

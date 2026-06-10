@@ -4,6 +4,8 @@ const SAVE_KEY = 'battle-guard-player-data';
 
 export const defaultPlayerData = {
   gold: 230560,
+  playerLevel: 1,
+  playerExp: 0,
   selectedHeroId: 'guardian',
   selectedPetId: null,
   ownedEquipment: [
@@ -27,6 +29,28 @@ export const defaultPlayerData = {
     ranger: 1,
     mage: 1,
     antman: 1
+  },
+  skillLevels: {
+    'fireball': 1,
+    'multi-shot': 0,
+    'lightning-strike': 0,
+    'spin-attack': 0
+  },
+  materials: {
+    'iron-ore': 0,
+    'magic-gem': 0,
+    'dragon-scale': 0
+  },
+  tickets: {
+    'survival-ticket': 5,
+    'gold-ticket': 5,
+    'boss-ticket': 5
+  },
+  dailyAttempts: {
+    date: '',
+    survival: 3,
+    gold: 3,
+    boss: 3
   }
 };
 
@@ -114,6 +138,39 @@ export function updateGold(gold) {
   });
 }
 
+export function updateMaterials(materials) {
+  const playerData = loadPlayerData();
+  return savePlayerData({
+    ...playerData,
+    materials: {
+      ...playerData.materials,
+      ...materials
+    }
+  });
+}
+
+export function updateTickets(tickets) {
+  const playerData = loadPlayerData();
+  return savePlayerData({
+    ...playerData,
+    tickets: {
+      ...playerData.tickets,
+      ...tickets
+    }
+  });
+}
+
+export function updateDailyAttempts(dailyAttempts) {
+  const playerData = loadPlayerData();
+  return savePlayerData({
+    ...playerData,
+    dailyAttempts: {
+      ...playerData.dailyAttempts,
+      ...dailyAttempts
+    }
+  });
+}
+
 export function saveSelectedHero(heroId) {
   const playerData = loadPlayerData();
   return savePlayerData({
@@ -170,6 +227,27 @@ export function saveHeroLevel(heroId, level) {
   });
 }
 
+export function saveSkillLevel(skillId, level) {
+  const playerData = loadPlayerData();
+  const nextSkillLevels = {
+    ...(playerData.skillLevels || {}),
+    [skillId]: level
+  };
+  return savePlayerData({
+    ...playerData,
+    skillLevels: nextSkillLevels
+  });
+}
+
+export function savePlayerLevelAndExp(level, exp) {
+  const playerData = loadPlayerData();
+  return savePlayerData({
+    ...playerData,
+    playerLevel: level,
+    playerExp: exp
+  });
+}
+
 export function resetSaveData() {
   storageAdapter.reset();
   return savePlayerData(defaultPlayerData);
@@ -179,8 +257,13 @@ export function applyPlayerDataToRegistry(registry, playerData = loadPlayerData(
   registry.set('playerData', playerData);
   registry.set('playerProgress', {
     gold: playerData.gold,
+    playerLevel: playerData.playerLevel || 1,
+    playerExp: playerData.playerExp || 0,
     highestStageUnlocked: playerData.highestStage,
-    completedStages: [...playerData.completedStages]
+    completedStages: [...playerData.completedStages],
+    materials: { ...playerData.materials },
+    tickets: { ...playerData.tickets },
+    dailyAttempts: { ...playerData.dailyAttempts }
   });
   registry.set('selectedHeroId', playerData.selectedHeroId);
   registry.set('selectedPetId', playerData.selectedPetId);
@@ -195,11 +278,28 @@ export function applyPlayerDataToRegistry(registry, playerData = loadPlayerData(
 
 function normalizePlayerData(playerData) {
   const safeData = playerData || {};
+  const currentDate = new Date().toISOString().split('T')[0];
+
+  let dailyAttempts = {
+    ...defaultPlayerData.dailyAttempts,
+    ...(safeData.dailyAttempts || {})
+  };
+
+  if (dailyAttempts.date !== currentDate) {
+    dailyAttempts = {
+      date: currentDate,
+      survival: 3,
+      gold: 3,
+      boss: 3
+    };
+  }
 
   return {
     ...defaultPlayerData,
     ...safeData,
     gold: Number.isFinite(safeData.gold) ? safeData.gold : defaultPlayerData.gold,
+    playerLevel: Number.isFinite(safeData.playerLevel) ? safeData.playerLevel : defaultPlayerData.playerLevel,
+    playerExp: Number.isFinite(safeData.playerExp) ? safeData.playerExp : defaultPlayerData.playerExp,
     ownedEquipment: uniqueIds(safeData.ownedEquipment || defaultPlayerData.ownedEquipment),
     equippedItems: {
       ...defaultPlayerData.equippedItems,
@@ -209,7 +309,17 @@ function normalizePlayerData(playerData) {
     unlockedPets: uniqueIds(safeData.unlockedPets || defaultPlayerData.unlockedPets),
     highestStage: Math.max(1, safeData.highestStage || defaultPlayerData.highestStage),
     completedStages: uniqueIds(safeData.completedStages || defaultPlayerData.completedStages),
-    heroLevels: safeData.heroLevels || { ...defaultPlayerData.heroLevels }
+    heroLevels: safeData.heroLevels || { ...defaultPlayerData.heroLevels },
+    skillLevels: safeData.skillLevels || { ...defaultPlayerData.skillLevels },
+    materials: {
+      ...defaultPlayerData.materials,
+      ...(safeData.materials || {})
+    },
+    tickets: {
+      ...defaultPlayerData.tickets,
+      ...(safeData.tickets || {})
+    },
+    dailyAttempts
   };
 }
 
