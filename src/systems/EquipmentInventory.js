@@ -130,7 +130,8 @@ export function getStatLabel(statName) {
     damage: 'Attack',
     attackSpeed: 'Attack Speed',
     moveSpeed: 'Move Speed',
-    criticalChance: 'Crit Chance'
+    criticalChance: 'Crit Chance',
+    healthRegen: 'HP Regen'
   };
 
   return labels[statName] || statName;
@@ -139,6 +140,9 @@ export function getStatLabel(statName) {
 function formatSignedValue(statName, value) {
   if (statName === 'criticalChance') {
     return `+${Math.round(value * 100)}%`;
+  }
+  if (statName === 'healthRegen') {
+    return `+${value}/s`;
   }
 
   return `+${value}`;

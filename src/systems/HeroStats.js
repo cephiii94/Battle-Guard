@@ -23,7 +23,8 @@ export function roundStats(stats) {
     moveSpeed: Math.round(stats.moveSpeed),
     attackSpeed: roundTo(stats.attackSpeed, 2),
     attackRange: Math.round(stats.attackRange),
-    criticalChance: roundTo(stats.criticalChance, 2)
+    criticalChance: roundTo(stats.criticalChance, 2),
+    healthRegen: roundTo(stats.healthRegen || 0, 1)
   };
 }
 

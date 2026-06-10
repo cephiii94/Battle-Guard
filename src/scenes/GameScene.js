@@ -218,6 +218,7 @@ export default class GameScene extends Phaser.Scene {
     this.finalStats = nextStats;
     this.player.baseDamage = nextStats.damage;
     this.player.attackRange = nextStats.attackRange;
+    this.player.healthRegen = nextStats.healthRegen || 0;
     this.combatSystem.attackRadius = nextStats.attackRange;
     this.combatSystem.baseDamage = nextStats.damage;
 

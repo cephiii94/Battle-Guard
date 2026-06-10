@@ -31,6 +31,12 @@ const UPGRADE_DEFINITIONS = [
     title: 'Critical Chance +5%',
     description: 'Peluang damage critical bertambah.',
     apply: ({ player }) => player.increaseCriticalChance(0.05)
+  },
+  {
+    id: 'health-regen',
+    title: 'HP Regen +1.0/s',
+    description: 'Kecepatan regenerasi HP bertambah.',
+    apply: ({ player }) => player.increaseHealthRegen(1.0)
   }
 ];
 

@@ -19,6 +19,7 @@ export default class Player extends Phaser.GameObjects.Container {
     this.baseDamage = finalStats.damage;
     this.attackRange = finalStats.attackRange;
     this.criticalChance = finalStats.criticalChance;
+    this.healthRegen = finalStats.healthRegen || 0;
     this.mapBounds = mapBounds;
 
     this.keys = scene.input.keyboard.addKeys({
@@ -152,6 +153,11 @@ export default class Player extends Phaser.GameObjects.Container {
       this.y += direction.y * distance;
     }
 
+    // Health Regeneration
+    if (this.healthRegen > 0 && this.hp < this.maxHp) {
+      this.hp = Math.min(this.maxHp, this.hp + this.healthRegen * (delta / 1000));
+    }
+
     this.keepInsideMap();
     this.updateHpBar();
   }
@@ -237,6 +243,10 @@ export default class Player extends Phaser.GameObjects.Container {
 
   increaseCriticalChance(amount) {
     this.criticalChance += amount;
+  }
+
+  increaseHealthRegen(amount) {
+    this.healthRegen += amount;
   }
 
   takeDamage(amount) {

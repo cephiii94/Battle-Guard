@@ -16,6 +16,7 @@ const heroes = [
     attackSpeed: 1,
     attackRange: 240,
     moveSpeed: 185,
+    baseHealthRegen: 1.5,
     passiveBonus: {
       hp: 20
     },
@@ -32,6 +33,7 @@ const heroes = [
     attackSpeed: 1.35,
     attackRange: 330,
     moveSpeed: 220,
+    baseHealthRegen: 0.8,
     passiveBonus: {
       criticalChance: 0.03
     },
@@ -48,6 +50,7 @@ const heroes = [
     attackSpeed: 0.9,
     attackRange: 285,
     moveSpeed: 200,
+    baseHealthRegen: 0.5,
     passiveBonus: {
       damage: 4
     },
@@ -64,6 +67,7 @@ const heroes = [
     attackSpeed: 1.1,
     attackRange: 260,
     moveSpeed: 210,
+    baseHealthRegen: 1.0,
     passiveBonus: {
       moveSpeed: 15
     },
@@ -84,7 +88,8 @@ export function getHeroBaseStats(hero) {
     moveSpeed: hero.moveSpeed,
     attackSpeed: hero.attackSpeed,
     attackRange: hero.attackRange,
-    criticalChance: 0
+    criticalChance: 0,
+    healthRegen: hero.baseHealthRegen || 1.0
   };
 
   Object.entries(hero.passiveBonus || {}).forEach(([statName, value]) => {

@@ -771,7 +771,8 @@ export default class MainMenuScene extends Phaser.Scene {
       attackSpeed: 'ASPD',
       attackRange: 'RANGE',
       moveSpeed: 'MOVE',
-      criticalChance: 'CRIT'
+      criticalChance: 'CRIT',
+      healthRegen: 'REGEN'
     };
 
     return labels[statName] || statName;
@@ -780,6 +781,9 @@ export default class MainMenuScene extends Phaser.Scene {
   formatHeroBonus(statName, value) {
     if (statName === 'criticalChance') {
       return `+${Math.round(value * 100)}%`;
+    }
+    if (statName === 'healthRegen') {
+      return `+${value}/s`;
     }
 
     return `+${value}`;
@@ -903,12 +907,13 @@ export default class MainMenuScene extends Phaser.Scene {
       ['Attack', this.finalHeroStats.damage],
       ['Attack Speed', this.finalHeroStats.attackSpeed],
       ['Move Speed', this.finalHeroStats.moveSpeed],
-      ['Crit Chance', `${Math.round(this.finalHeroStats.criticalChance * 100)}%`]
+      ['Crit Chance', `${Math.round(this.finalHeroStats.criticalChance * 100)}%`],
+      ['HP Regen', `${this.finalHeroStats.healthRegen || 0}/s`]
     ];
 
     this.addInventoryItem(this.add.text(x, y - 18, 'TOTAL STATUS', this.getInventoryTitleStyle()).setOrigin(0.5, 0.5));
     this.addInventoryItem(
-      this.add.rectangle(x, y + 90, 220, 180, 0x07111f, 0.9)
+      this.add.rectangle(x, y + 102, 220, 212, 0x07111f, 0.9)
         .setStrokeStyle(2, 0x00d6ff, 0.5)
     );
 
