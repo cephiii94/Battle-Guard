@@ -1,6 +1,14 @@
 export function calculateFinalStats(baseHeroStats, equippedItems, activeSkin, level = 1) {
   const finalStats = { ...baseHeroStats };
 
+  // Base level scaling: +5% HP, Damage, and HP Regen per level
+  const levelMultiplier = 1 + (level - 1) * 0.05;
+  finalStats.hp *= levelMultiplier;
+  finalStats.damage *= levelMultiplier;
+  if (finalStats.healthRegen) {
+    finalStats.healthRegen *= levelMultiplier;
+  }
+
   equippedItems.forEach((item) => {
     Object.entries(item.bonus).forEach(([statName, value]) => {
       finalStats[statName] += value;

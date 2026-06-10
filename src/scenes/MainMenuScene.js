@@ -672,6 +672,12 @@ export default class MainMenuScene extends Phaser.Scene {
       const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
       this.heroPortrait.setTexture(visualKey);
     }
+
+    if (this.heroLevelText) {
+      this.heroLevelText.setText(`Lv. ${this.heroLevel}`);
+    }
+
+    this.drawHeroUpgradeButton(this.scale.width / 2, this.scale.height / 2 - 10 + 124);
   }
 
   showInventoryTab() {
