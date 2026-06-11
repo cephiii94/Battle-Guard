@@ -1,16 +1,9 @@
 import Phaser from 'phaser';
 import skins from '../data/skins.js';
 import {
-  EQUIPMENT_SLOTS,
-  equipItem,
-  formatEquipmentBonus,
   getEquipmentInventory,
   getEquippedItemBySlot,
   getEquippedItems,
-  getInventoryItems,
-  unequipSlot,
-  addEquipmentToInventory,
-  getEquipmentById
 } from '../systems/EquipmentInventory.js';
 import {
   getAvailableHeroes,
@@ -22,27 +15,20 @@ import { calculateFinalStats } from '../systems/HeroStats.js';
 import {
   getPlayerProgress,
   addPlayerGold,
-  getDailyAttemptsRemaining,
-  consumeDailyAttempt,
-  hasTicket,
-  consumeTicket,
-  addPlayerMaterial,
-  addPlayerTicket
 } from '../systems/PlayerProgress.js';
-import { getStageById } from '../data/stages.js';
-import { saveHeroLevel, saveSkillLevel } from '../services/saveService.js';
+import { saveHeroLevel } from '../services/saveService.js';
 import { soundManager } from '../services/soundManager.js';
-import craftingRecipes from '../data/crafting.js';
-import skills, { getSkillLevelStats } from '../data/skills.js';
 
-const UI = {
-  white: '#ffffff',
-  cyan: '#69e6ff',
-  cyanDark: '#0c86bd',
-  blueText: '#dff8ff',
-  yellow: '#ffdc5a',
-  purple: '#b53cff',
-};
+// Modular UI imports
+import { InventoryTab } from '../ui/menu/InventoryTab.js';
+import { StageSelectionTab } from '../ui/menu/StageSelectionTab.js';
+import { ModeSelectionTab } from '../ui/menu/ModeSelectionTab.js';
+import { SettingsTab } from '../ui/menu/SettingsTab.js';
+import { BlacksmithTab } from '../ui/menu/BlacksmithTab.js';
+import { SkillsTab } from '../ui/menu/SkillsTab.js';
+import { UI } from '../ui/menu/MenuConfig.js';
+
+
 
 export default class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -97,12 +83,15 @@ export default class MainMenuScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.playerProgress = getPlayerProgress(this);
     this.activeSkin = skins[0];
-    this.inventoryLayer = [];
-    this.stageSelectionLayer = [];
-    this.settingsLayer = [];
-    this.blacksmithLayer = [];
-    this.skillsLayer = [];
-    this.selectedSkill = null;
+
+    // Initialize modular tabs
+    this.inventoryTab = new InventoryTab(this);
+    this.stageSelectionTab = new StageSelectionTab(this);
+    this.settingsTab = new SettingsTab(this);
+    this.blacksmithTab = new BlacksmithTab(this);
+    this.skillsTab = new SkillsTab(this);
+    this.modeSelectionTab = new ModeSelectionTab(this);
+
     this.loadoutSlotAnchors = [];
     this.loadoutSlotLayer = [];
     this.refreshHeroLoadout();
@@ -116,25 +105,37 @@ export default class MainMenuScene extends Phaser.Scene {
 
     // Bind Escape key to close any active modal tabs
     this.input.keyboard.on('keydown-ESC', () => {
-      if (this.inventoryLayer && this.inventoryLayer.length > 0) {
+      if (this.inventoryTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearInventoryTab();
-      } else if (this.stageSelectionLayer && this.stageSelectionLayer.length > 0) {
+      } else if (this.stageSelectionTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearStageSelectionTab();
-      } else if (this.settingsLayer && this.settingsLayer.length > 0) {
+      } else if (this.settingsTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearSettingsTab();
-      } else if (this.blacksmithLayer && this.blacksmithLayer.length > 0) {
+      } else if (this.blacksmithTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearBlacksmithTab();
-      } else if (this.skillsLayer && this.skillsLayer.length > 0) {
+      } else if (this.skillsTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearSkillsTab();
+      } else if (this.modeSelectionTab.isActive()) {
+        soundManager.playSFX(this, 'click');
+        this.modeSelectionTab.clear();
       }
     });
 
     soundManager.playBGM(this, 'menu-bgm');
+  }
+
+  clearAllTabs() {
+    if (this.inventoryTab) this.inventoryTab.clear();
+    if (this.stageSelectionTab) this.stageSelectionTab.clear();
+    if (this.settingsTab) this.settingsTab.clear();
+    if (this.blacksmithTab) this.blacksmithTab.clear();
+    if (this.skillsTab) this.skillsTab.clear();
+    if (this.modeSelectionTab) this.modeSelectionTab.clear();
   }
 
   drawCyberBackground(width, height) {
@@ -186,7 +187,7 @@ export default class MainMenuScene extends Phaser.Scene {
 
     const activeSkin = this.activeSkin;
     const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
-    const avatarImg = this.add.image(avatarX, avatarY, visualKey).setDisplaySize(36, 36);
+    this.add.image(avatarX, avatarY, visualKey).setDisplaySize(36, 36);
 
     // Name & Stats
     this.add.text(78, topY - 20, 'EUFEME', {
@@ -418,12 +419,17 @@ export default class MainMenuScene extends Phaser.Scene {
     // Platform/Pedestal Under Hero
     const pedestal = this.add.ellipse(cx, cy + 180, 240, 60, 0x228df7, 0.8)
       .setStrokeStyle(3, 0xffffff, 1);
+    pedestal.setDepth(90);
     const pedestalInner = this.add.ellipse(cx, cy + 180, 200, 48, 0x111e3b, 0.9);
+    pedestalInner.setDepth(95);
 
     // Hero Portrait (large in the center)
     const activeSkin = this.activeSkin;
     const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
     this.heroPortrait = this.add.image(cx, cy + 20, visualKey).setDisplaySize(280, 280);
+    this.heroPortrait.setDepth(110);
+
+    this.drawHeroFrame(cx, cy + 20);
 
     // Left Arrow
     const leftArrow = this.add.text(cx - 210, cy + 20, '◀', {
@@ -475,6 +481,14 @@ export default class MainMenuScene extends Phaser.Scene {
       stroke: '#081735',
       strokeThickness: 3,
     }).setOrigin(0.5);
+
+    // Also draw the equipment circles in the background
+    this.loadoutSlotAnchors = [
+      { x: cx - 140, y: cy + 120, label: 'WEAPON', slot: 'weapon' },
+      { x: cx, y: cy + 140, label: 'ARMOR', slot: 'armor' },
+      { x: cx + 140, y: cy + 120, label: 'RING', slot: 'ring' },
+    ];
+    this.refreshMainMenuLoadoutDisplay();
   }
 
   addRightHUDGrid(width) {
@@ -820,8 +834,8 @@ export default class MainMenuScene extends Phaser.Scene {
     });
 
     this.upgradeContainer = container;
-    if (this.inventoryLayer && this.inventoryLayer.length > 0) {
-      this.addInventoryItem(container);
+    if (this.inventoryTab && this.inventoryTab.isActive()) {
+      this.inventoryTab.add(container);
     }
   }
 
@@ -856,7 +870,7 @@ export default class MainMenuScene extends Phaser.Scene {
       this.heroLevelText.setText(`Lv. ${this.heroLevel}`);
     }
     
-    if (this.inventoryLayer && this.inventoryLayer.length > 0) {
+    if (this.inventoryTab && this.inventoryTab.isActive()) {
       this.drawHeroUpgradeButton(520, 315);
       // Redraw inventory tab to update stats panel values instantly
       this.showInventoryTab();
@@ -935,7 +949,7 @@ export default class MainMenuScene extends Phaser.Scene {
       this.heroLevelText.setText(`Lv. ${this.heroLevel}`);
     }
 
-    if (this.inventoryLayer && this.inventoryLayer.length > 0) {
+    if (this.inventoryTab && this.inventoryTab.isActive()) {
       this.drawHeroUpgradeButton(520, 315);
     } else {
       if (this.upgradeContainer) {
@@ -943,413 +957,32 @@ export default class MainMenuScene extends Phaser.Scene {
         this.upgradeContainer = null;
       }
     }
+
+    this.drawHeroFrame(this.scale.width / 2, this.scale.height / 2 + 30);
   }
 
-  showInventoryTab() {
-    this.clearInventoryTab();
-    this.refreshHeroLoadout();
-    this.refreshBottomStats();
-
+  showFeedback(message) {
     const { width, height } = this.scale;
-    
-    // Futuristic sky blue/cyan gradient background matching MainMenuScene background
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0xdbeefb, 0xdbeefb, 0xaad4fc, 0x89c5f8, 1);
-    bg.fillRect(0, 0, width, height);
-
-    // Draw horizontal and vertical perspective grid lines matching MainMenuScene style
-    const floorY = height * 0.65;
-    bg.lineStyle(1.5, 0x4aa6f7, 0.45);
-    
-    const numHoriz = 12;
-    for (let i = 0; i <= numHoriz; i++) {
-      const ratio = i / numHoriz;
-      const py = floorY + (height - floorY) * Math.pow(ratio, 1.8);
-      bg.lineBetween(0, py, width, py);
-    }
-    
-    const numVert = 20;
-    const vpX = width / 2;
-    const vpY = floorY - 80;
-    for (let i = -numVert / 2; i <= numVert / 2; i++) {
-      const startX = width / 2 + i * 90;
-      bg.lineBetween(vpX + i * 12, vpY, startX, height);
-    }
-    this.addInventoryItem(bg);
-    
-    // Title & Subtitle left-aligned in modern RPG style, shifted right to make room for the back button
-    this.addInventoryItem(this.add.text(185, 38, 'HERO LOADOUT & INVENTORY', {
+    const text = this.add.text(width / 2, height / 2, message, {
       fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '28px',
-      color: UI.white,
+      fontSize: '20px',
+      color: '#f87171',
       fontStyle: '900',
-      stroke: '#07111f',
-      strokeThickness: 4,
-    }).setOrigin(0, 0.5));
+      stroke: '#000',
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(3000);
 
-    this.addInventoryItem(this.add.text(185, 68, 'Equip artifacts, review attribute stats, and level up your character class.', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '13px',
-      color: '#9af2ff',
-      fontStyle: '800',
-      stroke: '#07111f',
-      strokeThickness: 2,
-    }).setOrigin(0, 0.5));
-
-    // Close/Back button placed in the top-left corner
-    this.addInventoryCloseButton(110, 52);
-
-    // Column 1: Hero Selection Panel (Left Column)
-    this.addHeroSelectionPanel(190, 140);
-    
-    // Column 2: Selected Hero Showcase & Stats (Center Column)
-    this.addHeroShowcasePanel(520, 140);
-    this.addTotalStatsPanel(520, 360);
-    
-    // Column 3: Equipment Slots & Inventory List (Right Column)
-    this.addEquipmentSlotPanel(980, 140);
-    this.addInventoryList(980, 250);
-  }
-
-  addHeroSelectionPanel(x, y) {
-    this.addInventoryItem(this.add.text(x, y - 18, 'SELECT HERO', this.getInventoryTitleStyle()).setOrigin(0.5, 0.5));
-
-    getAvailableHeroes().forEach((hero, index) => {
-      const cardY = y + 50 + (index * 116);
-      const isSelected = hero.id === this.selectedHero.id;
-      
-      // Card background styled to align with main menu theme (cyanDark for selected, dark blue for unselected)
-      const card = this.addInventoryItem(
-        this.add.rectangle(x, cardY, 280, 100, isSelected ? 0x0c86bd : 0x07111f, 0.95)
-          .setStrokeStyle(2.5, isSelected ? 0xffdc5a : 0x4aa6f7, 0.9)
-          .setInteractive({ useHandCursor: true })
-      );
-
-      const activeSkin = this.getDefaultSkinForHero(hero);
-      const visualKey = activeSkin?.assetKey || hero.assetKey;
-      
-      // Large portrait circle frame
-      this.addInventoryItem(this.add.circle(x - 90, cardY, 32, 0x0c1e3d, 1))
-        .setStrokeStyle(2, isSelected ? 0xffdc5a : 0x4aa6f7, 1);
-      this.addInventoryItem(this.add.image(x - 90, cardY, visualKey).setDisplaySize(54, 54));
-      
-      this.addInventoryItem(
-        this.add.text(x - 46, cardY - 26, hero.name, this.getInventoryTextStyle(isSelected ? UI.yellow : UI.white, 16))
-          .setOrigin(0, 0.5)
-      );
-      this.addInventoryItem(
-        this.add.text(x - 46, cardY - 4, hero.description.length > 30 ? hero.description.slice(0, 28) + '...' : hero.description, this.getInventoryTextStyle('#dff8ff', 10))
-          .setOrigin(0, 0.5)
-      );
-      this.addInventoryItem(
-        this.add.text(x - 46, cardY + 20, this.formatPassiveBonus(hero), this.getInventoryTextStyle(UI.cyan, 10))
-          .setOrigin(0, 0.5)
-      );
-
-      card.on('pointerover', () => {
-        soundManager.playSFX(this, 'hover');
-        if (!isSelected) {
-          card.setFillStyle(0x0e1d3d, 0.95);
-          card.setStrokeStyle(2.5, 0x00d6ff, 1);
-        }
-      });
-      card.on('pointerout', () => {
-        if (!isSelected) {
-          card.setFillStyle(0x07111f, 0.95);
-          card.setStrokeStyle(2.5, 0x4aa6f7, 0.9);
-        }
-      });
-      card.on('pointerup', () => {
-        soundManager.playSFX(this, 'click');
-        setSelectedHero(this, hero.id);
-        this.refreshHeroLoadout();
-        this.refreshBottomStats();
-        this.showInventoryTab();
-      });
+    this.tweens.add({
+      targets: text,
+      y: height / 2 - 50,
+      alpha: 0,
+      duration: 1500,
+      onComplete: () => text.destroy()
     });
-  }
-
-  addHeroShowcasePanel(x, y) {
-    // Background frame for the hero display
-    this.addInventoryItem(
-      this.add.rectangle(x, y + 90, 300, 200, 0x07111f, 0.85)
-        .setStrokeStyle(2, 0x4aa6f7, 0.6)
-    );
-
-    // Glowing circle behind character avatar
-    this.addInventoryItem(
-      this.add.circle(x, y + 55, 60, 0x00d6ff, 0.12)
-    );
-
-    // Dynamic large character avatar display
-    const activeSkin = this.activeSkin;
-    const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
-    this.addInventoryItem(
-      this.add.image(x, y + 55, visualKey).setDisplaySize(100, 100)
-    );
-
-    // Selected Hero Details Text
-    this.addInventoryItem(
-      this.add.text(x, y + 128, this.selectedHero.name.toUpperCase(), {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '20px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#07111f',
-        strokeThickness: 3,
-      }).setOrigin(0.5)
-    );
-
-    this.addInventoryItem(
-      this.add.text(x, y + 152, `CLASS LEVEL ${this.heroLevel}`, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: UI.cyan,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    // Force draw/refresh active upgrade button inside showcase area
-    this.drawHeroUpgradeButton(x, y + 195);
-  }
-
-  formatPassiveBonus(hero) {
-    const passiveEntries = Object.entries(hero.passiveBonus || {});
-
-    if (passiveEntries.length === 0) {
-      return 'Passive: none';
-    }
-
-    return `Passive: ${passiveEntries
-      .map(([statName, value]) => `${this.getStatShortLabel(statName)} ${this.formatHeroBonus(statName, value)}`)
-      .join(', ')}`;
-  }
-
-  getStatShortLabel(statName) {
-    const labels = {
-      hp: 'HP',
-      damage: 'ATK',
-      attackSpeed: 'ASPD',
-      attackRange: 'RANGE',
-      moveSpeed: 'MOVE',
-      criticalChance: 'CRIT',
-      healthRegen: 'REGEN',
-      armor: 'ARMOR',
-      lifesteal: 'LIFE',
-      evasion: 'DODGE',
-      cooldownReduction: 'CDR'
-    };
-
-    return labels[statName] || statName;
-  }
-
-  formatHeroBonus(statName, value) {
-    if (statName === 'criticalChance' || statName === 'lifesteal' || statName === 'evasion' || statName === 'cooldownReduction') {
-      return `+${Math.round(value * 100)}%`;
-    }
-    if (statName === 'healthRegen') {
-      return `+${value}/s`;
-    }
-
-    return `+${value}`;
   }
 
   getDefaultSkinForHero(hero) {
     return skins.find((skin) => skin.id === hero.cosmeticSkinId) || skins[0];
-  }
-
-  addEquipmentSlotPanel(x, y) {
-    this.addInventoryItem(this.add.text(x, y - 18, 'EQUIPPED SLOTS', this.getInventoryTitleStyle()).setOrigin(0.5, 0.5));
-
-    EQUIPMENT_SLOTS.forEach((slot, index) => {
-      const item = getEquippedItemBySlot(this, slot);
-      
-      // Horizontal positioning for horizontal layout: 3 slots side-by-side inside width 380
-      const slotX = x - 120 + (index * 120);
-      const slotY = y + 36;
-      
-      const button = this.addInventoryItem(
-        this.add.rectangle(slotX, slotY, 110, 70, item ? 0x0c86bd : 0x07111f, 0.95)
-          .setStrokeStyle(2, item ? 0xffdc5a : 0x4aa6f7, 0.9)
-          .setInteractive({ useHandCursor: true })
-      );
-
-      const slotIcon = slot === 'weapon' ? '⚔' : slot === 'armor' ? '🛡' : '💍';
-      
-      // Draw slot type label
-      this.addInventoryItem(
-        this.add.text(slotX, slotY - 20, `${slotIcon} ${slot.toUpperCase()}`, this.getInventoryTextStyle('#9af2ff', 10))
-          .setOrigin(0.5, 0.5)
-      );
-      
-      // Draw item name text
-      this.addInventoryItem(
-        this.add.text(slotX, slotY + 10, item ? item.name : 'EMPTY', this.getInventoryTextStyle(item ? UI.white : '#475569', 11))
-          .setOrigin(0.5, 0.5)
-      );
-
-      button.on('pointerover', () => {
-        soundManager.playSFX(this, 'hover');
-        if (!item) {
-          button.setFillStyle(0x0e1d3d, 0.95);
-          button.setStrokeStyle(2, 0x00d6ff, 1);
-        } else {
-          button.setFillStyle(0x1a9cd8, 0.95);
-        }
-      });
-      button.on('pointerout', () => {
-        if (!item) {
-          button.setFillStyle(0x07111f, 0.95);
-          button.setStrokeStyle(2, 0x4aa6f7, 0.9);
-        } else {
-          button.setFillStyle(0x0c86bd, 0.95);
-          button.setStrokeStyle(2, 0xffdc5a, 0.9);
-        }
-      });
-      button.on('pointerup', () => {
-        soundManager.playSFX(this, 'click');
-        if (item) {
-          unequipSlot(this, slot);
-          this.refreshHeroLoadout();
-          this.refreshBottomStats();
-          this.refreshMainMenuLoadoutDisplay();
-          this.showInventoryTab();
-        }
-      });
-    });
-  }
-
-  addInventoryList(x, y) {
-    this.addInventoryItem(this.add.text(x, y - 10, 'AVAILABLE GEAR', this.getInventoryTitleStyle()).setOrigin(0.5, 0.5));
-
-    getInventoryItems(this).forEach((item, index) => {
-      const rowY = y + 36 + (index * 58);
-      const isEquipped = getEquippedItemBySlot(this, item.slot)?.id === item.id;
-      
-      const row = this.addInventoryItem(
-        this.add.rectangle(x, rowY, 360, 48, isEquipped ? 0x0c86bd : 0x07111f, 0.95)
-          .setStrokeStyle(2, isEquipped ? 0xffdc5a : 0x4aa6f7, 0.9)
-          .setInteractive({ useHandCursor: true })
-      );
-
-      // Left column: item info
-      this.addInventoryItem(
-        this.add.text(x - 165, rowY - 10, item.name, this.getInventoryTextStyle(UI.white, 13))
-          .setOrigin(0, 0.5)
-      );
-      this.addInventoryItem(
-        this.add.text(x - 165, rowY + 10, `${item.slot.toUpperCase()}  ${formatEquipmentBonus(item)}`, this.getInventoryTextStyle('#9af2ff', 10))
-          .setOrigin(0, 0.5)
-      );
-      
-      // Right column: status button
-      this.addInventoryItem(
-        this.add.text(x + 165, rowY, isEquipped ? 'EQUIPPED' : 'EQUIP', this.getInventoryTextStyle(isEquipped ? '#ffdc5a' : UI.cyan, 11))
-          .setOrigin(1, 0.5)
-      );
-
-      row.on('pointerover', () => {
-        soundManager.playSFX(this, 'hover');
-        if (!isEquipped) {
-          row.setFillStyle(0x0e1d3d, 0.95);
-          row.setStrokeStyle(2, 0x00d6ff, 1);
-        } else {
-          row.setFillStyle(0x1a9cd8, 0.95);
-        }
-      });
-      row.on('pointerout', () => {
-        if (!isEquipped) {
-          row.setFillStyle(0x07111f, 0.95);
-          row.setStrokeStyle(2, 0x4aa6f7, 0.9);
-        } else {
-          row.setFillStyle(0x0c86bd, 0.95);
-          row.setStrokeStyle(2, 0xffdc5a, 0.9);
-        }
-      });
-      row.on('pointerup', () => {
-        soundManager.playSFX(this, 'click');
-        equipItem(this, item.id);
-        this.refreshHeroLoadout();
-        this.refreshBottomStats();
-        this.refreshMainMenuLoadoutDisplay();
-        this.showInventoryTab();
-      });
-    });
-  }
-
-  addTotalStatsPanel(x, y) {
-    const stats = [
-      ['HP', this.finalHeroStats.hp],
-      ['Attack', this.finalHeroStats.damage],
-      ['Attack Speed', this.finalHeroStats.attackSpeed],
-      ['Move Speed', this.finalHeroStats.moveSpeed],
-      ['Crit Chance', `${Math.round(this.finalHeroStats.criticalChance * 100)}%`],
-      ['HP Regen', `${this.finalHeroStats.healthRegen || 0}/s`],
-      ['Armor', this.finalHeroStats.armor || 0],
-      ['Lifesteal', `${Math.round((this.finalHeroStats.lifesteal || 0) * 100)}%`],
-      ['Evasion', `${Math.round((this.finalHeroStats.evasion || 0) * 100)}%`],
-      ['CDR', `${Math.round((this.finalHeroStats.cooldownReduction || 0) * 100)}%`]
-    ];
-
-    this.addInventoryItem(this.add.text(x, y - 18, 'TOTAL STATUS', this.getInventoryTitleStyle()).setOrigin(0.5, 0.5));
-    
-    // Spacious 300px background box for stats
-    this.addInventoryItem(
-      this.add.rectangle(x, y + 130, 300, 278, 0x07111f, 0.95)
-        .setStrokeStyle(2, 0x4aa6f7, 0.8)
-    );
-
-    // Loop through the 10 stats and organize them into 2 columns for clear fullscreen presentation
-    stats.forEach(([label, value], index) => {
-      // 5 stats in column 1 (left), 5 stats in column 2 (right)
-      const colIndex = index < 5 ? 0 : 1;
-      const rowIndex = index % 5;
-      
-      const statY = y + 16 + (rowIndex * 52);
-      
-      if (colIndex === 0) {
-        // Left Column (centered at x - 75)
-        this.addInventoryItem(
-          this.add.text(x - 138, statY, label, this.getInventoryTextStyle('#9af2ff', 12))
-            .setOrigin(0, 0.5)
-        );
-        this.addInventoryItem(
-          this.add.text(x - 12, statY, value, this.getInventoryTextStyle(UI.yellow, 12))
-            .setOrigin(1, 0.5)
-        );
-      } else {
-        // Right Column (centered at x + 75)
-        this.addInventoryItem(
-          this.add.text(x + 12, statY, label, this.getInventoryTextStyle('#9af2ff', 12))
-            .setOrigin(0, 0.5)
-        );
-        this.addInventoryItem(
-          this.add.text(x + 138, statY, value, this.getInventoryTextStyle(UI.yellow, 12))
-            .setOrigin(1, 0.5)
-        );
-      }
-    });
-  }
-
-  addInventoryCloseButton(x, y) {
-    const button = this.addInventoryItem(
-      this.add.rectangle(x, y, 110, 40, 0x498ff5, 0.9)
-        .setStrokeStyle(2, 0xffffff, 0.9)
-        .setInteractive({ useHandCursor: true })
-    );
-    this.addInventoryItem(this.add.text(x, y, '← KEMBALI', this.getInventoryTextStyle(UI.white, 14)).setOrigin(0.5));
-
-    button.on('pointerover', () => {
-      button.setScale(1.1);
-      soundManager.playSFX(this, 'hover');
-    });
-    button.on('pointerout', () => {
-      button.setScale(1);
-    });
-    button.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.clearInventoryTab();
-    });
   }
 
   refreshMainMenuLoadoutDisplay() {
@@ -1405,1413 +1038,367 @@ export default class MainMenuScene extends Phaser.Scene {
       .join('');
   }
 
-  getInventoryTitleStyle() {
-    return {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '18px',
-      color: UI.yellow,
-      fontStyle: '900',
-      stroke: '#0c1648',
-      strokeThickness: 3,
-    };
-  }
-
-  getInventoryTextStyle(color, fontSize) {
-    return {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: `${fontSize}px`,
-      color,
-      fontStyle: '800',
-      stroke: '#0c1648',
-      strokeThickness: 3,
-    };
-  }
-
-  addInventoryItem(item) {
-    item.setScrollFactor(0);
-    item.setDepth(2000);
-    this.inventoryLayer.push(item);
-    return item;
+  // Compatibility Wrapper Methods delegating to modular tabs
+  showInventoryTab() {
+    this.inventoryTab.show();
   }
 
   clearInventoryTab() {
-    this.inventoryLayer.forEach((item) => item.destroy());
-    this.inventoryLayer = [];
+    this.inventoryTab.clear();
   }
 
   showStageSelectionTab() {
-    this.clearStageSelectionTab();
-    this.refreshHeroLoadout();
-    this.playerProgress = getPlayerProgress(this);
-
-    const { width, height } = this.scale;
-
-    // Dim Background
-    this.addStageSelectionItem(this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.75));
-
-    // Main Dialog Panel
-    this.addStageSelectionItem(
-      this.add.rectangle(width / 2, height / 2, 860, 520, 0x0f172a, 0.98)
-        .setStrokeStyle(3, 0x3b82f6, 0.9)
-    );
-
-    // Decorative Title bar
-    const titleBg = this.add.graphics();
-    titleBg.fillStyle(0x1e293b, 1);
-    titleBg.fillRoundedRect(width / 2 - 200, height / 2 - 235, 400, 48, 8);
-    titleBg.lineStyle(2, 0x60a5fa, 1);
-    titleBg.strokeRoundedRect(width / 2 - 200, height / 2 - 235, 400, 48, 8);
-    this.addStageSelectionItem(titleBg);
-
-    // Title text
-    this.addStageSelectionItem(
-      this.add.text(width / 2, height / 2 - 210, 'SELECT BATTLEFIELD', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0f172a',
-        strokeThickness: 3,
-      }).setOrigin(0.5)
-    );
-
-    // Close Button
-    this.addStageSelectionCloseButton(width / 2 + 395, height / 2 - 225);
-
-    // Stage Grid Configuration
-    const highestStage = this.playerProgress.highestStageUnlocked || 1;
-    const cols = 3;
-    const rows = 2;
-    const startX = width / 2 - 260;
-    const startY = height / 2 - 90;
-    const gapX = 260;
-    const gapY = 180;
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const stageIndex = r * cols + c;
-        const stageId = stageIndex + 1;
-        const x = startX + c * gapX;
-        const y = startY + r * gapY;
-
-        this.drawStageCard(x, y, stageId, highestStage);
-      }
-    }
-  }
-
-  drawStageCard(x, y, stageId, highestStage) {
-    const stage = getStageById(stageId);
-    const isUnlocked = stageId <= highestStage;
-
-    if (isUnlocked) {
-      // Unlocked Stage Card
-      const card = this.addStageSelectionItem(
-        this.add.rectangle(x, y, 230, 150, 0x1e293b, 0.95)
-          .setStrokeStyle(2, 0x3b82f6, 0.95)
-          .setInteractive({ useHandCursor: true })
-      );
-
-      const stageNumText = this.addStageSelectionItem(
-        this.add.text(x, y - 48, stage.stageName.toUpperCase(), {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '20px',
-          color: UI.yellow,
-          fontStyle: '900',
-          stroke: '#0c1648',
-          strokeThickness: 3,
-        }).setOrigin(0.5)
-      );
-
-      const stageTimes = this.playerProgress.stageTimes || {};
-      const clearTime = stageTimes[stageId];
-      let timeLabel = '⏱ Best Time: --:--';
-      if (clearTime !== undefined && clearTime !== null) {
-        const mins = Math.floor(clearTime / 60).toString().padStart(2, '0');
-        const secs = (clearTime % 60).toString().padStart(2, '0');
-        timeLabel = `⏱ Best Time: ${mins}:${secs}`;
-      }
-
-      const durationText = this.addStageSelectionItem(
-        this.add.text(x, y - 12, timeLabel, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '13px',
-          color: '#bfdbfe',
-          fontStyle: '800',
-        }).setOrigin(0.5)
-      );
-
-      const rewardText = this.addStageSelectionItem(
-        this.add.text(x, y + 15, `💰 Reward: ${stage.goldReward}g`, {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '13px',
-          color: UI.cyan,
-          fontStyle: '800',
-        }).setOrigin(0.5)
-      );
-
-      const btnBg = this.addStageSelectionItem(
-        this.add.rectangle(x, y + 50, 130, 28, 0x2563eb, 1)
-          .setStrokeStyle(1, 0x60a5fa, 1)
-      );
-
-      const btnText = this.addStageSelectionItem(
-        this.add.text(x, y + 50, 'START BATTLE', {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '11px',
-          color: UI.white,
-          fontStyle: '900',
-        }).setOrigin(0.5)
-      );
-
-      // Card hover animation
-      card.on('pointerover', () => {
-        card.setScale(1.04);
-        card.setStrokeStyle(3, 0x60a5fa, 1);
-        stageNumText.setScale(1.04);
-        btnBg.setScale(1.04);
-        btnText.setScale(1.04);
-        soundManager.playSFX(this, 'hover');
-      });
-
-      card.on('pointerout', () => {
-        card.setScale(1);
-        card.setStrokeStyle(2, 0x3b82f6, 0.95);
-        stageNumText.setScale(1);
-        btnBg.setScale(1);
-        btnText.setScale(1);
-      });
-
-      card.on('pointerup', () => {
-        soundManager.playSFX(this, 'click');
-        this.clearStageSelectionTab();
-        this.scene.start('GameScene', {
-          stageId,
-          selectedHero: this.selectedHero,
-          baseHeroStats: this.selectedHeroBaseStats,
-          equippedItems: this.equippedItems,
-          activeSkin: this.activeSkin,
-          finalStats: this.finalHeroStats
-        });
-      });
-    } else {
-      // Locked Stage Card
-      const card = this.addStageSelectionItem(
-        this.add.rectangle(x, y, 230, 150, 0x0f172a, 0.7)
-          .setStrokeStyle(1, 0x475569, 0.8)
-      );
-
-      this.addStageSelectionItem(
-        this.add.text(x, y - 48, stage.stageName.toUpperCase(), {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '18px',
-          color: '#64748b',
-          fontStyle: '900',
-        }).setOrigin(0.5)
-      );
-
-      // Padlock Icon
-      this.addStageSelectionItem(
-        this.add.image(x, y, 'ui-lock-icon')
-          .setDisplaySize(38, 38)
-          .setOrigin(0.5)
-      );
-
-      this.addStageSelectionItem(
-        this.add.text(x, y + 44, 'LOCKED', {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '12px',
-          color: '#64748b',
-          fontStyle: '900',
-          letterSpacing: 2,
-        }).setOrigin(0.5)
-      );
-    }
-  }
-
-  addStageSelectionCloseButton(x, y) {
-    const button = this.addStageSelectionItem(
-      this.add.rectangle(x, y, 36, 36, 0xd97706, 1)
-        .setStrokeStyle(2, 0xfef08a, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    const text = this.addStageSelectionItem(
-      this.add.text(x, y, 'X', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    button.on('pointerover', () => {
-      button.setScale(1.1);
-      text.setScale(1.1);
-      soundManager.playSFX(this, 'hover');
-    });
-
-    button.on('pointerout', () => {
-      button.setScale(1);
-      text.setScale(1);
-    });
-
-    button.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.clearStageSelectionTab();
-    });
-  }
-
-  addStageSelectionItem(item) {
-    item.setScrollFactor(0);
-    item.setDepth(2000);
-    this.stageSelectionLayer.push(item);
-    return item;
+    this.stageSelectionTab.show();
   }
 
   clearStageSelectionTab() {
-    this.stageSelectionLayer.forEach((item) => item.destroy());
-    this.stageSelectionLayer = [];
-  }
-
-  addSettingsItem(item) {
-    item.setScrollFactor(0);
-    item.setDepth(2000);
-    this.settingsLayer.push(item);
-    return item;
-  }
-
-  clearSettingsTab() {
-    this.settingsLayer.forEach((item) => item.destroy());
-    this.settingsLayer = [];
-  }
-
-  showSettingsTab() {
-    this.clearSettingsTab();
-    const { width, height } = this.scale;
-
-    // Dim Background
-    this.addSettingsItem(this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.75));
-
-    // Main Settings Panel
-    this.addSettingsItem(
-      this.add.rectangle(width / 2, height / 2, 460, 320, 0x0f172a, 0.98)
-        .setStrokeStyle(3, 0x00d6ff, 0.9)
-    );
-
-    // Title text
-    this.addSettingsItem(
-      this.add.text(width / 2, height / 2 - 110, 'SETTINGS', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '24px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0f172a',
-        strokeThickness: 3,
-      }).setOrigin(0.5)
-    );
-
-    // Close Button (Orange/Gold theme)
-    this.addSettingsCloseButton(width / 2 + 195, height / 2 - 125);
-
-    // Music Setting Container
-    const musicY = height / 2 - 20;
-    this.addSettingsItem(
-      this.add.text(width / 2 - 130, musicY, 'BACKGROUND MUSIC', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0c1648',
-        strokeThickness: 3,
-      }).setOrigin(0, 0.5)
-    );
-
-    const isMusicOn = soundManager.isMusicEnabled();
-    const musicBtn = this.addSettingsItem(
-      this.add.rectangle(width / 2 + 80, musicY, 100, 36, isMusicOn ? 0x15803d : 0xb91c1c, 1)
-        .setStrokeStyle(2, isMusicOn ? 0x4ade80 : 0xfca5a5, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    const musicBtnText = this.addSettingsItem(
-      this.add.text(width / 2 + 80, musicY, isMusicOn ? 'ON' : 'OFF', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    musicBtn.on('pointerover', () => {
-      musicBtn.setScale(1.05);
-      musicBtnText.setScale(1.05);
-    });
-    musicBtn.on('pointerout', () => {
-      musicBtn.setScale(1);
-      musicBtnText.setScale(1);
-    });
-    musicBtn.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      soundManager.setMusicEnabled(!soundManager.isMusicEnabled());
-      // Refresh the tab to show updated state
-      this.showSettingsTab();
-    });
-
-    // SFX Setting Container
-    const sfxY = height / 2 + 40;
-    this.addSettingsItem(
-      this.add.text(width / 2 - 130, sfxY, 'SOUND EFFECTS (SFX)', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0c1648',
-        strokeThickness: 3,
-      }).setOrigin(0, 0.5)
-    );
-
-    const isSfxOn = soundManager.isSFXEnabled();
-    const sfxBtn = this.addSettingsItem(
-      this.add.rectangle(width / 2 + 80, sfxY, 100, 36, isSfxOn ? 0x15803d : 0xb91c1c, 1)
-        .setStrokeStyle(2, isSfxOn ? 0x4ade80 : 0xfca5a5, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    const sfxBtnText = this.addSettingsItem(
-      this.add.text(width / 2 + 80, sfxY, isSfxOn ? 'ON' : 'OFF', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    sfxBtn.on('pointerover', () => {
-      sfxBtn.setScale(1.05);
-      sfxBtnText.setScale(1.05);
-    });
-    sfxBtn.on('pointerout', () => {
-      sfxBtn.setScale(1);
-      sfxBtnText.setScale(1);
-    });
-    sfxBtn.on('pointerup', () => {
-      soundManager.setSFXEnabled(!soundManager.isSFXEnabled());
-      soundManager.playSFX(this, 'click');
-      // Refresh the tab to show updated state
-      this.showSettingsTab();
-    });
-  }
-
-  addSettingsCloseButton(x, y) {
-    const button = this.addSettingsItem(
-      this.add.rectangle(x, y, 36, 36, 0xd97706, 1)
-        .setStrokeStyle(2, 0xfef08a, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    const text = this.addSettingsItem(
-      this.add.text(x, y, 'X', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    button.on('pointerover', () => {
-      button.setScale(1.1);
-      text.setScale(1.1);
-    });
-
-    button.on('pointerout', () => {
-      button.setScale(1);
-      text.setScale(1);
-    });
-
-    button.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.clearSettingsTab();
-    });
+    this.stageSelectionTab.clear();
   }
 
   showModeSelectionTab() {
-    this.clearStageSelectionTab();
-    this.refreshHeroLoadout();
-    this.playerProgress = getPlayerProgress(this);
-
-    const { width, height } = this.scale;
-
-    // Dim Background
-    this.addStageSelectionItem(this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.75));
-
-    // Main Dialog Panel
-    this.addStageSelectionItem(
-      this.add.rectangle(width / 2, height / 2, 880, 530, 0x0f172a, 0.98)
-        .setStrokeStyle(3, 0x00bcd4, 0.9)
-    );
-
-    // Decorative Title bar
-    const titleBg = this.add.graphics();
-    titleBg.fillStyle(0x1e293b, 1);
-    titleBg.fillRoundedRect(width / 2 - 220, height / 2 - 240, 440, 48, 8);
-    titleBg.lineStyle(2, 0x00bcd4, 1);
-    titleBg.strokeRoundedRect(width / 2 - 220, height / 2 - 240, 440, 48, 8);
-    this.addStageSelectionItem(titleBg);
-
-    // Title text
-    this.addStageSelectionItem(
-      this.add.text(width / 2, height / 2 - 216, 'SELECT GAME MODE', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '22px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0f172a',
-        strokeThickness: 3,
-      }).setOrigin(0.5)
-    );
-
-    // Close Button
-    const closeBtn = this.addStageSelectionItem(
-      this.add.rectangle(width / 2 + 405, height / 2 - 230, 36, 36, 0xd97706, 1)
-        .setStrokeStyle(2, 0xfef08a, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-    const closeText = this.addStageSelectionItem(
-      this.add.text(width / 2 + 405, height / 2 - 230, 'X', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-    closeBtn.on('pointerover', () => { closeBtn.setScale(1.1); closeText.setScale(1.1); soundManager.playSFX(this, 'hover'); });
-    closeBtn.on('pointerout', () => { closeBtn.setScale(1); closeText.setScale(1); });
-    closeBtn.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.clearStageSelectionTab();
-    });
-
-    // Modes configuration
-    const modes = [
-      {
-        id: 'survival',
-        name: 'SURVIVAL',
-        desc: 'Bertahan hidup selama 90 detik.\nMusuh terus menggila.',
-        limitText: '3x / day',
-        color: 0xe040fb,
-        btnLabel: 'ENTER SURVIVAL',
-        ticketKey: 'survival-ticket',
-      },
-      {
-        id: 'gold_farm',
-        name: 'GOLD FARMING',
-        desc: 'Dapatkan gold berlimpah\ndari monster dalam 60s.',
-        limitText: '3x / day',
-        color: 0x4caf50,
-        btnLabel: 'ENTER FARMING',
-        ticketKey: 'gold-ticket',
-      },
-      {
-        id: 'looting',
-        name: 'LOOTING BOSS',
-        desc: 'Kalahkan Boss kuat.\nDapatkan material crafting.',
-        limitText: '3x / day',
-        color: 0x00bcd4,
-        btnLabel: 'ENTER LOOTING',
-        ticketKey: 'boss-ticket',
-      }
-    ];
-
-    const cardW = 230;
-    const cardH = 340;
-    const startX = width / 2 - 270;
-    const gapX = 270;
-    const centerY = height / 2 + 30;
-
-    modes.forEach((mode, index) => {
-      const x = startX + index * gapX;
-      
-      // Card Background
-      const card = this.addStageSelectionItem(
-        this.add.rectangle(x, centerY, cardW, cardH, 0x1e293b, 0.95)
-          .setStrokeStyle(2.5, mode.color, 0.8)
-          .setInteractive({ useHandCursor: true })
-      );
-
-      // Title
-      this.addStageSelectionItem(
-        this.add.text(x, centerY - 130, mode.name, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '18px',
-          color: UI.yellow,
-          fontStyle: '900',
-          align: 'center'
-        }).setOrigin(0.5)
-      );
-
-      // Description
-      this.addStageSelectionItem(
-        this.add.text(x, centerY - 70, mode.desc, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '12px',
-          color: '#e2e8f0',
-          fontStyle: '700',
-          align: 'center',
-          lineSpacing: 4
-        }).setOrigin(0.5)
-      );
-
-      // Limit Info & Ticket count
-      let limitValueText = mode.limitText;
-      let ticketCountText = '';
-      let remaining = 3;
-
-      if (true) {
-        remaining = getDailyAttemptsRemaining(this, mode.id);
-        const ticketQty = this.playerProgress.tickets ? (this.playerProgress.tickets[mode.ticketKey] || 0) : 0;
-        limitValueText = `Attempts: ${remaining}/3`;
-        ticketCountText = `Tickets: ${ticketQty} 🎟️`;
-      }
-
-      this.addStageSelectionItem(
-        this.add.text(x, centerY + 10, limitValueText, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '12px',
-          color: mode.id === 'campaign' || remaining > 0 ? '#4ade80' : '#f87171',
-          fontStyle: '900',
-          align: 'center'
-        }).setOrigin(0.5)
-      );
-
-      if (ticketCountText) {
-        this.addStageSelectionItem(
-          this.add.text(x, centerY + 36, ticketCountText, {
-            fontFamily: 'Outfit, Arial, sans-serif',
-            fontSize: '12px',
-            color: '#38bdf8',
-            fontStyle: '900',
-            align: 'center'
-          }).setOrigin(0.5)
-        );
-      }
-
-      // Enter Button
-      const btnBg = this.addStageSelectionItem(
-        this.add.rectangle(x, centerY + 110, 160, 40, mode.color, 1)
-          .setStrokeStyle(1.5, 0xffffff, 1)
-      );
-      const btnText = this.addStageSelectionItem(
-        this.add.text(x, centerY + 110, mode.btnLabel, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '12px',
-          color: '#ffffff',
-          fontStyle: '900'
-        }).setOrigin(0.5)
-      );
-
-      card.on('pointerover', () => {
-        card.setScale(1.03);
-        card.setStrokeStyle(3.5, mode.color, 1);
-        btnBg.setScale(1.04);
-        btnText.setScale(1.04);
-        soundManager.playSFX(this, 'hover');
-      });
-      card.on('pointerout', () => {
-        card.setScale(1);
-        card.setStrokeStyle(2.5, mode.color, 0.8);
-        btnBg.setScale(1);
-        btnText.setScale(1);
-      });
-
-      card.on('pointerup', () => {
-        soundManager.playSFX(this, 'click');
-        {
-          // Check attempts or tickets
-          let canEnter = false;
-          let useTicket = false;
-          if (remaining > 0) {
-            canEnter = true;
-          } else {
-            const hasTkt = hasTicket(this, mode.ticketKey);
-            if (hasTkt) {
-              canEnter = true;
-              useTicket = true;
-            }
-          }
-
-          if (canEnter) {
-            if (useTicket) {
-              consumeTicket(this, mode.ticketKey);
-              this.showFeedback('Ticket consumed for entry!');
-            } else {
-              consumeDailyAttempt(this, mode.id);
-            }
-
-            this.clearStageSelectionTab();
-            
-            // Start game on player highest unlocked campaign stage number but in target game mode!
-            const highestStageId = this.playerProgress.highestStageUnlocked || 1;
-            this.scene.start('GameScene', {
-              stageId: highestStageId,
-              gameMode: mode.id,
-              selectedHero: this.selectedHero,
-              baseHeroStats: this.selectedHeroBaseStats,
-              equippedItems: this.equippedItems,
-              activeSkin: this.activeSkin,
-              finalStats: this.finalHeroStats
-            });
-          } else {
-            soundManager.playSFX(this, 'hit');
-            this.showFeedback('No attempts or tickets remaining!');
-          }
-        }
-      });
-    });
+    this.modeSelectionTab.show();
   }
 
-  showFeedback(message) {
-    const { width, height } = this.scale;
-    const text = this.add.text(width / 2, height / 2, message, {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '20px',
-      color: '#f87171',
-      fontStyle: '900',
-      stroke: '#000',
-      strokeThickness: 5
-    }).setOrigin(0.5).setDepth(3000);
-
-    this.tweens.add({
-      targets: text,
-      y: height / 2 - 50,
-      alpha: 0,
-      duration: 1500,
-      onComplete: () => text.destroy()
-    });
+  showSettingsTab() {
+    this.settingsTab.show();
   }
 
-  addBlacksmithItem(item) {
-    item.setScrollFactor(0);
-    item.setDepth(2000);
-    this.blacksmithLayer.push(item);
-    return item;
-  }
-
-  clearBlacksmithTab() {
-    this.blacksmithLayer.forEach((item) => item.destroy());
-    this.blacksmithLayer = [];
+  clearSettingsTab() {
+    this.settingsTab.clear();
   }
 
   showBlacksmithTab() {
-    this.clearBlacksmithTab();
-    this.refreshHeroLoadout();
-    this.playerProgress = getPlayerProgress(this);
-
-    const { width, height } = this.scale;
-
-    // Background Gradient matching Menu Scene
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0xdbeefb, 0xdbeefb, 0xaad4fc, 0x89c5f8, 1);
-    bg.fillRect(0, 0, width, height);
-
-    // Floor grids (perspective)
-    const floorY = height * 0.65;
-    bg.lineStyle(1.5, 0x4aa6f7, 0.45);
-    
-    const numHoriz = 12;
-    for (let i = 0; i <= numHoriz; i++) {
-      const ratio = i / numHoriz;
-      const py = floorY + (height - floorY) * Math.pow(ratio, 1.8);
-      bg.lineBetween(0, py, width, py);
-    }
-    
-    const numVert = 20;
-    const vpX = width / 2;
-    const vpY = floorY - 80;
-    for (let i = -numVert / 2; i <= numVert / 2; i++) {
-      const startX = width / 2 + i * 90;
-      bg.lineBetween(vpX + i * 12, vpY, startX, height);
-    }
-    this.addBlacksmithItem(bg);
-
-    // Header Title
-    this.addBlacksmithItem(this.add.text(185, 38, '⚒️ BLACKSMITH CRAFTING', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '28px',
-      color: UI.white,
-      fontStyle: '900',
-      stroke: '#07111f',
-      strokeThickness: 4,
-    }).setOrigin(0, 0.5));
-
-    this.addBlacksmithItem(this.add.text(185, 68, 'Tempa perlengkapan tempur baru menggunakan material dari looting boss.', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '13px',
-      color: '#9af2ff',
-      fontStyle: '800',
-      stroke: '#07111f',
-      strokeThickness: 2,
-    }).setOrigin(0, 0.5));
-
-    // Close button top-left
-    const closeBtn = this.addBlacksmithItem(
-      this.add.rectangle(110, 52, 42, 42, 0xd97706, 1)
-        .setStrokeStyle(2, 0xfef08a, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-    const closeText = this.addBlacksmithItem(
-      this.add.text(110, 52, '◀', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '20px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-    closeBtn.on('pointerover', () => { closeBtn.setScale(1.1); closeText.setScale(1.1); soundManager.playSFX(this, 'hover'); });
-    closeBtn.on('pointerout', () => { closeBtn.setScale(1); closeText.setScale(1); });
-    closeBtn.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.clearBlacksmithTab();
-    });
-
-    // Material Resources Panel (Top Right)
-    const resX = width - 360;
-    const resY = 38;
-    const resBg = this.addBlacksmithItem(
-      this.add.rectangle(resX + 160, resY + 12, 340, 54, 0x07111f, 0.9)
-        .setStrokeStyle(2, 0x4aa6f7, 0.8)
-    );
-
-    const ironQty = this.playerProgress.materials ? (this.playerProgress.materials['iron-ore'] || 0) : 0;
-    const gemQty = this.playerProgress.materials ? (this.playerProgress.materials['magic-gem'] || 0) : 0;
-    const scaleQty = this.playerProgress.materials ? (this.playerProgress.materials['dragon-scale'] || 0) : 0;
-
-    this.addBlacksmithItem(this.add.text(resX + 10, resY + 12, `🪨 ${ironQty}  💎 ${gemQty}  🐉 ${scaleQty}`, {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '18px',
-      color: '#ffffff',
-      fontStyle: '900'
-    }).setOrigin(0, 0.5));
-
-    // Crafting Recipes list (Grid)
-    const startRecipeX = 200;
-    const startRecipeY = 170;
-    const cardW = 420;
-    const cardH = 150;
-    const gapX = 460;
-    const gapY = 170;
-
-    craftingRecipes.forEach((recipe, idx) => {
-      const col = idx % 2;
-      const row = Math.floor(idx / 2);
-      const rx = startRecipeX + col * gapX;
-      const ry = startRecipeY + row * gapY;
-
-      const itemData = getEquipmentById(recipe.resultItemId);
-      if (!itemData) return;
-
-      const isOwned = this.playerProgress.ownedEquipment && this.playerProgress.ownedEquipment.includes(recipe.resultItemId);
-
-      // Recipe Card Frame
-      const card = this.addBlacksmithItem(
-        this.add.rectangle(rx + cardW/2, ry + cardH/2, cardW, cardH, 0x07111f, 0.95)
-          .setStrokeStyle(2, isOwned ? 0x4ade80 : 0x4aa6f7, 0.8)
-      );
-
-      // Icon Display
-      this.addBlacksmithItem(this.add.circle(rx + 50, ry + 75, 30, 0x0c1e3d, 1))
-        .setStrokeStyle(2, isOwned ? 0x4ade80 : 0x4aa6f7, 1);
-      this.addBlacksmithItem(this.add.text(rx + 50, ry + 75, itemData.icon, { fontSize: '28px' }).setOrigin(0.5));
-
-      // Title
-      this.addBlacksmithItem(this.add.text(rx + 100, ry + 20, itemData.name.toUpperCase(), {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '16px',
-        color: isOwned ? '#4ade80' : UI.yellow,
-        fontStyle: '900'
-      }));
-
-      // Type/Slot
-      this.addBlacksmithItem(this.add.text(rx + 100, ry + 42, `SLOT: ${itemData.slot.toUpperCase()}`, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '10px',
-        color: '#89c5f8',
-        fontStyle: '800'
-      }));
-
-      // Stats
-      const statBonusText = formatEquipmentBonus(itemData);
-      this.addBlacksmithItem(this.add.text(rx + 100, ry + 56, statBonusText, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '11px',
-        color: '#ffffff',
-        fontStyle: '800'
-      }));
-
-      // Materials Cost Display
-      let costStrings = [];
-      let canCraft = true;
-
-      // Gold check
-      const currentGold = this.playerProgress.gold;
-      const goldColor = currentGold >= recipe.costGold ? '#4ade80' : '#f87171';
-      if (currentGold < recipe.costGold) canCraft = false;
-
-      costStrings.push(`💰 ${recipe.costGold}`);
-
-      // Materials check
-      Object.entries(recipe.materials).forEach(([matId, qty]) => {
-        const ownedQty = this.playerProgress.materials ? (this.playerProgress.materials[matId] || 0) : 0;
-        const matIcons = { 'iron-ore': '🪨', 'magic-gem': '💎', 'dragon-scale': '🐉' };
-        if (ownedQty < qty) canCraft = false;
-        
-        costStrings.push(`${matIcons[matId] || ''} ${ownedQty}/${qty}`);
-      });
-
-      this.addBlacksmithItem(this.add.text(rx + 100, ry + 82, costStrings.join('   '), {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '11px',
-        color: '#cbd5e1',
-        fontStyle: '900'
-      }));
-
-      // Craft Button
-      if (isOwned) {
-        this.addBlacksmithItem(this.add.text(rx + 340, ry + 75, 'OWNED', {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '14px',
-          color: '#4ade80',
-          fontStyle: '900'
-        }).setOrigin(0.5));
-      } else {
-        const craftBtn = this.addBlacksmithItem(
-          this.add.rectangle(rx + 340, ry + 75, 100, 36, canCraft ? 0x2563eb : 0x334155, 1)
-            .setStrokeStyle(1.5, canCraft ? 0x60a5fa : 0x475569, 1)
-        );
-        const craftText = this.addBlacksmithItem(
-          this.add.text(rx + 340, ry + 75, 'CRAFT', {
-            fontFamily: 'Outfit, Arial, sans-serif',
-            fontSize: '12px',
-            color: canCraft ? '#ffffff' : '#94a3b8',
-            fontStyle: '900'
-          }).setOrigin(0.5)
-        );
-
-        if (canCraft) {
-          craftBtn.setInteractive({ useHandCursor: true });
-          craftBtn.on('pointerover', () => {
-            craftBtn.setScale(1.05);
-            craftText.setScale(1.05);
-            soundManager.playSFX(this, 'hover');
-          });
-          craftBtn.on('pointerout', () => {
-            craftBtn.setScale(1);
-            craftText.setScale(1);
-          });
-          craftBtn.on('pointerup', () => {
-            soundManager.playSFX(this, 'upgrade');
-            
-            // Consume gold
-            addPlayerGold(this, -recipe.costGold);
-            
-            // Consume materials
-            Object.entries(recipe.materials).forEach(([matId, qty]) => {
-              addPlayerMaterial(this, matId, -qty);
-            });
-
-            // Unlock Equipment
-            addEquipmentToInventory(this, recipe.resultItemId);
-
-            this.showFeedback('Equipment Crafted successfully!');
-            this.showBlacksmithTab();
-          });
-        }
-      }
-    });
+    this.blacksmithTab.show();
   }
 
-  addSkillsItem(item) {
-    item.setScrollFactor(0);
-    item.setDepth(2000);
-    this.skillsLayer.push(item);
-    return item;
-  }
-
-  clearSkillsTab() {
-    this.skillsLayer.forEach((item) => item.destroy());
-    this.skillsLayer = [];
-    this.selectedSkill = null;
+  clearBlacksmithTab() {
+    this.blacksmithTab.clear();
   }
 
   showSkillsTab() {
-    // Clear all other active tabs to avoid overlap
-    this.clearInventoryTab();
-    this.clearStageSelectionTab();
-    this.clearSettingsTab();
-    this.clearBlacksmithTab();
-    this.clearSkillsTab();
-
-    this.refreshHeroLoadout();
-    this.playerProgress = getPlayerProgress(this);
-
-    // Default selection to fireball
-    if (!this.selectedSkill) {
-      this.selectedSkill = skills[0];
-    }
-
-    const { width, height } = this.scale;
-
-    // Background Gradient matching Menu Scene
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0xdbeefb, 0xdbeefb, 0xaad4fc, 0x89c5f8, 1);
-    bg.fillRect(0, 0, width, height);
-
-    // Floor grids (perspective)
-    const floorY = height * 0.65;
-    bg.lineStyle(1.5, 0x4aa6f7, 0.45);
-    
-    const numHoriz = 12;
-    for (let i = 0; i <= numHoriz; i++) {
-      const ratio = i / numHoriz;
-      const py = floorY + (height - floorY) * Math.pow(ratio, 1.8);
-      bg.lineBetween(0, py, width, py);
-    }
-    
-    const numVert = 20;
-    const vpX = width / 2;
-    const vpY = floorY - 80;
-    for (let i = -numVert / 2; i <= numVert / 2; i++) {
-      const startX = width / 2 + i * 90;
-      bg.lineBetween(vpX + i * 12, vpY, startX, height);
-    }
-    this.addSkillsItem(bg);
-
-    // Header Title
-    this.addSkillsItem(this.add.text(185, 38, '⚡ PLAYER SKILLS TREE', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '28px',
-      color: UI.white,
-      fontStyle: '900',
-      stroke: '#07111f',
-      strokeThickness: 4,
-    }).setOrigin(0, 0.5));
-
-    this.addSkillsItem(this.add.text(185, 68, 'Buka dan upgrade skill aktif menggunakan gold berdasarkan level player.', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '13px',
-      color: '#9af2ff',
-      fontStyle: '800',
-      stroke: '#07111f',
-      strokeThickness: 2,
-    }).setOrigin(0, 0.5));
-
-    // Close button top-left
-    const closeBtn = this.addSkillsItem(
-      this.add.rectangle(110, 52, 42, 42, 0xd97706, 1)
-        .setStrokeStyle(2, 0xfef08a, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-    const closeText = this.addSkillsItem(
-      this.add.text(110, 52, '◀', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '20px',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5)
-    );
-
-    closeBtn.on('pointerover', () => {
-      closeBtn.setScale(1.1);
-      closeText.setScale(1.1);
-      soundManager.playSFX(this, 'hover');
-    });
-    closeBtn.on('pointerout', () => {
-      closeBtn.setScale(1);
-      closeText.setScale(1);
-    });
-    closeBtn.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.clearSkillsTab();
-    });
-
-    // Positions for skill nodes
-    const positions = {
-      'fireball': { x: 320, y: 240 },
-      'lightning-strike': { x: 320, y: 460 },
-      'multi-shot': { x: 600, y: 240 },
-      'spin-attack': { x: 600, y: 460 }
-    };
-
-    // Draw skill nodes
-    skills.forEach((skill) => {
-      const pos = positions[skill.id];
-      if (pos) {
-        this.drawSkillNode(pos.x, pos.y, skill);
-      }
-    });
-
-    // Draw Skill Details Panel on the right
-    this.drawSkillDetailsPanel();
+    this.skillsTab.show();
   }
 
-  drawSkillNode(x, y, skill) {
-    const isSelected = this.selectedSkill?.id === skill.id;
-    const skillLevels = this.registry.get('playerData')?.skillLevels || {};
-    const currentLvl = skillLevels[skill.id] || 0;
-
-    // Prerequisite checks
-    const isLevelMet = (this.playerProgress.playerLevel || 1) >= skill.requiredPlayerLevel;
-    const isUnlocked = isLevelMet;
-
-    // Node card background
-    let bgCol = 0x07111f;
-    let strokeCol = 0x4aa6f7;
-    let strokeAlpha = 0.6;
-
-    if (isSelected) {
-      bgCol = 0x0c86bd;
-      strokeCol = 0xffdc5a;
-      strokeAlpha = 1.0;
-    } else if (!isUnlocked) {
-      bgCol = 0x1e293b;
-      strokeCol = 0x475569;
-      strokeAlpha = 0.5;
-    }
-
-    const card = this.addSkillsItem(
-      this.add.rectangle(x, y, 220, 110, bgCol, 0.95)
-        .setStrokeStyle(3, strokeCol, strokeAlpha)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    // Icon circle
-    this.addSkillsItem(this.add.circle(x - 56, y, 30, 0x0c1e3d, 1))
-      .setStrokeStyle(2.5, isUnlocked ? 0x00d6ff : 0x64748b, 1);
-
-    const icon = this.addSkillsItem(
-      this.add.image(x - 56, y, skill.assetKey)
-        .setDisplaySize(50, 50)
-        .setAlpha(isUnlocked ? 1.0 : 0.35)
-    );
-
-    // Skill Name text
-    const nameText = this.addSkillsItem(
-      this.add.text(x - 12, y - 34, skill.name, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '15px',
-        color: isUnlocked ? UI.white : '#94a3b8',
-        fontStyle: '900',
-      }).setOrigin(0, 0.5)
-    );
-
-    // Level status or locked label
-    let statusText = `Lv. ${currentLvl}/${skill.maxLevel}`;
-    let statusColor = UI.cyan;
-    if (!isUnlocked) {
-      statusText = 'LOCKED';
-      statusColor = '#f87171';
-    } else if (currentLvl === 0) {
-      statusText = 'UNLOCKED (Lv. 0)';
-      statusColor = UI.yellow;
-    } else if (currentLvl === skill.maxLevel) {
-      statusText = 'MAX LEVEL';
-      statusColor = '#4ade80';
-    }
-
-    this.addSkillsItem(
-      this.add.text(x - 12, y - 10, statusText, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: statusColor,
-        fontStyle: '800',
-      }).setOrigin(0, 0.5)
-    );
-
-    // Requirements label (small font)
-    this.addSkillsItem(
-      this.add.text(x - 12, y + 14, `Req: Player Lv. ${skill.requiredPlayerLevel}`, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '10px',
-        color: isLevelMet ? '#4ade80' : '#f87171',
-        fontStyle: '800'
-      }).setOrigin(0, 0.5)
-    );
-
-    // Add lock icon if not unlocked
-    if (!isUnlocked) {
-      this.addSkillsItem(
-        this.add.image(x - 56, y, 'ui-lock-icon')
-          .setDisplaySize(24, 24)
-          .setAlpha(0.85)
-      );
-    }
-
-    // Event handlers
-    card.on('pointerover', () => {
-      card.setScale(1.03);
-      soundManager.playSFX(this, 'hover');
-    });
-    card.on('pointerout', () => {
-      card.setScale(1);
-    });
-    card.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.selectedSkill = skill;
-      this.showSkillsTab(); // Redraw panel and highlights
-    });
+  clearSkillsTab() {
+    this.skillsTab.clear();
   }
 
-  drawSkillDetailsPanel() {
-    const rx = 960;
-    const ry = 380;
-    const rw = 380;
-    const rh = 460;
-
-    // Panel card background
-    this.addSkillsItem(
-      this.add.rectangle(rx, ry, rw, rh, 0x07111f, 0.95)
-        .setStrokeStyle(3, 0x4aa6f7, 0.8)
-    );
-
-    if (!this.selectedSkill) {
-      this.addSkillsItem(
-        this.add.text(rx, ry, 'Select a skill to inspect and upgrade', {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '14px',
-          color: '#94a3b8',
-          fontStyle: 'bold'
-        }).setOrigin(0.5)
-      );
-      return;
+  createParticleTexture() {
+    const key = 'aura-particle';
+    if (this.textures.exists(key)) {
+      return key;
     }
 
-    const skill = this.selectedSkill;
-    const skillLevels = this.registry.get('playerData')?.skillLevels || {};
-    const currentLvl = skillLevels[skill.id] || 0;
+    const size = 32;
+    const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+    for (let r = size / 2; r > 0; r--) {
+      const alpha = (1 - (r / (size / 2))) * 0.38;
+      graphics.fillStyle(0xffffff, alpha);
+      graphics.fillCircle(size / 2, size / 2, r);
+    }
+    graphics.generateTexture(key, size, size);
+    graphics.destroy();
+    return key;
+  }
 
-    // Prerequisite checks
-    const isUnlocked = (this.playerProgress.playerLevel || 1) >= skill.requiredPlayerLevel;
+  drawHeroFrame(cx, cy) {
+    if (this.heroFrameBackContainer) {
+      this.heroFrameBackContainer.destroy();
+    }
+    if (this.heroFrameFrontContainer) {
+      this.heroFrameFrontContainer.destroy();
+    }
+    if (this.heroAuraShader) {
+      this.heroAuraShader.destroy();
+    }
 
-    // Skill Name
-    this.addSkillsItem(
-      this.add.text(rx, ry - 190, skill.name.toUpperCase(), {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '24px',
-        color: UI.yellow,
-        fontStyle: '900',
-        stroke: '#000',
-        strokeThickness: 3
-      }).setOrigin(0.5)
-    );
+    this.heroFrameBackContainer = this.add.container(cx, cy);
+    this.heroFrameBackContainer.setDepth(105);
 
-    // Description text
-    this.addSkillsItem(
-      this.add.text(rx, ry - 152, skill.description, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '13px',
-        color: '#cbd5e1',
-        align: 'center',
-        wordWrap: { width: rw - 40 }
-      }).setOrigin(0.5)
-    );
+    this.heroFrameFrontContainer = this.add.container(cx, cy);
+    this.heroFrameFrontContainer.setDepth(115);
 
-    // Passive Buff Text
-    const currentBuffText = currentLvl > 0 
-      ? `PASSIVE: +${currentLvl * 8}% Dmg & -${currentLvl * 5}% Cooldown in battle.`
-      : `PASSIVE (Locked): +8% Dmg & -5% Cooldown per level.`;
-    this.addSkillsItem(
-      this.add.text(rx, ry - 110, currentBuffText, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: currentLvl > 0 ? '#4ade80' : '#94a3b8',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: rw - 40 }
-      }).setOrigin(0.5)
-    );
+    const level = this.heroLevel || 1;
 
-    // Requirements Checklist
-    const reqY = ry - 65;
-    this.addSkillsItem(
-      this.add.text(rx - 150, reqY, 'REQUISITES:', {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: UI.cyan,
-        fontStyle: '900'
-      }).setOrigin(0, 0.5)
-    );
-
-    const checkPlayerLvl = isUnlocked ? '✅' : '❌';
-    this.addSkillsItem(
-      this.add.text(rx - 150, reqY + 24, `${checkPlayerLvl} Player Level ${skill.requiredPlayerLevel} (You: Lv. ${this.playerProgress.playerLevel || 1})`, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: isUnlocked ? '#4ade80' : '#f87171',
-        fontStyle: '800'
-      }).setOrigin(0, 0.5)
-    );
-
-    // Stats Section
-    const statsY = ry + 25;
-    this.addSkillsItem(
-      this.add.text(rx - 150, statsY, 'BASE STAT COMPARISON:', {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: UI.cyan,
-        fontStyle: '900'
-      }).setOrigin(0, 0.5)
-    );
-
-    const maxed = currentLvl >= skill.maxLevel;
-    const currentStats = getSkillLevelStats({ ...skill, level: currentLvl === 0 ? 1 : currentLvl });
-    const nextStats = getSkillLevelStats({ ...skill, level: currentLvl + 1 });
-
-    const displayedStats = [
-      { label: 'Damage', key: 'damage', format: (val) => `${val}` },
-      { label: 'Cooldown', key: 'cooldown', format: (val) => `${(val / 1000).toFixed(1)}s` },
-      { label: 'Range', key: 'range', format: (val) => `${val}` },
-      { label: 'Area Radius', key: 'area', format: (val) => `${val}` }
-    ];
-
-    let rowCount = 0;
-    displayedStats.forEach((st) => {
-      // Don't show range or area if base skill has 0
-      if ((st.key === 'range' && skill.range === 0) || (st.key === 'area' && skill.area === 0)) {
-        return;
-      }
-
-      const rowY = statsY + 24 + (rowCount * 22);
-      this.addSkillsItem(
-        this.add.text(rx - 150, rowY, st.label, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '12px',
-          color: '#94a3b8',
-          fontStyle: '800'
-        }).setOrigin(0, 0.5)
-      );
-
-      const val1 = currentLvl === 0 ? 'LOCKED' : st.format(currentStats[st.key]);
-      const val2 = maxed ? 'MAX' : st.format(nextStats[st.key]);
-
-      this.addSkillsItem(
-        this.add.text(rx + 150, rowY, `${val1}  ➔  ${val2}`, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '12px',
-          color: UI.white,
-          fontStyle: '900'
-        }).setOrigin(1, 0.5)
-      );
-
-      rowCount++;
-    });
-
-    // Upgrade Button Cost & Action
-    const btnY = ry + 175;
-    if (maxed) {
-      this.addSkillsItem(
-        this.add.rectangle(rx, btnY, rw - 60, 44, 0x1e293b, 1)
-          .setStrokeStyle(2, 0x475569, 1)
-      );
-      this.addSkillsItem(
-        this.add.text(rx, btnY, 'MAX LEVEL REACHED', {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '14px',
-          color: '#94a3b8',
-          fontStyle: '900'
-        }).setOrigin(0.5)
-      );
-    } else if (!isUnlocked) {
-      this.addSkillsItem(
-        this.add.rectangle(rx, btnY, rw - 60, 44, 0x1e293b, 1)
-          .setStrokeStyle(2, 0x475569, 1)
-      );
-      this.addSkillsItem(
-        this.add.text(rx, btnY, 'SKILL BLOCKED', {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '14px',
-          color: '#f87171',
-          fontStyle: '900'
-        }).setOrigin(0.5)
-      );
+    if (level < 5) {
+      this.drawTier1Frame();
+    } else if (level < 10) {
+      this.drawTier2Frame();
+    } else if (level < 15) {
+      this.drawTier3Frame();
     } else {
-      const upgradeCost = (currentLvl + 1) * 1500;
-      const canAfford = this.playerProgress.gold >= upgradeCost;
+      this.drawTier4Frame();
+    }
+  }
 
-      const upgradeBtn = this.addSkillsItem(
-        this.add.rectangle(rx, btnY, rw - 60, 44, canAfford ? 0x15803d : 0x1e293b, 1)
-          .setStrokeStyle(2.5, canAfford ? 0x22c55e : 0x475569, 1)
-          .setInteractive({ useHandCursor: true })
-      );
 
-      const btnTitle = currentLvl === 0 ? 'UNLOCK SKILL' : 'UPGRADE SKILL';
-      const upgradeBtnText = this.addSkillsItem(
-        this.add.text(rx, btnY - 9, btnTitle, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '13px',
-          color: canAfford ? UI.white : '#94a3b8',
-          fontStyle: '900'
-        }).setOrigin(0.5)
-      );
 
-      // Gold cost
-      const goldIcon = this.addSkillsItem(
-        this.add.image(rx - 45, btnY + 11, 'ui-icon-gold').setDisplaySize(18, 18)
-      );
-      const costText = this.addSkillsItem(
-        this.add.text(rx - 30, btnY + 11, this.formatCurrency(upgradeCost), {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '13px',
-          color: canAfford ? UI.yellow : '#94a3b8',
-          fontStyle: '900'
-        }).setOrigin(0, 0.5)
-      );
+  drawTier1Frame() {
+    // Back glow
+    const backGlow = this.add.graphics();
+    backGlow.lineStyle(10, 0x06b6d4, 0.15);
+    backGlow.strokeCircle(0, 0, 145);
+    this.heroFrameBackContainer.add(backGlow);
 
-      upgradeBtn.on('pointerover', () => {
-        if (canAfford) {
-          upgradeBtn.setFillStyle(0x166534, 1);
-          upgradeBtn.setScale(1.02);
-          soundManager.playSFX(this, 'hover');
+    // Front ring
+    const frontRing = this.add.graphics();
+    frontRing.lineStyle(3, 0x06b6d4, 0.85);
+    frontRing.strokeCircle(0, 0, 142);
+    
+    frontRing.lineStyle(1.5, 0x0891b2, 0.4);
+    frontRing.strokeCircle(0, 0, 150);
+    this.heroFrameFrontContainer.add(frontRing);
+
+    // Animate breathing
+    this.tweens.add({
+      targets: [this.heroFrameBackContainer, this.heroFrameFrontContainer],
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  drawTier2Frame() {
+    // Back Layer: Gold Hexagon
+    const backHex = this.add.graphics();
+    backHex.lineStyle(3, 0xeab308, 0.8);
+    const sides = 6;
+    const radius = 158;
+    backHex.beginPath();
+    for (let i = 0; i <= sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      if (i === 0) backHex.moveTo(x, y);
+      else backHex.lineTo(x, y);
+    }
+    backHex.closePath();
+    backHex.strokePath();
+
+    // Vertices dots
+    backHex.fillStyle(0xfef08a, 1);
+    for (let i = 0; i < sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      backHex.fillCircle(radius * Math.cos(angle), radius * Math.sin(angle), 5);
+    }
+    this.heroFrameBackContainer.add(backHex);
+
+    // Front Layer: Inner Ring
+    const frontRing = this.add.graphics();
+    frontRing.lineStyle(3.5, 0x06b6d4, 0.9);
+    frontRing.strokeCircle(0, 0, 142);
+    this.heroFrameFrontContainer.add(frontRing);
+
+    // Animate rotation on back hexagon
+    this.tweens.add({
+      targets: backHex,
+      angle: 360,
+      duration: 10000,
+      repeat: -1
+    });
+
+    // Animate breathing on front ring
+    this.tweens.add({
+      targets: frontRing,
+      scaleX: 1.015,
+      scaleY: 1.015,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  drawTier3Frame() {
+    // Back Layer: Octagon and Glow
+    const backGlow = this.add.graphics();
+    backGlow.lineStyle(12, 0xa78bfa, 0.2);
+    backGlow.strokeCircle(0, 0, 168);
+    this.heroFrameBackContainer.add(backGlow);
+
+    const backOct = this.add.graphics();
+    backOct.lineStyle(3.5, 0x8b5cf6, 0.85);
+    const sides = 8;
+    const radius = 160;
+    backOct.beginPath();
+    for (let i = 0; i <= sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      if (i === 0) backOct.moveTo(x, y);
+      else backOct.lineTo(x, y);
+    }
+    backOct.closePath();
+    backOct.strokePath();
+    this.heroFrameBackContainer.add(backOct);
+
+    // Front Layer: Magenta Ring
+    const frontRing = this.add.graphics();
+    frontRing.lineStyle(4, 0xec4899, 0.95);
+    frontRing.strokeCircle(0, 0, 142);
+    this.heroFrameFrontContainer.add(frontRing);
+
+    // Animate Octagon rotation
+    this.tweens.add({
+      targets: backOct,
+      angle: -360,
+      duration: 12000,
+      repeat: -1
+    });
+
+    // Animate breathing/glow
+    this.tweens.add({
+      targets: [backGlow, frontRing],
+      alpha: { from: 0.6, to: 1.0 },
+      duration: 1100,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Quad.easeInOut'
+    });
+
+    // 3 Orbiting Green Particles
+    for (let i = 0; i < 3; i++) {
+      const dot = this.add.circle(0, 0, 6, 0x34d399, 1);
+      dot.setStrokeStyle(2, 0xffffff, 0.95);
+      this.heroFrameFrontContainer.add(dot);
+      
+      const angleOffset = (i * 2 * Math.PI) / 3;
+      const orbitRadius = 166;
+
+      this.tweens.addCounter({
+        from: 0,
+        to: 360,
+        duration: 6000 + i * 1000,
+        repeat: -1,
+        onUpdate: (tween) => {
+          const val = tween.getValue();
+          const rad = Phaser.Math.DegToRad(val) + angleOffset;
+          dot.x = orbitRadius * Math.cos(rad);
+          dot.y = orbitRadius * Math.sin(rad);
         }
-      });
-      upgradeBtn.on('pointerout', () => {
-        if (canAfford) {
-          upgradeBtn.setFillStyle(0x15803d, 1);
-          upgradeBtn.setScale(1);
-        }
-      });
-      upgradeBtn.on('pointerup', () => {
-        this.upgradeSelectedSkill(upgradeCost, currentLvl);
       });
     }
   }
 
-  upgradeSelectedSkill(cost, currentLvl) {
-    if (this.playerProgress.gold < cost) {
-      soundManager.playSFX(this, 'hit');
-      this.showUpgradeFeedback(false, 'Not enough gold!');
-      return;
+  drawTier4Frame() {
+    // 1. Back Layer: Backing aura glows
+    const glow1 = this.add.graphics();
+    glow1.lineStyle(16, 0xec4899, 0.15);
+    glow1.strokeCircle(0, 0, 168);
+    
+    const glow2 = this.add.graphics();
+    glow2.lineStyle(24, 0xf59e0b, 0.08);
+    glow2.strokeCircle(0, 0, 180);
+    this.heroFrameBackContainer.add([glow2, glow1]);
+
+    // 2. Outer gold gear
+    const goldGear = this.add.graphics();
+    goldGear.lineStyle(3, 0xfacc15, 0.9);
+    const teeth1 = 16;
+    const rIn1 = 165;
+    const rOut1 = 175;
+    goldGear.beginPath();
+    for (let i = 0; i < teeth1 * 2; i++) {
+      const angle = (i * Math.PI) / teeth1;
+      const r = i % 2 === 0 ? rIn1 : rOut1;
+      const x = r * Math.cos(angle);
+      const y = r * Math.sin(angle);
+      if (i === 0) goldGear.moveTo(x, y);
+      else goldGear.lineTo(x, y);
     }
+    goldGear.closePath();
+    goldGear.strokePath();
+    this.heroFrameBackContainer.add(goldGear);
 
-    soundManager.playSFX(this, 'upgrade');
-
-    // Deduct gold
-    const nextGold = addPlayerGold(this, -cost);
-    this.playerProgress.gold = nextGold;
-
-    // Save skill level
-    const skillId = this.selectedSkill.id;
-    saveSkillLevel(skillId, currentLvl + 1);
-
-    // Update gold display on the top HUD instantly
-    if (this.goldText) {
-      this.goldText.setText(this.formatCurrency(nextGold));
+    // 3. Inner crimson gear
+    const crimsonGear = this.add.graphics();
+    crimsonGear.lineStyle(3, 0xef4444, 0.85);
+    const teeth2 = 12;
+    const rIn2 = 148;
+    const rOut2 = 156;
+    crimsonGear.beginPath();
+    for (let i = 0; i < teeth2 * 2; i++) {
+      const angle = (i * Math.PI) / teeth2;
+      const r = i % 2 === 0 ? rIn2 : rOut2;
+      const x = r * Math.cos(angle);
+      const y = r * Math.sin(angle);
+      if (i === 0) crimsonGear.moveTo(x, y);
+      else crimsonGear.lineTo(x, y);
     }
+    crimsonGear.closePath();
+    crimsonGear.strokePath();
+    this.heroFrameBackContainer.add(crimsonGear);
 
-    this.showUpgradeFeedback(true, currentLvl === 0 ? 'Skill Unlocked!' : 'Skill Upgraded!');
+    // 4. Front Layer: Pink ring with tech ticks
+    const frontRing = this.add.graphics();
+    frontRing.lineStyle(4, 0xec4899, 0.95);
+    frontRing.strokeCircle(0, 0, 142);
+    
+    // Tech ticks on front ring
+    frontRing.lineStyle(3, 0xffffff, 0.9);
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * 2 * Math.PI) / 8;
+      const x1 = 142 * Math.cos(angle);
+      const y1 = 142 * Math.sin(angle);
+      const x2 = 148 * Math.cos(angle);
+      const y2 = 148 * Math.sin(angle);
+      frontRing.lineBetween(x2, y2, x1, y1);
+    }
+    this.heroFrameFrontContainer.add(frontRing);
 
-    // Redraw Skills Tree modal
-    this.showSkillsTab();
+    // Tweens for back gears rotation
+    this.tweens.add({
+      targets: goldGear,
+      angle: 360,
+      duration: 14000,
+      repeat: -1
+    });
+
+    this.tweens.add({
+      targets: crimsonGear,
+      angle: -360,
+      duration: 10000,
+      repeat: -1
+    });
+
+    // Tweens for breathing
+    this.tweens.add({
+      targets: [glow1, glow2, frontRing],
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 1300,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // 4 Orbiting Cosmic Flares
+    for (let i = 0; i < 4; i++) {
+      const flare = this.add.circle(0, 0, 7, 0xf59e0b, 1);
+      flare.setStrokeStyle(2.5, 0xffffff, 0.95);
+      this.heroFrameFrontContainer.add(flare);
+      
+      const angleOffset = (i * 2 * Math.PI) / 4;
+      const orbitRadius = 175;
+
+      this.tweens.addCounter({
+        from: 0,
+        to: 360,
+        duration: 7000,
+        repeat: -1,
+        onUpdate: (tween) => {
+          const val = tween.getValue();
+          const rad = Phaser.Math.DegToRad(val) + angleOffset;
+          flare.x = orbitRadius * Math.cos(rad);
+          flare.y = orbitRadius * Math.sin(rad);
+          
+          const scale = 0.8 + 0.4 * Math.sin(rad * 4);
+          flare.setScale(scale);
+        }
+      });
+    }
   }
 }
-
-
-

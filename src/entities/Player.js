@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 
+
+
 export default class Player extends Phaser.GameObjects.Container {
   constructor(scene, x, y, mapBounds, finalStats, activeSkin) {
     super(scene, x, y);
@@ -42,7 +44,8 @@ export default class Player extends Phaser.GameObjects.Container {
     this.setDepth(5);
 
     // 1. Create dynamic particle aura (frost / flame / sparks trail)
-    this.createAura(scene, activeSkin);
+    this.currentWindX = 0;
+    this.currentWindY = 0;
 
     // 2. Create the inner fill circle (solid skin color)
     this.fillCircle = scene.add.circle(0, 0, 21, skinColors.hero, 1);
@@ -61,6 +64,10 @@ export default class Player extends Phaser.GameObjects.Container {
     this.innerBorder = scene.add.circle(0, 0, 21);
     this.innerBorder.setStrokeStyle(3, skinColors.border, 1);
     this.add(this.innerBorder);
+
+    // Dynamic Epic Level Frame
+    this.gameplayFrameTweens = [];
+    this.drawGameplayFrame(scene);
 
     // 5. Create the outer HP bar (draws dynamically)
     this.hpBar = scene.add.graphics();
@@ -89,47 +96,7 @@ export default class Player extends Phaser.GameObjects.Container {
     return key;
   }
 
-  createAura(scene, activeSkin) {
-    const skinColors = activeSkin.colors;
-    const particleKey = Player.createParticleTexture(scene);
 
-    let particleConfig = {
-      speed: { min: 10, max: 25 },
-      scale: { start: 1.4, end: 0.1 },
-      alpha: { start: 0.45, end: 0 },
-      lifespan: { min: 500, max: 900 },
-      blendMode: 'ADD',
-      frequency: 25,
-      tint: skinColors.aura
-    };
-
-    // Customize behavior based on active skin
-    if (activeSkin.id === 'crimson-shadow') {
-      // Crimson Shadow: Flame aura (sparks rising upward)
-      particleConfig.angle = { min: -115, max: -65 };
-      particleConfig.speed = { min: 20, max: 45 };
-      particleConfig.lifespan = { min: 400, max: 700 };
-      particleConfig.scale = { start: 1.5, end: 0.2 };
-    } else if (activeSkin.id === 'azure-knight' || activeSkin.id === 'default-guard') {
-      // Azure Knight & Default Guard: Frost aura (slow drift, expanding uap es)
-      particleConfig.angle = { min: 0, max: 360 };
-      particleConfig.speed = { min: 4, max: 15 };
-      particleConfig.scale = { start: 0.9, end: 1.8 };
-    } else if (activeSkin.id === 'golden-ranger') {
-      // Golden Ranger: Lightning / golden sparks aura (fast, flickering)
-      particleConfig.angle = { min: 0, max: 360 };
-      particleConfig.speed = { min: 15, max: 50 };
-      particleConfig.lifespan = { min: 200, max: 400 };
-      particleConfig.scale = { start: 0.8, end: 0.1 };
-    } else {
-      particleConfig.angle = { min: 0, max: 360 };
-    }
-
-    // Spawn emitter attached to player position, drawing under the player
-    this.auraParticles = scene.add.particles(0, 0, particleKey, particleConfig);
-    this.auraParticles.startFollow(this);
-    this.auraParticles.setDepth(this.depth - 1);
-  }
 
   update(delta) {
     const direction = new Phaser.Math.Vector2(0, 0);
@@ -157,6 +124,25 @@ export default class Player extends Phaser.GameObjects.Container {
       this.y += direction.y * distance;
     }
 
+    // Dynamic wind effect on the aura when moving
+    let targetWindX = 0;
+    let targetWindY = 0;
+    if (direction.lengthSq() > 0) {
+      const windStrength = 180 * (this.auraScaleFactor || 1);
+      targetWindX = -direction.x * windStrength;
+      targetWindY = -direction.y * windStrength;
+    }
+
+    // Smooth lerp wind transitions
+    const lerpFactor = 0.15;
+    this.currentWindX += (targetWindX - this.currentWindX) * lerpFactor;
+    this.currentWindY += (targetWindY - this.currentWindY) * lerpFactor;
+
+    // Apply 2D wind to the shader uniform
+    if (this.auraShader && typeof this.auraShader.setUniform === 'function') {
+      this.auraShader.setUniform('wind.value', { x: this.currentWindX, y: this.currentWindY });
+    }
+
     // Health Regeneration
     if (this.healthRegen > 0 && this.hp < this.maxHp) {
       this.hp = Math.min(this.maxHp, this.hp + this.healthRegen * (delta / 1000));
@@ -171,7 +157,7 @@ export default class Player extends Phaser.GameObjects.Container {
     this.hpBar.clear();
 
     const hpPercent = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1);
-    const hpRadius = 29;
+    const hpRadius = 31;
 
     // Faint dark border background
     this.hpBar.lineStyle(3.5, 0x1e293b, 0.7);
@@ -201,8 +187,12 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   destroy(fromScene) {
-    if (this.auraParticles) {
-      this.auraParticles.destroy();
+    if (this.gameplayFrameTweens) {
+      this.gameplayFrameTweens.forEach(t => t.destroy());
+      this.gameplayFrameTweens = [];
+    }
+    if (this.auraShader) {
+      this.auraShader.destroy();
     }
     if (this.hpBar) {
       this.hpBar.destroy();
@@ -272,5 +262,233 @@ export default class Player extends Phaser.GameObjects.Container {
   takeDamage(amount) {
     this.hp = Math.max(0, this.hp - amount);
     return this.hp;
+  }
+
+  drawGameplayFrame(scene) {
+    if (this.gameplayFrameContainer) {
+      this.gameplayFrameContainer.destroy();
+    }
+    this.gameplayFrameContainer = scene.add.container(0, 0);
+    this.add(this.gameplayFrameContainer);
+
+    const level = scene.heroLevel || 1;
+
+    if (level < 5) {
+      this.drawMiniTier1(scene);
+    } else if (level < 10) {
+      this.drawMiniTier2(scene);
+    } else if (level < 15) {
+      this.drawMiniTier3(scene);
+    } else {
+      this.drawMiniTier4(scene);
+    }
+  }
+
+  drawMiniTier1(scene) {
+    const g = scene.add.graphics();
+    g.lineStyle(2, 0x06b6d4, 0.85);
+    g.strokeCircle(0, 0, 24.5);
+    this.gameplayFrameContainer.add(g);
+
+    const tween = scene.tweens.add({
+      targets: this.gameplayFrameContainer,
+      scaleX: 1.04,
+      scaleY: 1.04,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    this.gameplayFrameTweens.push(tween);
+  }
+
+  drawMiniTier2(scene) {
+    // Inner Ring
+    const inner = scene.add.graphics();
+    inner.lineStyle(1.5, 0x06b6d4, 0.85);
+    inner.strokeCircle(0, 0, 23);
+    this.gameplayFrameContainer.add(inner);
+
+    // Outer gold hexagon
+    const outer = scene.add.graphics();
+    outer.lineStyle(1.5, 0xeab308, 0.8);
+    const sides = 6;
+    const radius = 26;
+    outer.beginPath();
+    for (let i = 0; i <= sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      if (i === 0) outer.moveTo(x, y);
+      else outer.lineTo(x, y);
+    }
+    outer.closePath();
+    outer.strokePath();
+    this.gameplayFrameContainer.add(outer);
+
+    // Animate outer rotation
+    const rTween = scene.tweens.add({
+      targets: outer,
+      angle: 360,
+      duration: 8000,
+      repeat: -1
+    });
+    this.gameplayFrameTweens.push(rTween);
+
+    // Animate inner breathing
+    const bTween = scene.tweens.add({
+      targets: inner,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    this.gameplayFrameTweens.push(bTween);
+  }
+
+  drawMiniTier3(scene) {
+    const inner = scene.add.graphics();
+    inner.lineStyle(1.5, 0xec4899, 0.9);
+    inner.strokeCircle(0, 0, 23);
+    this.gameplayFrameContainer.add(inner);
+
+    const outer = scene.add.graphics();
+    outer.lineStyle(1.5, 0x8b5cf6, 0.8);
+    const sides = 8;
+    const radius = 26;
+    outer.beginPath();
+    for (let i = 0; i <= sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      if (i === 0) outer.moveTo(x, y);
+      else outer.lineTo(x, y);
+    }
+    outer.closePath();
+    outer.strokePath();
+    this.gameplayFrameContainer.add(outer);
+
+    const rTween = scene.tweens.add({
+      targets: outer,
+      angle: -360,
+      duration: 9000,
+      repeat: -1
+    });
+    this.gameplayFrameTweens.push(rTween);
+
+    const bTween = scene.tweens.add({
+      targets: inner,
+      alpha: { from: 0.5, to: 1.0 },
+      duration: 1000,
+      yoyo: true,
+      repeat: -1
+    });
+    this.gameplayFrameTweens.push(bTween);
+
+    // 2 mini orbiting dots
+    for (let i = 0; i < 2; i++) {
+      const dot = scene.add.circle(0, 0, 1.5, 0x34d399, 1);
+      this.gameplayFrameContainer.add(dot);
+      
+      const angleOffset = (i * Math.PI);
+      const orbitRadius = 27.5;
+
+      const cTween = scene.tweens.addCounter({
+        from: 0,
+        to: 360,
+        duration: 5000,
+        repeat: -1,
+        onUpdate: (tween) => {
+          const val = tween.getValue();
+          const rad = Phaser.Math.DegToRad(val) + angleOffset;
+          dot.x = orbitRadius * Math.cos(rad);
+          dot.y = orbitRadius * Math.sin(rad);
+        }
+      });
+      this.gameplayFrameTweens.push(cTween);
+    }
+  }
+
+  drawMiniTier4(scene) {
+    const inner = scene.add.graphics();
+    inner.lineStyle(1.5, 0xef4444, 0.9);
+    inner.strokeCircle(0, 0, 22.5);
+    this.gameplayFrameContainer.add(inner);
+
+    const mid = scene.add.graphics();
+    mid.lineStyle(1.5, 0xfacc15, 0.85);
+    const teeth = 8;
+    const rIn = 24.5;
+    const rOut = 26.5;
+    mid.beginPath();
+    for (let i = 0; i < teeth * 2; i++) {
+      const angle = (i * Math.PI) / teeth;
+      const r = i % 2 === 0 ? rIn : rOut;
+      const x = r * Math.cos(angle);
+      const y = r * Math.sin(angle);
+      if (i === 0) mid.moveTo(x, y);
+      else mid.lineTo(x, y);
+    }
+    mid.closePath();
+    mid.strokePath();
+    this.gameplayFrameContainer.add(mid);
+
+    const outer = scene.add.graphics();
+    outer.lineStyle(1, 0xec4899, 0.85);
+    outer.strokeCircle(0, 0, 28);
+    this.gameplayFrameContainer.add(outer);
+
+    const rTween = scene.tweens.add({
+      targets: mid,
+      angle: 360,
+      duration: 10000,
+      repeat: -1
+    });
+    this.gameplayFrameTweens.push(rTween);
+
+    const oTween = scene.tweens.add({
+      targets: outer,
+      angle: -360,
+      duration: 12000,
+      repeat: -1
+    });
+    this.gameplayFrameTweens.push(oTween);
+
+    // Breathing glow
+    const bTween = scene.tweens.add({
+      targets: [inner, outer],
+      scaleX: 1.025,
+      scaleY: 1.025,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    this.gameplayFrameTweens.push(bTween);
+
+    // 3 orbiting stars/flares (tiny circles)
+    for (let i = 0; i < 3; i++) {
+      const dot = scene.add.circle(0, 0, 1.5, 0xf59e0b, 1);
+      this.gameplayFrameContainer.add(dot);
+      
+      const angleOffset = (i * 2 * Math.PI) / 3;
+      const orbitRadius = 28;
+
+      const cTween = scene.tweens.addCounter({
+        from: 0,
+        to: 360,
+        duration: 6000,
+        repeat: -1,
+        onUpdate: (tween) => {
+          const val = tween.getValue();
+          const rad = Phaser.Math.DegToRad(val) + angleOffset;
+          dot.x = orbitRadius * Math.cos(rad);
+          dot.y = orbitRadius * Math.sin(rad);
+        }
+      });
+      this.gameplayFrameTweens.push(cTween);
+    }
   }
 }

@@ -51,11 +51,12 @@ export default class GameScene extends Phaser.Scene {
     this.baseHeroStats = data.baseHeroStats || getSelectedHeroBaseStats(this) || baseHeroStats;
     this.equippedItems = data.equippedItems || getEquippedItems(this);
     this.activeSkin = data.activeSkin || skins[0];
+    this.heroLevel = data.heroLevel || 1;
     this.finalStats = data.finalStats || calculateFinalStats(
       this.baseHeroStats,
       this.equippedItems,
       this.activeSkin,
-      1
+      this.heroLevel
     );
     this.enemyDamageCooldown = 0;
     this.isStageFinished = false;
@@ -232,11 +233,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   applyLevelScaling(level) {
+    const totalLevel = this.heroLevel + (level - 1);
     const nextStats = calculateFinalStats(
       this.baseHeroStats,
       this.equippedItems,
       this.activeSkin,
-      level
+      totalLevel
     );
     const hpIncrease = nextStats.hp - this.finalStats.hp;
 
