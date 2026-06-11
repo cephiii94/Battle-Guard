@@ -26,6 +26,8 @@ import { ModeSelectionTab } from '../ui/menu/ModeSelectionTab.js';
 import { SettingsTab } from '../ui/menu/SettingsTab.js';
 import { BlacksmithTab } from '../ui/menu/BlacksmithTab.js';
 import { SkillsTab } from '../ui/menu/SkillsTab.js';
+import { ShopTab } from '../ui/menu/ShopTab.js';
+import { HeroTab } from '../ui/menu/HeroTab.js';
 import { UI } from '../ui/menu/MenuConfig.js';
 
 
@@ -90,7 +92,9 @@ export default class MainMenuScene extends Phaser.Scene {
     this.settingsTab = new SettingsTab(this);
     this.blacksmithTab = new BlacksmithTab(this);
     this.skillsTab = new SkillsTab(this);
+    this.shopTab = new ShopTab(this);
     this.modeSelectionTab = new ModeSelectionTab(this);
+    this.heroTab = new HeroTab(this);
 
     this.loadoutSlotAnchors = [];
     this.loadoutSlotLayer = [];
@@ -120,9 +124,15 @@ export default class MainMenuScene extends Phaser.Scene {
       } else if (this.skillsTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearSkillsTab();
+      } else if (this.shopTab.isActive()) {
+        soundManager.playSFX(this, 'click');
+        this.clearShopTab();
       } else if (this.modeSelectionTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.modeSelectionTab.clear();
+      } else if (this.heroTab.isActive()) {
+        soundManager.playSFX(this, 'click');
+        this.clearHeroTab();
       }
     });
 
@@ -135,7 +145,9 @@ export default class MainMenuScene extends Phaser.Scene {
     if (this.settingsTab) this.settingsTab.clear();
     if (this.blacksmithTab) this.blacksmithTab.clear();
     if (this.skillsTab) this.skillsTab.clear();
+    if (this.shopTab) this.shopTab.clear();
     if (this.modeSelectionTab) this.modeSelectionTab.clear();
+    if (this.heroTab) this.heroTab.clear();
   }
 
   drawCyberBackground(width, height) {
@@ -717,12 +729,14 @@ export default class MainMenuScene extends Phaser.Scene {
         soundManager.playSFX(this, 'click');
         if (tab.name === 'BLACKSMITH') {
           this.showBlacksmithTab();
-        } else if (tab.name === 'HERO' || tab.name === 'INVENTORY') {
+        } else if (tab.name === 'HERO') {
+          this.showHeroTab();
+        } else if (tab.name === 'INVENTORY') {
           this.showInventoryTab();
         } else if (tab.name === 'SKILL') {
           this.showSkillsTab();
         } else if (tab.name === 'SHOP') {
-          this.showSettingsTab();
+          this.showShopTab();
         }
       });
     });
@@ -1039,6 +1053,14 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   // Compatibility Wrapper Methods delegating to modular tabs
+  showHeroTab() {
+    this.heroTab.show();
+  }
+
+  clearHeroTab() {
+    this.heroTab.clear();
+  }
+
   showInventoryTab() {
     this.inventoryTab.show();
   }
@@ -1065,6 +1087,14 @@ export default class MainMenuScene extends Phaser.Scene {
 
   clearSettingsTab() {
     this.settingsTab.clear();
+  }
+
+  showShopTab() {
+    this.shopTab.show();
+  }
+
+  clearShopTab() {
+    this.shopTab.clear();
   }
 
   showBlacksmithTab() {
