@@ -229,8 +229,20 @@ export class HeroTab {
       // Mini Avatar Portrait (Visual only, relative to container)
       const activeSkin = skins.find((skin) => skin.id === hero.cosmeticSkinId) || skins[0];
       const visualKey = activeSkin?.assetKey || hero.assetKey;
-      const avatarImg = this.scene.add.image(0, 0, visualKey).setDisplaySize(48, 48);
+      const avatarImg = this.scene.add.image(0, 0, visualKey);
       visualContainer.add(avatarImg);
+
+      const setAvatarSize = () => {
+        if (avatarImg.texture && avatarImg.texture.key !== '__MISSING') {
+          avatarImg.setDisplaySize(48, 48);
+        }
+      };
+
+      if (avatarImg.texture && avatarImg.texture.key !== '__MISSING' && avatarImg.texture.frames['__BASE']) {
+        setAvatarSize();
+      } else {
+        avatarImg.once('textureloaded', setAvatarSize);
+      }
 
       // Tooltip/Name text underneath (not in container to avoid scaling)
       const nameTxt = this.add(
@@ -276,8 +288,20 @@ export class HeroTab {
     // 2. Large Avatar Image
     const visualKey = activeSkin?.assetKey || hero.assetKey;
     const avatar = this.add(
-      this.scene.add.image(cx, cy, visualKey).setDisplaySize(220, 220)
+      this.scene.add.image(cx, cy, visualKey)
     );
+
+    const setShowcaseSize = () => {
+      if (avatar.texture && avatar.texture.key !== '__MISSING') {
+        avatar.setDisplaySize(220, 220);
+      }
+    };
+
+    if (avatar.texture && avatar.texture.key !== '__MISSING' && avatar.texture.frames['__BASE']) {
+      setShowcaseSize();
+    } else {
+      avatar.once('textureloaded', setShowcaseSize);
+    }
 
     // Pulse effect on hero avatar
     this.scene.tweens.add({
@@ -302,142 +326,287 @@ export class HeroTab {
     this.heroFrameFrontContainer = this.scene.add.container(cx, cy);
     this.heroFrameFrontContainer.setDepth(2000);
 
+    // Apply scaling factor relative to MainMenuScene container sizes: 220 / 280
+    const scaleFactor = 220 / 280;
+    this.heroFrameBackContainer.setScale(scaleFactor);
+    this.heroFrameFrontContainer.setScale(scaleFactor);
+
     if (level < 5) {
-      // Tier 1 Frame: Simple glowing cyan rings
-      const backGlow = this.scene.add.graphics();
-      backGlow.lineStyle(10, 0x06b6d4, 0.12);
-      backGlow.strokeCircle(0, 0, 128);
-      this.heroFrameBackContainer.add(backGlow);
-
-      const frontRing = this.scene.add.graphics();
-      frontRing.lineStyle(3, 0x06b6d4, 0.85);
-      frontRing.strokeCircle(0, 0, 124);
-      frontRing.lineStyle(1.5, 0x0891b2, 0.4);
-      frontRing.strokeCircle(0, 0, 132);
-      this.heroFrameFrontContainer.add(frontRing);
-
-      this.scene.tweens.add({
-        targets: [this.heroFrameBackContainer, this.heroFrameFrontContainer],
-        scaleX: 1.02,
-        scaleY: 1.02,
-        duration: 1800,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
+      this.drawTier1Frame();
     } else if (level < 10) {
-      // Tier 2 Frame: Rotating Golden Hexagon
-      const backHex = this.scene.add.graphics();
-      backHex.lineStyle(3, 0xeab308, 0.85);
-      const sides = 6;
-      const radius = 136;
-      backHex.beginPath();
-      for (let i = 0; i <= sides; i++) {
-        const angle = (i * 2 * Math.PI) / sides;
-        const x = radius * Math.cos(angle);
-        const y = radius * Math.sin(angle);
-        if (i === 0) backHex.moveTo(x, y);
-        else backHex.lineTo(x, y);
-      }
-      backHex.closePath();
-      backHex.strokePath();
-
-      backHex.fillStyle(0xfef08a, 1);
-      for (let i = 0; i < sides; i++) {
-        const angle = (i * 2 * Math.PI) / sides;
-        backHex.fillCircle(radius * Math.cos(angle), radius * Math.sin(angle), 5);
-      }
-      this.heroFrameBackContainer.add(backHex);
-
-      const frontRing = this.scene.add.graphics();
-      frontRing.lineStyle(3.5, 0x06b6d4, 0.9);
-      frontRing.strokeCircle(0, 0, 124);
-      this.heroFrameFrontContainer.add(frontRing);
-
-      this.scene.tweens.add({
-        targets: backHex,
-        angle: 360,
-        duration: 10000,
-        repeat: -1
-      });
-
-      this.scene.tweens.add({
-        targets: frontRing,
-        scaleX: 1.015,
-        scaleY: 1.015,
-        duration: 1400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
+      this.drawTier2Frame();
+    } else if (level < 15) {
+      this.drawTier3Frame();
     } else {
-      // Tier 3/4 Frame: Rotating Tech Crimson/Gold Gears with Orbiting Particles
-      const glow1 = this.scene.add.graphics();
-      glow1.lineStyle(14, 0xec4899, 0.15);
-      glow1.strokeCircle(0, 0, 142);
-      this.heroFrameBackContainer.add(glow1);
+      this.drawTier4Frame();
+    }
+  }
 
-      const goldGear = this.scene.add.graphics();
-      goldGear.lineStyle(3, 0xfacc15, 0.9);
-      const teeth = 12;
-      const rIn = 138;
-      const rOut = 146;
-      goldGear.beginPath();
-      for (let i = 0; i < teeth * 2; i++) {
-        const angle = (i * Math.PI) / teeth;
-        const r = i % 2 === 0 ? rIn : rOut;
-        const x = r * Math.cos(angle);
-        const y = r * Math.sin(angle);
-        if (i === 0) goldGear.moveTo(x, y);
-        else goldGear.lineTo(x, y);
-      }
-      goldGear.closePath();
-      goldGear.strokePath();
-      this.heroFrameBackContainer.add(goldGear);
+  drawTier1Frame() {
+    const baseScale = 220 / 280;
+    // Back glow
+    const backGlow = this.scene.add.graphics();
+    backGlow.lineStyle(10, 0x06b6d4, 0.15);
+    backGlow.strokeCircle(0, 0, 145);
+    this.heroFrameBackContainer.add(backGlow);
 
-      const frontRing = this.scene.add.graphics();
-      frontRing.lineStyle(4, 0xec4899, 0.95);
-      frontRing.strokeCircle(0, 0, 124);
+    // Front ring
+    const frontRing = this.scene.add.graphics();
+    frontRing.lineStyle(3, 0x06b6d4, 0.85);
+    frontRing.strokeCircle(0, 0, 142);
+    
+    frontRing.lineStyle(1.5, 0x0891b2, 0.4);
+    frontRing.strokeCircle(0, 0, 150);
+    this.heroFrameFrontContainer.add(frontRing);
+
+    // Animate breathing
+    this.scene.tweens.add({
+      targets: [this.heroFrameBackContainer, this.heroFrameFrontContainer],
+      scaleX: baseScale * 1.02,
+      scaleY: baseScale * 1.02,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  drawTier2Frame() {
+    // Back Layer: Gold Hexagon
+    const backHex = this.scene.add.graphics();
+    backHex.lineStyle(3, 0xeab308, 0.8);
+    const sides = 6;
+    const radius = 158;
+    backHex.beginPath();
+    for (let i = 0; i <= sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      if (i === 0) backHex.moveTo(x, y);
+      else backHex.lineTo(x, y);
+    }
+    backHex.closePath();
+    backHex.strokePath();
+
+    // Vertices dots
+    backHex.fillStyle(0xfef08a, 1);
+    for (let i = 0; i < sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      backHex.fillCircle(radius * Math.cos(angle), radius * Math.sin(angle), 5);
+    }
+    this.heroFrameBackContainer.add(backHex);
+
+    // Front Layer: Inner Ring
+    const frontRing = this.scene.add.graphics();
+    frontRing.lineStyle(3.5, 0x06b6d4, 0.9);
+    frontRing.strokeCircle(0, 0, 142);
+    this.heroFrameFrontContainer.add(frontRing);
+
+    // Animate rotation on back hexagon
+    this.scene.tweens.add({
+      targets: backHex,
+      angle: 360,
+      duration: 10000,
+      repeat: -1
+    });
+
+    // Animate breathing on front ring
+    this.scene.tweens.add({
+      targets: frontRing,
+      scaleX: 1.015,
+      scaleY: 1.015,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  drawTier3Frame() {
+    // Back Layer: Octagon and Glow
+    const backGlow = this.scene.add.graphics();
+    backGlow.lineStyle(12, 0xa78bfa, 0.2);
+    backGlow.strokeCircle(0, 0, 168);
+    this.heroFrameBackContainer.add(backGlow);
+
+    const backOct = this.scene.add.graphics();
+    backOct.lineStyle(3.5, 0x8b5cf6, 0.85);
+    const sides = 8;
+    const radius = 160;
+    backOct.beginPath();
+    for (let i = 0; i <= sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      if (i === 0) backOct.moveTo(x, y);
+      else backOct.lineTo(x, y);
+    }
+    backOct.closePath();
+    backOct.strokePath();
+    this.heroFrameBackContainer.add(backOct);
+
+    // Front Layer: Magenta Ring
+    const frontRing = this.scene.add.graphics();
+    frontRing.lineStyle(4, 0xec4899, 0.95);
+    frontRing.strokeCircle(0, 0, 142);
+    this.heroFrameFrontContainer.add(frontRing);
+
+    // Animate Octagon rotation
+    this.scene.tweens.add({
+      targets: backOct,
+      angle: -360,
+      duration: 12000,
+      repeat: -1
+    });
+
+    // Animate breathing/glow
+    this.scene.tweens.add({
+      targets: [backGlow, frontRing],
+      alpha: { from: 0.6, to: 1.0 },
+      duration: 1100,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Quad.easeInOut'
+    });
+
+    // 3 Orbiting Green Particles
+    for (let i = 0; i < 3; i++) {
+      const dot = this.scene.add.circle(0, 0, 6, 0x34d399, 1);
+      dot.setStrokeStyle(2, 0xffffff, 0.95);
+      this.heroFrameFrontContainer.add(dot);
       
-      frontRing.lineStyle(3, 0xffffff, 0.9);
-      for (let i = 0; i < 8; i++) {
-        const angle = (i * 2 * Math.PI) / 8;
-        frontRing.lineBetween(124 * Math.cos(angle), 124 * Math.sin(angle), 130 * Math.cos(angle), 130 * Math.sin(angle));
-      }
-      this.heroFrameFrontContainer.add(frontRing);
-
-      this.scene.tweens.add({
-        targets: goldGear,
-        angle: 360,
-        duration: 12000,
-        repeat: -1
-      });
-
-      this.scene.tweens.add({
-        targets: [glow1, frontRing],
-        scaleX: 1.02,
-        scaleY: 1.02,
-        duration: 1300,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-
-      // Orbiting Spark particle
-      const flare = this.scene.add.circle(0, 0, 6, 0xf59e0b, 1);
-      flare.setStrokeStyle(2, 0xffffff, 0.95);
-      this.heroFrameFrontContainer.add(flare);
+      const angleOffset = (i * 2 * Math.PI) / 3;
+      const orbitRadius = 166;
 
       this.scene.tweens.addCounter({
         from: 0,
         to: 360,
-        duration: 6000,
+        duration: 6000 + i * 1000,
         repeat: -1,
         onUpdate: (tween) => {
           const val = tween.getValue();
-          const rad = Phaser.Math.DegToRad(val);
-          flare.x = 146 * Math.cos(rad);
-          flare.y = 146 * Math.sin(rad);
+          const rad = Phaser.Math.DegToRad(val) + angleOffset;
+          dot.x = orbitRadius * Math.cos(rad);
+          dot.y = orbitRadius * Math.sin(rad);
+        }
+      });
+    }
+  }
+
+  drawTier4Frame() {
+    // 1. Back Layer: Backing aura glows
+    const glow1 = this.scene.add.graphics();
+    glow1.lineStyle(16, 0xec4899, 0.15);
+    glow1.strokeCircle(0, 0, 168);
+    
+    const glow2 = this.scene.add.graphics();
+    glow2.lineStyle(24, 0xf59e0b, 0.08);
+    glow2.strokeCircle(0, 0, 180);
+    this.heroFrameBackContainer.add([glow2, glow1]);
+
+    // 2. Outer gold gear
+    const goldGear = this.scene.add.graphics();
+    goldGear.lineStyle(3, 0xfacc15, 0.9);
+    const teeth1 = 16;
+    const rIn1 = 165;
+    const rOut1 = 175;
+    goldGear.beginPath();
+    for (let i = 0; i < teeth1 * 2; i++) {
+      const angle = (i * Math.PI) / teeth1;
+      const r = i % 2 === 0 ? rIn1 : rOut1;
+      const x = r * Math.cos(angle);
+      const y = r * Math.sin(angle);
+      if (i === 0) goldGear.moveTo(x, y);
+      else goldGear.lineTo(x, y);
+    }
+    goldGear.closePath();
+    goldGear.strokePath();
+    this.heroFrameBackContainer.add(goldGear);
+
+    // 3. Inner crimson gear
+    const crimsonGear = this.scene.add.graphics();
+    crimsonGear.lineStyle(3, 0xef4444, 0.85);
+    const teeth2 = 12;
+    const rIn2 = 148;
+    const rOut2 = 156;
+    crimsonGear.beginPath();
+    for (let i = 0; i < teeth2 * 2; i++) {
+      const angle = (i * Math.PI) / teeth2;
+      const r = i % 2 === 0 ? rIn2 : rOut2;
+      const x = r * Math.cos(angle);
+      const y = r * Math.sin(angle);
+      if (i === 0) crimsonGear.moveTo(x, y);
+      else crimsonGear.lineTo(x, y);
+    }
+    crimsonGear.closePath();
+    crimsonGear.strokePath();
+    this.heroFrameBackContainer.add(crimsonGear);
+
+    // 4. Front Layer: Pink ring with tech ticks
+    const frontRing = this.scene.add.graphics();
+    frontRing.lineStyle(4, 0xec4899, 0.95);
+    frontRing.strokeCircle(0, 0, 142);
+    
+    // Tech ticks on front ring
+    frontRing.lineStyle(3, 0xffffff, 0.9);
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * 2 * Math.PI) / 8;
+      const x1 = 142 * Math.cos(angle);
+      const y1 = 142 * Math.sin(angle);
+      const x2 = 148 * Math.cos(angle);
+      const y2 = 148 * Math.sin(angle);
+      frontRing.lineBetween(x2, y2, x1, y1);
+    }
+    this.heroFrameFrontContainer.add(frontRing);
+
+    // Tweens for back gears rotation
+    this.scene.tweens.add({
+      targets: goldGear,
+      angle: 360,
+      duration: 14000,
+      repeat: -1
+    });
+
+    this.scene.tweens.add({
+      targets: crimsonGear,
+      angle: -360,
+      duration: 10000,
+      repeat: -1
+    });
+
+    // Tweens for breathing
+    this.scene.tweens.add({
+      targets: [glow1, glow2, frontRing],
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 1300,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // 4 Orbiting Cosmic Flares
+    for (let i = 0; i < 4; i++) {
+      const flare = this.scene.add.circle(0, 0, 7, 0xf59e0b, 1);
+      flare.setStrokeStyle(2.5, 0xffffff, 0.95);
+      this.heroFrameFrontContainer.add(flare);
+      
+      const angleOffset = (i * 2 * Math.PI) / 4;
+      const orbitRadius = 175;
+
+      this.scene.tweens.addCounter({
+        from: 0,
+        to: 360,
+        duration: 7000,
+        repeat: -1,
+        onUpdate: (tween) => {
+          const val = tween.getValue();
+          const rad = Phaser.Math.DegToRad(val) + angleOffset;
+          flare.x = orbitRadius * Math.cos(rad);
+          flare.y = orbitRadius * Math.sin(rad);
+          
+          const scale = 0.8 + 0.4 * Math.sin(rad * 4);
+          flare.setScale(scale);
         }
       });
     }
