@@ -27,12 +27,17 @@ export default class CombatSystem {
       return;
     }
 
-    this.fireAt(target);
+    if (this.player.attackType === 'melee') {
+      this.meleeAttack(target);
+    } else {
+      this.fireAt(target);
+    }
     this.cooldownRemaining = this.getAttackCooldown();
   }
 
   findNearestMonster() {
     let nearestMonster = null;
+    this.attackRadius = this.player.attackRange;
     let nearestDistance = this.attackRadius * this.attackRadius;
 
     this.spawnSystem.getMonsters().forEach((monster) => {
@@ -75,6 +80,54 @@ export default class CombatSystem {
     });
   }
 
+  meleeAttack(target) {
+    soundManager.playSFX(this.scene, 'attack');
+
+    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+    const slash = this.scene.add.graphics();
+    slash.setDepth(this.player.depth + 1);
+
+    const slashColor = this.player.activeSkin?.colors?.border || 0x00d6ff;
+    const range = this.player.attackRange || 80;
+    const slashRadius = Math.min(range * 0.75, 120);
+
+    let progress = 0;
+    this.scene.tweens.add({
+      targets: { progress: 0 },
+      progress: 1,
+      duration: 160,
+      ease: 'Quad.easeOut',
+      onUpdate: (tween) => {
+        if (!this.player || !this.player.active) {
+          slash.destroy();
+          return;
+        }
+        slash.clear();
+        const t = tween.getValue();
+        
+        // Draw the outer slash glow
+        slash.lineStyle(10, slashColor, 0.45 * (1 - t));
+        slash.beginPath();
+        const startAngle = angle - 0.7;
+        const endAngle = startAngle + (1.4 * t);
+        slash.arc(this.player.x, this.player.y, slashRadius, startAngle, endAngle, false);
+        slash.strokePath();
+
+        // Draw the sharp inner slash core
+        slash.lineStyle(3, 0xffffff, 1 - t);
+        slash.beginPath();
+        slash.arc(this.player.x, this.player.y, slashRadius, startAngle, endAngle, false);
+        slash.strokePath();
+      },
+      onComplete: () => {
+        slash.destroy();
+      }
+    });
+
+    // Apply damage to the target immediately
+    this.applyDamage(target, this.getProjectileDamage());
+  }
+
   getAttackCooldown() {
     return this.attackCooldown / this.player.attackSpeedMultiplier;
   }
@@ -98,6 +151,20 @@ export default class CombatSystem {
     this.showDamageText(monster, damage);
     soundManager.playSFX(this.scene, 'hit');
 
+    // Knockback (Heavy Impact) Passive mechanic
+    const playerData = this.scene.registry.get('playerData');
+    const globalSkillLevels = playerData?.skillLevels || {};
+    const activeSkillSystem = this.scene.activeSkillSystem;
+    const ownedKnock = activeSkillSystem?.ownedSkills.find(s => s.id === 'knock');
+    const knockLvl = (ownedKnock ? ownedKnock.level : 0) + (globalSkillLevels['knock'] || 0);
+
+    if (knockLvl > 0) {
+      const knockChance = knockLvl * 0.10; // 10% per level
+      if (Math.random() < knockChance) {
+        this.applyKnockback(monster, 24 + knockLvl * 6);
+      }
+    }
+
     // Lifesteal Mechanic
     if (this.player.lifesteal > 0 && this.player.hp < this.player.maxHp) {
       const healAmount = Math.max(1, Math.round(damage * this.player.lifesteal));
@@ -108,6 +175,21 @@ export default class CombatSystem {
     if (monster.hp <= 0) {
       this.killMonster(monster);
     }
+  }
+
+  applyKnockback(monster, distance) {
+    if (!monster.body) return;
+    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, monster.x, monster.y);
+    const targetX = monster.x + Math.cos(angle) * distance;
+    const targetY = monster.y + Math.sin(angle) * distance;
+
+    this.scene.tweens.add({
+      targets: monster,
+      x: targetX,
+      y: targetY,
+      duration: 120,
+      ease: 'Quad.easeOut'
+    });
   }
 
   showHealText(amount) {

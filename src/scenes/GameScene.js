@@ -15,10 +15,10 @@ import LootSystem from '../systems/LootSystem.js';
 import SpawnSystem from '../systems/SpawnSystem.js';
 import StageSystem from '../systems/StageSystem.js';
 import StatsPanel from '../ui/StatsPanel.js';
-import StageHud from '../ui/StageHud.js';
 import StageResultOverlay from '../ui/StageResultOverlay.js';
 import SkillHud from '../ui/SkillHud.js';
 import { soundManager } from '../services/soundManager.js';
+import PauseOverlay from '../ui/PauseOverlay.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -60,6 +60,10 @@ export default class GameScene extends Phaser.Scene {
     );
     this.enemyDamageCooldown = 0;
     this.isStageFinished = false;
+    this.isGameplayPaused = false;
+    if (this.physics && this.physics.world) {
+      this.physics.resume();
+    }
   }
 
   preload() {
@@ -133,10 +137,13 @@ export default class GameScene extends Phaser.Scene {
     );
 
     this.gameStats = new GameStats();
-    this.statsPanel = new StatsPanel(this, this.gameStats, this.activeSkin);
     this.stageSystem = new StageSystem(this, this.stage, this.gameStats);
-    this.stageHud = new StageHud(this, this.stageSystem, this.gameStats);
+    this.statsPanel = new StatsPanel(this, this.gameStats, this.stageSystem, this.activeSkin);
     this.resultOverlay = new StageResultOverlay(this);
+    this.pauseOverlay = new PauseOverlay(this);
+
+    this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.escKey.on('down', () => this.handleEscPress());
     this.gameStats.on('levelUp', (level) => {
       this.applyLevelScaling(level);
       soundManager.playSFX(this, 'upgrade');
@@ -284,14 +291,41 @@ export default class GameScene extends Phaser.Scene {
     // 2. Reduce damage using Armor
     const finalDamage = Math.max(1, Math.round(attacker.damage - this.player.armor));
 
-    this.player.takeDamage(finalDamage);
-    this.showPlayerHit(finalDamage);
+    const hpDamage = this.player.takeDamage(finalDamage);
+    if (hpDamage <= 0) {
+      this.showPlayerShieldBlock(finalDamage);
+    } else {
+      this.showPlayerHit(hpDamage);
+      if (finalDamage > hpDamage) {
+        this.showPlayerShieldBlock(finalDamage - hpDamage);
+      }
+    }
     soundManager.playSFX(this, 'hit');
     this.enemyDamageCooldown = 700;
 
     if (this.player.hp <= 0) {
       this.stageSystem.completeDefeat();
     }
+  }
+
+  showPlayerShieldBlock(amount) {
+    const shieldText = this.add.text(this.player.x, this.player.y - 74, `-${amount} SHIELD`, {
+      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
+      fontSize: '18px',
+      color: '#38bdf8',
+      fontStyle: 'bold',
+      stroke: '#020617',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: shieldText,
+      y: shieldText.y - 28,
+      alpha: 0,
+      duration: 500,
+      ease: 'Cubic.easeOut',
+      onComplete: () => shieldText.destroy()
+    });
   }
 
   showPlayerMiss() {
@@ -348,5 +382,51 @@ export default class GameScene extends Phaser.Scene {
     soundManager.stopBGM();
     soundManager.playSFX(this, 'defeat');
     this.resultOverlay.showDefeat(result);
+  }
+
+  handleEscPress() {
+    if (this.isStageFinished) {
+      return;
+    }
+
+    if (this.pauseOverlay.isShown) {
+      this.resumeGame();
+    } else {
+      this.pauseGame();
+    }
+  }
+
+  pauseGame() {
+    this.setGameplayPaused(true);
+    this.pauseOverlay.show(
+      () => this.resumeGame(),
+      () => this.restartGame(),
+      () => this.exitToMainMenu()
+    );
+  }
+
+  resumeGame() {
+    this.pauseOverlay.hide();
+    this.setGameplayPaused(false);
+  }
+
+  restartGame() {
+    this.pauseOverlay.hide();
+    this.scene.start('GameScene', {
+      stageId: Number(this.stage.stageId),
+      gameMode: this.gameMode,
+      selectedHero: this.selectedHero,
+      baseHeroStats: this.baseHeroStats,
+      equippedItems: this.equippedItems,
+      activeSkin: this.activeSkin,
+      finalStats: this.finalStats,
+      heroLevel: this.heroLevel
+    });
+  }
+
+  exitToMainMenu() {
+    this.pauseOverlay.hide();
+    soundManager.stopBGM();
+    this.scene.start('MainMenuScene');
   }
 }

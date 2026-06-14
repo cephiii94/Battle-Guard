@@ -1,4 +1,4 @@
-import { saveStageProgress, updateGold, updateMaterials, updateTickets, updateDailyAttempts, savePlayerLevelAndExp } from '../services/saveService.js';
+import { saveStageProgress, updateGold, updateMaterials, updateTickets, updateDailyAttempts, savePlayerLevelAndExp, savePlayerProgress } from '../services/saveService.js';
 
 const DEFAULT_PROGRESS = {
   gold: 230560,
@@ -52,7 +52,7 @@ export function addPlayerExp(scene, amount) {
   let leveledUp = false;
 
   while (true) {
-    const requiredExp = level * 500;
+    const requiredExp = level * 200;
     if (exp >= requiredExp) {
       exp -= requiredExp;
       level += 1;
@@ -200,3 +200,34 @@ export function unlockStage(scene, stageId, completedStageId = null, clearTime =
   saveStageProgress({ highestStage: nextProgress.highestStageUnlocked, completedStageId, stageTimes });
   return nextProgress.highestStageUnlocked;
 }
+
+export function getSkillLevelsForPlayerLevel(roadLevel) {
+  const skillsList = [
+    'fireball',
+    'multi-shot',
+    'lightning-strike',
+    'spin-attack',
+    'magnet',
+    'movespeed',
+    'aspd',
+    'hp-regen',
+    'shield',
+    'attack-range',
+    'knock'
+  ];
+
+  const levels = {};
+  skillsList.forEach((skillId, index) => {
+    let count = 0;
+    for (let tier = 0; tier < 5; tier++) {
+      const nodeLvl = index + 1 + (tier * 11);
+      if (nodeLvl <= roadLevel) {
+        count++;
+      }
+    }
+    levels[skillId] = count;
+  });
+
+  return levels;
+}
+

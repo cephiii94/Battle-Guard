@@ -1,6 +1,6 @@
 import skills, { getSkillLevelStats } from '../../data/skills.js';
-import { getPlayerProgress, addPlayerGold } from '../../systems/PlayerProgress.js';
-import { saveSkillLevel } from '../../services/saveService.js';
+import { getPlayerProgress, addPlayerGold, getSkillLevelsForPlayerLevel } from '../../systems/PlayerProgress.js';
+import { savePlayerProgress } from '../../services/saveService.js';
 import { soundManager } from '../../services/soundManager.js';
 import UI from './MenuConfig.js';
 
@@ -8,7 +8,6 @@ export class SkillsTab {
   constructor(scene) {
     this.scene = scene;
     this.layer = [];
-    this.selectedSkill = null;
   }
 
   add(item) {
@@ -21,7 +20,6 @@ export class SkillsTab {
   clear() {
     this.layer.forEach((item) => item.destroy());
     this.layer = [];
-    this.selectedSkill = null;
   }
 
   isActive() {
@@ -32,10 +30,6 @@ export class SkillsTab {
     this.scene.clearAllTabs();
     this.scene.refreshHeroLoadout();
     this.scene.playerProgress = getPlayerProgress(this.scene);
-
-    if (!this.selectedSkill) {
-      this.selectedSkill = skills[0];
-    }
 
     const { width, height } = this.scene.scale;
 
@@ -66,7 +60,7 @@ export class SkillsTab {
 
     // Header Title
     this.add(
-      this.scene.add.text(185, 38, '⚡ PLAYER SKILLS TREE', {
+      this.scene.add.text(185, 38, '⚡ PLAYER SKILLS ROAD', {
         fontFamily: 'Outfit, Arial, sans-serif',
         fontSize: '28px',
         color: UI.white,
@@ -77,7 +71,7 @@ export class SkillsTab {
     );
 
     this.add(
-      this.scene.add.text(185, 68, 'Buka dan upgrade skill aktif menggunakan gold berdasarkan level player.', {
+      this.scene.add.text(185, 68, 'Upgrade level global menggunakan gold untuk membuka dan meningkatkan skill pasif/aktif.', {
         fontFamily: 'Outfit, Arial, sans-serif',
         fontSize: '13px',
         color: '#9af2ff',
@@ -116,169 +110,195 @@ export class SkillsTab {
       this.clear();
     });
 
-    // Positions for skill nodes
-    const positions = {
-      'fireball': { x: 320, y: 240 },
-      'lightning-strike': { x: 320, y: 460 },
-      'multi-shot': { x: 600, y: 240 },
-      'spin-attack': { x: 600, y: 460 }
-    };
+    // Draw Vertical Progression Path
+    const pathX = 420;
+    const unlockedSkillLvl = this.scene.playerProgress.unlockedSkillLevel || 1;
 
-    // Draw skill nodes
-    skills.forEach((skill) => {
-      const pos = positions[skill.id];
-      if (pos) {
-        this.drawSkillNode(pos.x, pos.y, skill);
-      }
-    });
+    let startL = Math.max(1, unlockedSkillLvl - 1);
+    if (startL + 4 > 55) {
+      startL = 51;
+    }
 
-    // Draw Skill Details Panel on the right
-    this.drawSkillDetailsPanel();
+    // Path Line
+    const pathGraphic = this.scene.add.graphics();
+    pathGraphic.lineStyle(10, 0x1e293b, 1);
+    pathGraphic.lineBetween(pathX, 120, pathX, 550);
+    
+    // Highlight active unlocked path
+    const activeSegments = Math.min(4, unlockedSkillLvl - startL);
+    if (activeSegments > 0) {
+      pathGraphic.lineStyle(10, 0xfacc15, 0.95);
+      pathGraphic.lineBetween(pathX, 520, 520 - (activeSegments * 90));
+    }
+    this.add(pathGraphic);
+
+    // Render nodes
+    for (let i = 0; i < 5; i++) {
+      const levelNum = startL + i;
+      const y = 520 - (i * 90);
+      this.drawVerticalNode(pathX, y, levelNum);
+    }
+
+    // Draw Right Side Cumulative Panel
+    this.drawCumulativePanel();
+
+    // Draw Bottom Control Upgrade Panel
+    this.drawUpgradePanel();
   }
 
-  drawSkillNode(x, y, skill) {
-    const isSelected = this.selectedSkill?.id === skill.id;
-    const skillLevels = this.scene.registry.get('playerData')?.skillLevels || {};
-    const currentLvl = skillLevels[skill.id] || 0;
+  drawVerticalNode(x, y, levelNum) {
+    const playerLvl = this.scene.playerProgress.playerLevel || 1;
+    const unlockedSkillLvl = this.scene.playerProgress.unlockedSkillLevel || 1;
+    
+    const isUnlocked = levelNum <= unlockedSkillLvl;
+    const isNextTarget = levelNum === unlockedSkillLvl + 1;
+    const canUnlockWithGold = isNextTarget && levelNum <= playerLvl;
+    const isLockedByLevel = levelNum > playerLvl;
 
-    // Prerequisite checks
-    const isLevelMet = (this.scene.playerProgress.playerLevel || 1) >= skill.requiredPlayerLevel;
-    const isUnlocked = isLevelMet;
+    const skillIndex = (levelNum - 1) % 11;
+    const skill = skills[skillIndex];
+    const targetLvl = Math.floor((levelNum - 1) / 11) + 1;
 
-    // Node card background
-    let bgCol = 0x07111f;
-    let strokeCol = 0x4aa6f7;
-    let strokeAlpha = 0.6;
-
-    if (isSelected) {
-      bgCol = 0x0c86bd;
-      strokeCol = 0xffdc5a;
-      strokeAlpha = 1.0;
-    } else if (!isUnlocked) {
-      bgCol = 0x1e293b;
-      strokeCol = 0x475569;
-      strokeAlpha = 0.5;
+    // Node Frame/Circle
+    let circleColor = 0x1e293b;
+    let strokeColor = 0x475569;
+    
+    if (isUnlocked) {
+      circleColor = 0x0c86bd;
+      strokeColor = 0xffdc5a;
+    } else if (canUnlockWithGold) {
+      circleColor = 0x1e3a5f;
+      strokeColor = 0x38bdf8;
     }
 
-    const card = this.add(
-      this.scene.add.rectangle(x, y, 220, 110, bgCol, 0.95)
-        .setStrokeStyle(3, strokeCol, strokeAlpha)
-        .setInteractive({ useHandCursor: true })
+    const circle = this.add(
+      this.scene.add.circle(x, y, 28, circleColor, 0.95)
+        .setStrokeStyle(3, strokeColor, 1)
     );
 
-    // Icon circle
-    this.add(this.scene.add.circle(x - 56, y, 30, 0x0c1e3d, 1))
-      .setStrokeStyle(2.5, isUnlocked ? 0x00d6ff : 0x64748b, 1);
-
-    this.add(
-      this.scene.add.image(x - 56, y, skill.assetKey)
-        .setDisplaySize(50, 50)
-        .setAlpha(isUnlocked ? 1.0 : 0.35)
+    // Skill Icon
+    const isIconVisible = isUnlocked || canUnlockWithGold;
+    const icon = this.add(
+      this.scene.add.image(x, y, skill.assetKey)
+        .setDisplaySize(42, 42)
+        .setAlpha(isIconVisible ? 1.0 : 0.25)
     );
 
-    // Skill Name text
-    this.add(
-      this.scene.add.text(x - 12, y - 34, skill.name, {
+    // Left side Level Indicator (large text)
+    const levelLabelText = this.add(
+      this.scene.add.text(x - 90, y, `${levelNum} Lv`, {
         fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '15px',
-        color: isUnlocked ? UI.white : '#94a3b8',
+        fontSize: '20px',
+        color: isUnlocked ? UI.yellow : (canUnlockWithGold ? UI.cyan : '#64748b'),
         fontStyle: '900',
+        align: 'right'
+      }).setOrigin(1, 0.5)
+    );
+
+    // Right side Buff details
+    const buffTitle = skill.name;
+    let buffDetail = '';
+    
+    if (skill.type === 'passive') {
+      switch (skill.id) {
+        case 'magnet':
+          buffDetail = `+${targetLvl * 20}px Loot Magnet`;
+          break;
+        case 'movespeed':
+          buffDetail = `+${targetLvl * 4}% Hero Speed`;
+          break;
+        case 'aspd':
+          buffDetail = `+${targetLvl * 5}% Attack Speed`;
+          break;
+        case 'hp-regen':
+          buffDetail = `+${(targetLvl * 0.5).toFixed(1)} HP/s Regen`;
+          break;
+        case 'shield':
+          buffDetail = `+${targetLvl * 10} Shield Capacity`;
+          break;
+        case 'attack-range':
+          buffDetail = `+${targetLvl * 5}% Attack Range`;
+          break;
+        case 'knock':
+          buffDetail = `+${targetLvl * 10}% Knockback`;
+          break;
+      }
+    } else {
+      buffDetail = `+${targetLvl * 8}% Dmg / -${targetLvl * 5}% CD`;
+    }
+
+    const titleText = this.add(
+      this.scene.add.text(x + 52, y - 10, buffTitle, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '14px',
+        color: isUnlocked ? UI.white : (canUnlockWithGold ? UI.cyan : '#94a3b8'),
+        fontStyle: '900'
       }).setOrigin(0, 0.5)
     );
 
-    // Level status or locked label
-    let statusText = `Lv. ${currentLvl}/${skill.maxLevel}`;
-    let statusColor = UI.cyan;
-    if (!isUnlocked) {
-      statusText = 'LOCKED';
-      statusColor = '#f87171';
-    } else if (currentLvl === 0) {
-      statusText = 'UNLOCKED (Lv. 0)';
-      statusColor = UI.yellow;
-    } else if (currentLvl === skill.maxLevel) {
-      statusText = 'MAX LEVEL';
-      statusColor = '#4ade80';
-    }
-
-    this.add(
-      this.scene.add.text(x - 12, y - 10, statusText, {
+    const descText = this.add(
+      this.scene.add.text(x + 52, y + 10, buffDetail, {
         fontFamily: 'Outfit, Arial, sans-serif',
         fontSize: '12px',
-        color: statusColor,
-        fontStyle: '800',
-      }).setOrigin(0, 0.5)
-    );
-
-    // Requirements label (small font)
-    this.add(
-      this.scene.add.text(x - 12, y + 14, `Req: Player Lv. ${skill.requiredPlayerLevel}`, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '10px',
-        color: isLevelMet ? '#4ade80' : '#f87171',
+        color: isUnlocked ? UI.cyan : (canUnlockWithGold ? UI.blueText : '#64748b'),
         fontStyle: '800'
       }).setOrigin(0, 0.5)
     );
 
-    // Add lock icon if not unlocked
-    if (!isUnlocked) {
+    // Unlocked checkmark
+    if (isUnlocked) {
       this.add(
-        this.scene.add.image(x - 56, y, 'ui-lock-icon')
-          .setDisplaySize(24, 24)
-          .setAlpha(0.85)
+        this.scene.add.circle(x + 22, y - 22, 11, 0x22c55e, 1)
+          .setStrokeStyle(1.5, 0xffffff, 1)
+      );
+      this.add(
+        this.scene.add.text(x + 22, y - 22, '✓', {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '11px',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5)
+      );
+    } else if (canUnlockWithGold) {
+      // Show cost/arrow to unlock
+      this.add(
+        this.scene.add.circle(x + 22, y - 22, 11, 0xfacc15, 1)
+          .setStrokeStyle(1.5, 0xffffff, 1)
+      );
+      this.add(
+        this.scene.add.text(x + 22, y - 22, '⭐', {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '9px',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5)
+      );
+    } else {
+      // Locked lock icon
+      this.add(
+        this.scene.add.image(x, y, 'ui-lock-icon')
+          .setDisplaySize(20, 20)
+          .setAlpha(0.8)
       );
     }
-
-    // Event handlers
-    card.on('pointerover', () => {
-      card.setScale(1.03);
-      soundManager.playSFX(this.scene, 'hover');
-    });
-    card.on('pointerout', () => {
-      card.setScale(1);
-    });
-    card.on('pointerup', () => {
-      soundManager.playSFX(this.scene, 'click');
-      this.selectedSkill = skill;
-      this.show(); // Redraw panel and highlights
-    });
   }
 
-  drawSkillDetailsPanel() {
-    const rx = 960;
-    const ry = 380;
+  drawCumulativePanel() {
+    const rx = 1000;
+    const ry = 340;
     const rw = 380;
-    const rh = 460;
+    const rh = 450;
 
-    // Panel card background
+    // Panel Background
     this.add(
       this.scene.add.rectangle(rx, ry, rw, rh, 0x07111f, 0.95)
         .setStrokeStyle(3, 0x4aa6f7, 0.8)
     );
 
-    if (!this.selectedSkill) {
-      this.add(
-        this.scene.add.text(rx, ry, 'Select a skill to inspect and upgrade', {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '14px',
-          color: '#94a3b8',
-          fontStyle: 'bold'
-        }).setOrigin(0.5)
-      );
-      return;
-    }
-
-    const skill = this.selectedSkill;
-    const skillLevels = this.scene.registry.get('playerData')?.skillLevels || {};
-    const currentLvl = skillLevels[skill.id] || 0;
-
-    // Prerequisite checks
-    const isUnlocked = (this.scene.playerProgress.playerLevel || 1) >= skill.requiredPlayerLevel;
-
-    // Skill Name
     this.add(
-      this.scene.add.text(rx, ry - 190, skill.name.toUpperCase(), {
+      this.scene.add.text(rx, ry - 200, 'TOTAL PASSIVE EFFECT', {
         fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '24px',
+        fontSize: '18px',
         color: UI.yellow,
         fontStyle: '900',
         stroke: '#000',
@@ -286,188 +306,190 @@ export class SkillsTab {
       }).setOrigin(0.5)
     );
 
-    // Description text
-    this.add(
-      this.scene.add.text(rx, ry - 152, skill.description, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '13px',
-        color: '#cbd5e1',
-        align: 'center',
-        wordWrap: { width: rw - 40 }
-      }).setOrigin(0.5)
-    );
+    const skillLevels = this.scene.registry.get('playerData')?.skillLevels || {};
 
-    // Passive Buff Text
-    const currentBuffText = currentLvl > 0
-      ? `PASSIVE: +${currentLvl * 8}% Dmg & -${currentLvl * 5}% Cooldown in battle.`
-      : `PASSIVE (Locked): +8% Dmg & -5% Cooldown per level.`;
-    this.add(
-      this.scene.add.text(rx, ry - 110, currentBuffText, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: currentLvl > 0 ? '#4ade80' : '#94a3b8',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: rw - 40 }
-      }).setOrigin(0.5)
-    );
+    skills.forEach((skill, index) => {
+      const currentLvl = skillLevels[skill.id] || 0;
+      const rowY = ry - 150 + (index * 35);
 
-    // Requirements Checklist
-    const reqY = ry - 65;
-    this.add(
-      this.scene.add.text(rx - 150, reqY, 'REQUISITES:', {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: UI.cyan,
-        fontStyle: '900'
-      }).setOrigin(0, 0.5)
-    );
-
-    const checkPlayerLvl = isUnlocked ? '✅' : '❌';
-    this.add(
-      this.scene.add.text(rx - 150, reqY + 24, `${checkPlayerLvl} Player Level ${skill.requiredPlayerLevel} (You: Lv. ${this.scene.playerProgress.playerLevel || 1})`, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: isUnlocked ? '#4ade80' : '#f87171',
-        fontStyle: '800'
-      }).setOrigin(0, 0.5)
-    );
-
-    // Stats Section
-    const statsY = ry + 25;
-    this.add(
-      this.scene.add.text(rx - 150, statsY, 'BASE STAT COMPARISON:', {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '12px',
-        color: UI.cyan,
-        fontStyle: '900'
-      }).setOrigin(0, 0.5)
-    );
-
-    const maxed = currentLvl >= skill.maxLevel;
-    const currentStats = getSkillLevelStats({ ...skill, level: currentLvl === 0 ? 1 : currentLvl });
-    const nextStats = getSkillLevelStats({ ...skill, level: currentLvl + 1 });
-
-    const displayedStats = [
-      { label: 'Damage', key: 'damage', format: (val) => `${val}` },
-      { label: 'Cooldown', key: 'cooldown', format: (val) => `${(val / 1000).toFixed(1)}s` },
-      { label: 'Range', key: 'range', format: (val) => `${val}` },
-      { label: 'Area Radius', key: 'area', format: (val) => `${val}` }
-    ];
-
-    let rowCount = 0;
-    displayedStats.forEach((st) => {
-      // Don't show range or area if base skill has 0
-      if ((st.key === 'range' && skill.range === 0) || (st.key === 'area' && skill.area === 0)) {
-        return;
-      }
-
-      const rowY = statsY + 24 + (rowCount * 22);
+      // Icon
       this.add(
-        this.scene.add.text(rx - 150, rowY, st.label, {
+        this.scene.add.image(rx - 160, rowY, skill.assetKey)
+          .setDisplaySize(24, 24)
+          .setAlpha(currentLvl > 0 ? 1 : 0.3)
+      );
+
+      // Name
+      this.add(
+        this.scene.add.text(rx - 134, rowY, skill.name, {
           fontFamily: 'Outfit, Arial, sans-serif',
           fontSize: '12px',
-          color: '#94a3b8',
+          color: currentLvl > 0 ? UI.white : '#475569',
           fontStyle: '800'
         }).setOrigin(0, 0.5)
       );
 
-      const val1 = currentLvl === 0 ? 'LOCKED' : st.format(currentStats[st.key]);
-      const val2 = maxed ? 'MAX' : st.format(nextStats[st.key]);
-
+      // Level
       this.add(
-        this.scene.add.text(rx + 150, rowY, `${val1}  ➔  ${val2}`, {
+        this.scene.add.text(rx + 20, rowY, `Lv. ${currentLvl}/5`, {
           fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '12px',
-          color: UI.white,
-          fontStyle: '900'
-        }).setOrigin(1, 0.5)
-      );
-
-      rowCount++;
-    });
-
-    // Upgrade Button Cost & Action
-    const btnY = ry + 175;
-    if (maxed) {
-      this.add(
-        this.scene.add.rectangle(rx, btnY, rw - 60, 44, 0x1e293b, 1)
-          .setStrokeStyle(2, 0x475569, 1)
-      );
-      this.add(
-        this.scene.add.text(rx, btnY, 'MAX LEVEL REACHED', {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '14px',
-          color: '#94a3b8',
-          fontStyle: '900'
-        }).setOrigin(0.5)
-      );
-    } else if (!isUnlocked) {
-      this.add(
-        this.scene.add.rectangle(rx, btnY, rw - 60, 44, 0x1e293b, 1)
-          .setStrokeStyle(2, 0x475569, 1)
-      );
-      this.add(
-        this.scene.add.text(rx, btnY, 'SKILL BLOCKED', {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '14px',
-          color: '#f87171',
-          fontStyle: '900'
-        }).setOrigin(0.5)
-      );
-    } else {
-      const upgradeCost = (currentLvl + 1) * 1500;
-      const canAfford = this.scene.playerProgress.gold >= upgradeCost;
-
-      const upgradeBtn = this.add(
-        this.scene.add.rectangle(rx, btnY, rw - 60, 44, canAfford ? 0x15803d : 0x1e293b, 1)
-          .setStrokeStyle(2.5, canAfford ? 0x22c55e : 0x475569, 1)
-          .setInteractive({ useHandCursor: true })
-      );
-
-      const btnTitle = currentLvl === 0 ? 'UNLOCK SKILL' : 'UPGRADE SKILL';
-      this.add(
-        this.scene.add.text(rx, btnY - 9, btnTitle, {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '13px',
-          color: canAfford ? UI.white : '#94a3b8',
-          fontStyle: '900'
-        }).setOrigin(0.5)
-      );
-
-      // Gold cost
-      this.add(
-        this.scene.add.image(rx - 45, btnY + 11, 'ui-icon-gold').setDisplaySize(18, 18)
-      );
-      this.add(
-        this.scene.add.text(rx - 30, btnY + 11, this.scene.formatCurrency(upgradeCost), {
-          fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '13px',
-          color: canAfford ? UI.yellow : '#94a3b8',
-          fontStyle: '900'
+          fontSize: '11px',
+          color: currentLvl > 0 ? UI.cyan : '#475569',
+          fontStyle: '800'
         }).setOrigin(0, 0.5)
       );
 
-      upgradeBtn.on('pointerover', () => {
-        if (canAfford) {
-          upgradeBtn.setFillStyle(0x166534, 1);
-          upgradeBtn.setScale(1.02);
-          soundManager.playSFX(this.scene, 'hover');
+      // Accum Effect Value
+      let effectText = 'LOCKED';
+      let effectColor = '#f87171';
+      if (currentLvl > 0) {
+        effectColor = '#4ade80';
+        if (skill.type === 'passive') {
+          switch (skill.id) {
+            case 'magnet':
+              effectText = `+${currentLvl * 20}px Radius`;
+              break;
+            case 'movespeed':
+              effectText = `+${currentLvl * 4}% Speed`;
+              break;
+            case 'aspd':
+              effectText = `+${currentLvl * 5}% Atk Speed`;
+              break;
+            case 'hp-regen':
+              effectText = `+${(currentLvl * 0.5).toFixed(1)} HP/s`;
+              break;
+            case 'shield':
+              effectText = `+${currentLvl * 10} Shield`;
+              break;
+            case 'attack-range':
+              effectText = `+${currentLvl * 5}% Range`;
+              break;
+            case 'knock':
+              effectText = `+${currentLvl * 10}% Knockback`;
+              break;
+          }
+        } else {
+          effectText = `+${currentLvl * 8}% Dmg, -${currentLvl * 5}% CD`;
         }
+      }
+
+      this.add(
+        this.scene.add.text(rx + 160, rowY, effectText, {
+          fontFamily: 'Outfit, Arial, sans-serif',
+          fontSize: '11px',
+          color: effectColor,
+          fontStyle: '900',
+          align: 'right'
+        }).setOrigin(1, 0.5)
+      );
+    });
+  }
+
+  drawUpgradePanel() {
+    const cx = 420;
+    const cy = 635;
+    const pw = 600;
+    const ph = 96;
+
+    // Curved Panel Base Card
+    const panelBg = this.add(
+      this.scene.add.rectangle(cx, cy, pw, ph, 0xdbeefb, 1)
+        .setStrokeStyle(3, 0xffffff, 1)
+    );
+
+    const playerLvl = this.scene.playerProgress.playerLevel || 1;
+    const unlockedSkillLvl = this.scene.playerProgress.unlockedSkillLevel || 1;
+    const targetLvl = unlockedSkillLvl + 1;
+    const maxed = unlockedSkillLvl >= 55;
+
+    if (maxed) {
+      this.add(
+        this.scene.add.text(cx, cy, 'MAX SKILL ROAD LEVEL REACHED', {
+          fontFamily: 'Outfit, Arial, sans-serif',
+          fontSize: '20px',
+          color: '#1e293b',
+          fontStyle: '900'
+        }).setOrigin(0.5)
+      );
+      return;
+    }
+
+    const isLockedByLevel = targetLvl > playerLvl;
+
+    // Next Level Header
+    this.add(
+      this.scene.add.text(cx - 260, cy - 14, `${targetLvl} LEVEL`, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '24px',
+        color: '#1e293b',
+        fontStyle: '900',
+        stroke: '#ffffff',
+        strokeThickness: 2
+      }).setOrigin(0, 0.5)
+    );
+
+    // Cost calculation
+    const costGold = targetLvl * 2000;
+    const canAfford = this.scene.playerProgress.gold >= costGold;
+
+    // Resource ratio text
+    const costText = this.add(
+      this.scene.add.text(cx - 260, cy + 18, `🪙 ${this.scene.formatCurrency(this.scene.playerProgress.gold)} / ${this.scene.formatCurrency(costGold)}`, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '15px',
+        color: canAfford && !isLockedByLevel ? '#16a34a' : '#dc2626',
+        fontStyle: '900'
+      }).setOrigin(0, 0.5)
+    );
+
+    // Pill-shaped UPGRADE button
+    const btnX = cx + 180;
+    
+    // Determine button state and visual colors
+    let btnColor = 0x22c55e;
+    let btnLabel = 'UPGRADE';
+    let isClickable = canAfford && !isLockedByLevel;
+
+    if (isLockedByLevel) {
+      btnColor = 0x94a3b8;
+      btnLabel = `REQ: PLAYER LV. ${targetLvl}`;
+    } else if (!canAfford) {
+      btnColor = 0x94a3b8;
+      btnLabel = 'NO GOLD';
+    }
+
+    const upgradeBtn = this.add(
+      this.scene.add.rectangle(btnX, cy, 180, 52, btnColor, 1)
+        .setStrokeStyle(2, 0xffffff, 1)
+    );
+
+    const upgradeText = this.add(
+      this.scene.add.text(btnX, cy, btnLabel, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: isLockedByLevel ? '12px' : '18px',
+        color: '#ffffff',
+        fontStyle: '900'
+      }).setOrigin(0.5)
+    );
+
+    if (isClickable) {
+      upgradeBtn.setInteractive({ useHandCursor: true });
+      upgradeBtn.on('pointerover', () => {
+        upgradeBtn.setScale(1.05);
+        upgradeText.setScale(1.05);
+        soundManager.playSFX(this.scene, 'hover');
       });
       upgradeBtn.on('pointerout', () => {
-        if (canAfford) {
-          upgradeBtn.setFillStyle(0x15803d, 1);
-          upgradeBtn.setScale(1);
-        }
+        upgradeBtn.setScale(1);
+        upgradeText.setScale(1);
       });
       upgradeBtn.on('pointerup', () => {
-        this.upgradeSelectedSkill(upgradeCost, currentLvl);
+        this.upgradePlayerLevel(costGold, unlockedSkillLvl);
       });
     }
   }
 
-  upgradeSelectedSkill(cost, currentLvl) {
+  upgradePlayerLevel(cost, currentLvl) {
     if (this.scene.playerProgress.gold < cost) {
       soundManager.playSFX(this.scene, 'hit');
       this.scene.showUpgradeFeedback(false, 'Not enough gold!');
@@ -480,17 +502,28 @@ export class SkillsTab {
     const nextGold = addPlayerGold(this.scene, -cost);
     this.scene.playerProgress.gold = nextGold;
 
-    // Save skill level
-    const skillId = this.selectedSkill.id;
-    saveSkillLevel(skillId, currentLvl + 1);
+    // Increment road level & recalculate skill levels
+    const nextLvl = currentLvl + 1;
+    const nextSkillLevels = getSkillLevelsForPlayerLevel(nextLvl);
+    savePlayerProgress(nextLvl, nextSkillLevels);
 
-    // Update gold display on the top HUD instantly
+    // Sync state
+    this.scene.playerProgress.unlockedSkillLevel = nextLvl;
+    this.scene.playerProgress.skillLevels = nextSkillLevels;
+    
+    const playerData = this.scene.registry.get('playerData') || {};
+    playerData.unlockedSkillLevel = nextLvl;
+    playerData.skillLevels = nextSkillLevels;
+    this.scene.registry.set('playerData', playerData);
+
+    // Update gold display on top bar
     if (this.scene.goldText) {
       this.scene.goldText.setText(this.scene.formatCurrency(nextGold));
     }
 
-    this.scene.showUpgradeFeedback(true, currentLvl === 0 ? 'Skill Unlocked!' : 'Skill Upgraded!');
+    this.scene.showUpgradeFeedback(true, `Unlocked Road Level ${nextLvl}!`);
 
+    // Redraw screen
     this.show();
   }
 }

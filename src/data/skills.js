@@ -2,6 +2,7 @@ const skills = [
   {
     id: 'fireball',
     name: 'Fireball',
+    type: 'active',
     description: 'Menembakkan bola api ke enemy terdekat.',
     level: 0,
     maxLevel: 5,
@@ -16,8 +17,9 @@ const skills = [
   },
   {
     id: 'multi-shot',
-    name: 'Multi Shot',
-    description: 'Menembakkan beberapa projectile ke target terdekat.',
+    name: 'Multiple Attack',
+    type: 'active',
+    description: 'Melakukan serangan multi-target ke arah enemy terdekat.',
     level: 0,
     maxLevel: 5,
     cooldown: 2800,
@@ -32,6 +34,7 @@ const skills = [
   {
     id: 'lightning-strike',
     name: 'Lightning Strike',
+    type: 'active',
     description: 'Petir instan menyerang enemy terdekat.',
     level: 0,
     maxLevel: 5,
@@ -47,6 +50,7 @@ const skills = [
   {
     id: 'spin-attack',
     name: 'Spin Attack',
+    type: 'active',
     description: 'Serangan area di sekitar hero.',
     level: 0,
     maxLevel: 5,
@@ -58,6 +62,118 @@ const skills = [
     assetPath: '/assets/skills/spin-attack.svg',
     requiredPlayerLevel: 4,
     dependsOn: 'multi-shot'
+  },
+  {
+    id: 'magnet',
+    name: 'Loot Magnet',
+    type: 'passive',
+    description: 'Meningkatkan jangkauan penarikan loot dan exp.',
+    level: 0,
+    maxLevel: 5,
+    cooldown: 0,
+    damage: 0,
+    range: 150,
+    area: 0,
+    assetKey: 'skill-magnet',
+    assetPath: '/assets/skills/magnet.svg',
+    requiredPlayerLevel: 1,
+    dependsOn: null
+  },
+  {
+    id: 'movespeed',
+    name: 'Swiftness',
+    type: 'passive',
+    description: 'Meningkatkan kecepatan pergerakan hero.',
+    level: 0,
+    maxLevel: 5,
+    cooldown: 0,
+    damage: 0,
+    range: 0,
+    area: 0,
+    assetKey: 'skill-movespeed',
+    assetPath: '/assets/skills/movespeed.svg',
+    requiredPlayerLevel: 2,
+    dependsOn: null
+  },
+  {
+    id: 'aspd',
+    name: 'Frenzy',
+    type: 'passive',
+    description: 'Meningkatkan kecepatan serangan hero (melee & ranged).',
+    level: 0,
+    maxLevel: 5,
+    cooldown: 0,
+    damage: 0,
+    range: 0,
+    area: 0,
+    assetKey: 'skill-aspd',
+    assetPath: '/assets/skills/aspd.svg',
+    requiredPlayerLevel: 3,
+    dependsOn: null
+  },
+  {
+    id: 'hp-regen',
+    name: 'Vitality',
+    type: 'passive',
+    description: 'Meningkatkan regen HP hero per detik.',
+    level: 0,
+    maxLevel: 5,
+    cooldown: 0,
+    damage: 0,
+    range: 0,
+    area: 0,
+    assetKey: 'skill-regen',
+    assetPath: '/assets/skills/regen.svg',
+    requiredPlayerLevel: 3,
+    dependsOn: 'movespeed'
+  },
+  {
+    id: 'shield',
+    name: 'Aegis Shield',
+    type: 'passive',
+    description: 'Mendapatkan shield yang menyerap damage dan meregenerasi.',
+    level: 0,
+    maxLevel: 5,
+    cooldown: 0,
+    damage: 0,
+    range: 0,
+    area: 0,
+    assetKey: 'skill-shield',
+    assetPath: '/assets/skills/shield.svg',
+    requiredPlayerLevel: 5,
+    dependsOn: 'hp-regen'
+  },
+  {
+    id: 'attack-range',
+    name: 'Eagle Eye',
+    type: 'passive',
+    description: 'Meningkatkan jarak serangan dasar projectile hero (Khusus Ranged).',
+    level: 0,
+    maxLevel: 5,
+    cooldown: 0,
+    damage: 0,
+    range: 0,
+    area: 0,
+    assetKey: 'skill-range',
+    assetPath: '/assets/skills/range.svg',
+    requiredPlayerLevel: 4,
+    dependsOn: 'aspd'
+  },
+  {
+    id: 'knock',
+    name: 'Heavy Impact',
+    type: 'passive',
+    description: 'Serangan dasar hero memberikan efek knockback (mendorong mundur) enemy.',
+    level: 0,
+    maxLevel: 5,
+    cooldown: 0,
+    damage: 0,
+    range: 0,
+    area: 0,
+    assetKey: 'skill-knock',
+    assetPath: '/assets/skills/knock.svg',
+    requiredPlayerLevel: 4,
+    dependsOn: 'aspd'
   }
 ];
 
@@ -74,13 +190,34 @@ export function createSkillState(skill) {
 }
 
 export function getSkillLevelStats(skill) {
+  if (skill.type === 'passive') {
+    switch (skill.id) {
+      case 'magnet':
+        return { range: 150 + (skill.level * 20) }; // +20px per lvl
+      case 'movespeed':
+        return { speed: skill.level * 0.04 }; // +4% per lvl
+      case 'aspd':
+        return { aspd: skill.level * 0.05 }; // +5% per lvl
+      case 'hp-regen':
+        return { regen: skill.level * 0.5 }; // +0.5 HP/s per lvl
+      case 'shield':
+        return { shield: skill.level * 10 }; // +10 Shield capacity per lvl
+      case 'attack-range':
+        return { range: skill.level * 0.05 }; // +5% per lvl
+      case 'knock':
+        return { chance: skill.level * 0.10 }; // +10% knockback chance per lvl
+      default:
+        return {};
+    }
+  }
+
   const levelBonus = Math.max(0, skill.level - 1);
 
   return {
-    cooldown: Math.max(550, skill.cooldown - (levelBonus * 120)),
-    damage: Math.round(skill.damage * (1 + (levelBonus * 0.28))),
-    range: skill.range + (levelBonus * 18),
-    area: skill.area + (levelBonus * 14)
+    cooldown: Math.max(550, skill.cooldown - (levelBonus * 60)),
+    damage: Math.round(skill.damage * (1 + (levelBonus * 0.12))),
+    range: skill.range + (levelBonus * 8),
+    area: skill.area + (levelBonus * 6)
   };
 }
 

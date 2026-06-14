@@ -42,7 +42,8 @@ export function roundStats(stats) {
     armor: Math.round(stats.armor || 0),
     lifesteal: roundTo(stats.lifesteal || 0, 2),
     evasion: roundTo(stats.evasion || 0, 2),
-    cooldownReduction: roundTo(stats.cooldownReduction || 0, 2)
+    cooldownReduction: roundTo(stats.cooldownReduction || 0, 2),
+    attackType: stats.attackType || 'ranged'
   };
 }
 

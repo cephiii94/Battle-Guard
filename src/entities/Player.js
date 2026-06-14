@@ -26,6 +26,13 @@ export default class Player extends Phaser.GameObjects.Container {
     this.lifesteal = finalStats.lifesteal || 0;
     this.evasion = finalStats.evasion || 0;
     this.cooldownReduction = finalStats.cooldownReduction || 0;
+    this.attackType = finalStats.attackType || 'ranged';
+    
+    // Shield Stats
+    this.shield = 0;
+    this.maxShield = 0;
+    this.lastHitTime = 0;
+    
     this.mapBounds = mapBounds;
 
     this.keys = scene.input.keyboard.addKeys({
@@ -64,6 +71,12 @@ export default class Player extends Phaser.GameObjects.Container {
     this.innerBorder = scene.add.circle(0, 0, 21);
     this.innerBorder.setStrokeStyle(3, skinColors.border, 1);
     this.add(this.innerBorder);
+
+    // Shield visual overlay glow
+    this.shieldRing = scene.add.circle(0, 0, 26)
+      .setStrokeStyle(3.5, 0x00d6ff, 0.85)
+      .setVisible(false);
+    this.add(this.shieldRing);
 
     // Dynamic Epic Level Frame
     this.gameplayFrameTweens = [];
@@ -148,6 +161,25 @@ export default class Player extends Phaser.GameObjects.Container {
       this.hp = Math.min(this.maxHp, this.hp + this.healthRegen * (delta / 1000));
     }
 
+    // Shield Regeneration (Regenerate 5 shield per second after 5 seconds of not being hit)
+    if (this.maxShield > 0 && this.shield < this.maxShield) {
+      const now = this.scene.time.now;
+      if (now - this.lastHitTime > 5000) {
+        this.shield = Math.min(this.maxShield, this.shield + 5 * (delta / 1000));
+      }
+    }
+
+    // Shield Visual Pulse Effect
+    if (this.shieldRing) {
+      if (this.shield > 0) {
+        this.shieldRing.setVisible(true);
+        this.shieldRing.setAlpha(0.6 + Math.sin(this.scene.time.now * 0.007) * 0.2);
+        this.shieldRing.setScale(1 + Math.sin(this.scene.time.now * 0.007) * 0.05);
+      } else {
+        this.shieldRing.setVisible(false);
+      }
+    }
+
     this.keepInsideMap();
     this.updateHpBar();
   }
@@ -183,6 +215,30 @@ export default class Player extends Phaser.GameObjects.Container {
         false
       );
       this.hpBar.strokePath();
+    }
+
+    // Glowing concentric Shield border (slightly wider than HP bar)
+    if (this.maxShield > 0) {
+      const shieldPercent = Phaser.Math.Clamp(this.shield / this.maxShield, 0, 1);
+      const shieldRadius = 36;
+
+      // Faint dark border background for shield
+      this.hpBar.lineStyle(2.5, 0x1e293b, 0.65);
+      this.hpBar.strokeCircle(0, 0, shieldRadius);
+
+      if (shieldPercent > 0) {
+        this.hpBar.lineStyle(2.5, 0x00d6ff, 0.95);
+        this.hpBar.beginPath();
+        this.hpBar.arc(
+          0,
+          0,
+          shieldRadius,
+          Phaser.Math.DegToRad(-90),
+          Phaser.Math.DegToRad(-90 + 360 * shieldPercent),
+          false
+        );
+        this.hpBar.strokePath();
+      }
     }
   }
 
@@ -260,8 +316,22 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   takeDamage(amount) {
+    if (this.shield && this.shield > 0) {
+      if (this.shield >= amount) {
+        this.shield -= amount;
+        this.lastHitTime = this.scene.time.now;
+        return 0; // 0 actual HP damage
+      } else {
+        const remainingDmg = amount - this.shield;
+        this.shield = 0;
+        this.hp = Math.max(0, this.hp - remainingDmg);
+        this.lastHitTime = this.scene.time.now;
+        return remainingDmg;
+      }
+    }
     this.hp = Math.max(0, this.hp - amount);
-    return this.hp;
+    this.lastHitTime = this.scene.time.now;
+    return amount;
   }
 
   drawGameplayFrame(scene) {

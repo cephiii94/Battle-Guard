@@ -6,6 +6,7 @@ export const defaultPlayerData = {
   gold: 230560,
   playerLevel: 1,
   playerExp: 0,
+  unlockedSkillLevel: 1,
   selectedHeroId: 'guardian',
   selectedPetId: null,
   ownedEquipment: [
@@ -34,7 +35,13 @@ export const defaultPlayerData = {
     'fireball': 1,
     'multi-shot': 0,
     'lightning-strike': 0,
-    'spin-attack': 0
+    'spin-attack': 0,
+    'magnet': 0,
+    'movespeed': 0,
+    'aspd': 0,
+    'hp-regen': 0,
+    'shield': 0,
+    'attack-range': 0
   },
   materials: {
     'iron-ore': 0,
@@ -249,6 +256,15 @@ export function savePlayerLevelAndExp(level, exp) {
   });
 }
 
+export function savePlayerProgress(unlockedSkillLevel, skillLevels) {
+  const playerData = loadPlayerData();
+  return savePlayerData({
+    ...playerData,
+    unlockedSkillLevel: unlockedSkillLevel,
+    skillLevels: skillLevels
+  });
+}
+
 export function resetSaveData() {
   storageAdapter.reset();
   return savePlayerData(defaultPlayerData);
@@ -260,6 +276,7 @@ export function applyPlayerDataToRegistry(registry, playerData = loadPlayerData(
     gold: playerData.gold,
     playerLevel: playerData.playerLevel || 1,
     playerExp: playerData.playerExp || 0,
+    unlockedSkillLevel: playerData.unlockedSkillLevel || 1,
     highestStageUnlocked: playerData.highestStage,
     completedStages: [...playerData.completedStages],
     materials: { ...playerData.materials },
@@ -306,6 +323,7 @@ function normalizePlayerData(playerData) {
     gold: Number.isFinite(safeData.gold) ? safeData.gold : defaultPlayerData.gold,
     playerLevel: Number.isFinite(safeData.playerLevel) ? safeData.playerLevel : defaultPlayerData.playerLevel,
     playerExp: Number.isFinite(safeData.playerExp) ? safeData.playerExp : defaultPlayerData.playerExp,
+    unlockedSkillLevel: Number.isFinite(safeData.unlockedSkillLevel) ? safeData.unlockedSkillLevel : defaultPlayerData.unlockedSkillLevel,
     ownedEquipment: uniqueIds(safeData.ownedEquipment || defaultPlayerData.ownedEquipment),
     equippedItems: {
       ...defaultPlayerData.equippedItems,

@@ -6,6 +6,9 @@ body {
   overflow: hidden;
   background: #070b14;
   font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 #game {

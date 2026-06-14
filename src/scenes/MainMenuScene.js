@@ -136,6 +136,85 @@ export default class MainMenuScene extends Phaser.Scene {
       }
     });
 
+    // Bind keyboard numeric/numpad shortcuts 1 to 5
+    const bindTabKey = (keyName, callback) => {
+      this.input.keyboard.on(`keydown-${keyName}`, callback);
+    };
+    const handleTabOpen = (tabShowFn) => {
+      soundManager.playSFX(this, 'click');
+      this.clearAllTabs();
+      tabShowFn.call(this);
+    };
+
+    bindTabKey('ONE', () => handleTabOpen(this.showHeroTab));
+    bindTabKey('NUMPAD_ONE', () => handleTabOpen(this.showHeroTab));
+
+    bindTabKey('TWO', () => handleTabOpen(this.showBlacksmithTab));
+    bindTabKey('NUMPAD_TWO', () => handleTabOpen(this.showBlacksmithTab));
+
+    bindTabKey('THREE', () => handleTabOpen(this.showSkillsTab));
+    bindTabKey('NUMPAD_THREE', () => handleTabOpen(this.showSkillsTab));
+
+    bindTabKey('FOUR', () => handleTabOpen(this.showInventoryTab));
+    bindTabKey('NUMPAD_FOUR', () => handleTabOpen(this.showInventoryTab));
+
+    bindTabKey('FIVE', () => handleTabOpen(this.showShopTab));
+    bindTabKey('NUMPAD_FIVE', () => handleTabOpen(this.showShopTab));
+
+    // Bind A and D keys to cycle heroes (only active when no modular tabs are open)
+    const isAnyTabActive = () => {
+      return (
+        (this.inventoryTab && this.inventoryTab.isActive()) ||
+        (this.stageSelectionTab && this.stageSelectionTab.isActive()) ||
+        (this.settingsTab && this.settingsTab.isActive()) ||
+        (this.blacksmithTab && this.blacksmithTab.isActive()) ||
+        (this.skillsTab && this.skillsTab.isActive()) ||
+        (this.shopTab && this.shopTab.isActive()) ||
+        (this.modeSelectionTab && this.modeSelectionTab.isActive()) ||
+        (this.heroTab && this.heroTab.isActive())
+      );
+    };
+
+    this.input.keyboard.on('keydown-A', () => {
+      if (!isAnyTabActive()) {
+        soundManager.playSFX(this, 'click');
+        this.cycleHero(-1);
+      }
+    });
+
+    this.input.keyboard.on('keydown-LEFT', () => {
+      if (!isAnyTabActive()) {
+        soundManager.playSFX(this, 'click');
+        this.cycleHero(-1);
+      }
+    });
+
+    this.input.keyboard.on('keydown-D', () => {
+      if (!isAnyTabActive()) {
+        soundManager.playSFX(this, 'click');
+        this.cycleHero(1);
+      }
+    });
+
+    this.input.keyboard.on('keydown-RIGHT', () => {
+      if (!isAnyTabActive()) {
+        soundManager.playSFX(this, 'click');
+        this.cycleHero(1);
+      }
+    });
+
+    // Bind S and ENTER keys to open Campaign stage selection
+    const handleCampaignOpen = () => {
+      if (!isAnyTabActive()) {
+        soundManager.playSFX(this, 'click');
+        this.clearAllTabs();
+        this.showStageSelectionTab();
+      }
+    };
+
+    this.input.keyboard.on('keydown-S', handleCampaignOpen);
+    this.input.keyboard.on('keydown-ENTER', handleCampaignOpen);
+
     soundManager.playBGM(this, 'menu-bgm');
   }
 
@@ -213,7 +292,7 @@ export default class MainMenuScene extends Phaser.Scene {
 
     const playerLevel = this.playerProgress.playerLevel || 1;
     const playerExp = this.playerProgress.playerExp || 0;
-    const requiredExp = playerLevel * 500;
+    const requiredExp = playerLevel * 200;
     const expRatio = Math.min(1.0, playerExp / requiredExp);
 
     // Level Pill
@@ -771,7 +850,7 @@ export default class MainMenuScene extends Phaser.Scene {
     clickBattle.on('pointerout', () => battleBtn.setScale(1));
     clickBattle.on('pointerup', () => {
       soundManager.playSFX(this, 'click');
-      this.showModeSelectionTab();
+      this.showStageSelectionTab();
     });
 
     // Added a pulse tween to make the main play button glow and stand out

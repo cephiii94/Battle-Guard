@@ -20,6 +20,9 @@ export default class ActiveSkillSystem {
     this.popup = new SkillChoicePopup(scene, (skill) => this.chooseSkill(skill));
 
     this.gameStats.on('levelUp', () => this.queueSkillChoice());
+    
+    // Apply global main menu upgrades at start of battle run
+    this.applyGlobalPassiveUpgrades();
   }
 
   update(delta) {
@@ -64,13 +67,35 @@ export default class ActiveSkillSystem {
 
   chooseSkill(skillChoice) {
     soundManager.playSFX(this.scene, 'click');
+
+    const MAX_SKILL_SLOTS = 5;
     const ownedSkill = this.ownedSkills.find((skill) => skill.id === skillChoice.id);
 
-    if (ownedSkill) {
-      ownedSkill.level = Math.min(ownedSkill.maxLevel, ownedSkill.level + 1);
-      ownedSkill.cooldownRemaining = 0;
+    // Safety: never add a new skill if all slots are occupied
+    if (!ownedSkill && this.ownedSkills.length >= MAX_SKILL_SLOTS) {
+      this.popup.hide();
+      this.showNextChoice();
+      return;
+    }
+
+    if (skillChoice.type === 'passive') {
+      let newLvl = 1;
+      if (ownedSkill) {
+        ownedSkill.level = Math.min(ownedSkill.maxLevel, ownedSkill.level + 1);
+        newLvl = ownedSkill.level;
+      } else {
+        const newState = createSkillState(skillChoice);
+        this.ownedSkills.push(newState);
+        newLvl = newState.level;
+      }
+      this.applyPassiveInGameBonus(skillChoice.id, newLvl);
     } else {
-      this.ownedSkills.push(createSkillState(skillChoice));
+      if (ownedSkill) {
+        ownedSkill.level = Math.min(ownedSkill.maxLevel, ownedSkill.level + 1);
+        ownedSkill.cooldownRemaining = 0;
+      } else {
+        this.ownedSkills.push(createSkillState(skillChoice));
+      }
     }
 
     this.emit('skillsChanged', this.getOwnedSkills());
@@ -78,13 +103,109 @@ export default class ActiveSkillSystem {
     this.showNextChoice();
   }
 
+  applyGlobalPassiveUpgrades() {
+    const playerData = this.scene.registry.get('playerData');
+    const globalSkillLevels = playerData?.skillLevels || {};
+
+    // Magnet
+    let magnetLvl = globalSkillLevels['magnet'] || 0;
+    this.player.magnetRange = 150 + (magnetLvl * 20);
+
+    // Movespeed
+    let moveLvl = globalSkillLevels['movespeed'] || 0;
+    if (moveLvl > 0) {
+      this.player.speed = this.player.finalStats.moveSpeed * (1 + (moveLvl * 0.04));
+    }
+
+    // ASPD
+    let aspdLvl = globalSkillLevels['aspd'] || 0;
+    if (aspdLvl > 0) {
+      this.player.attackSpeedMultiplier = 1 + (aspdLvl * 0.05);
+    }
+
+    // HP Regen
+    let regenLvl = globalSkillLevels['hp-regen'] || 0;
+    if (regenLvl > 0) {
+      this.player.healthRegen = (this.player.finalStats.healthRegen || 0) + (regenLvl * 0.5);
+    }
+
+    // Shield
+    let shieldLvl = globalSkillLevels['shield'] || 0;
+    if (shieldLvl > 0) {
+      this.player.maxShield = shieldLvl * 10;
+      this.player.shield = this.player.maxShield;
+    }
+
+    // Attack Range (Eagle Eye) - Only for ranged heroes
+    let rangeLvl = globalSkillLevels['attack-range'] || 0;
+    if (rangeLvl > 0 && this.player.attackType === 'ranged') {
+      this.player.attackRange = this.player.finalStats.attackRange * (1 + (rangeLvl * 0.05));
+    }
+  }
+
+  applyPassiveInGameBonus(id, level) {
+    const playerData = this.scene.registry.get('playerData');
+    const globalSkillLevels = playerData?.skillLevels || {};
+    const globalLvl = globalSkillLevels[id] || 0;
+    const totalLvl = globalLvl + level;
+
+    switch (id) {
+      case 'magnet':
+        this.player.magnetRange = 150 + (totalLvl * 20);
+        break;
+      case 'movespeed':
+        this.player.speed = this.player.finalStats.moveSpeed * (1 + (totalLvl * 0.04));
+        break;
+      case 'aspd':
+        this.player.attackSpeedMultiplier = 1 + (totalLvl * 0.05);
+        break;
+      case 'hp-regen':
+        this.player.healthRegen = (this.player.finalStats.healthRegen || 0) + (totalLvl * 0.5);
+        break;
+      case 'shield':
+        this.player.maxShield = totalLvl * 10;
+        this.player.shield = Math.min(this.player.maxShield, this.player.shield + 10);
+        break;
+      case 'attack-range':
+        if (this.player.attackType === 'ranged') {
+          this.player.attackRange = this.player.finalStats.attackRange * (1 + (totalLvl * 0.05));
+        }
+        break;
+      case 'knock':
+        // Handled dynamically in CombatSystem.applyDamage()
+        break;
+    }
+  }
+
   getRandomSkillChoices(count) {
+    const MAX_SKILL_SLOTS = 5;
+    const slotsFull = this.ownedSkills.length >= MAX_SKILL_SLOTS;
+
     const choicePool = skills
       .map((skill) => {
         const ownedSkill = this.ownedSkills.find((owned) => owned.id === skill.id);
 
+        // Skip maxed skills
         if (ownedSkill && ownedSkill.level >= ownedSkill.maxLevel) {
           return null;
+        }
+
+        // If slots are full, only show skills already owned (for level-up), never new ones
+        if (slotsFull && !ownedSkill) {
+          return null;
+        }
+
+        // Eagle Eye (attack-range) is for ranged heroes only
+        if (skill.id === 'attack-range' && this.player.attackType === 'melee') {
+          return null;
+        }
+
+        // Prerequisite check: new skill requires its parent to be owned first
+        if (skill.dependsOn) {
+          const hasParent = this.ownedSkills.some((owned) => owned.id === skill.dependsOn);
+          if (!hasParent) {
+            return null;
+          }
         }
 
         return ownedSkill || skill;
@@ -145,11 +266,67 @@ export default class ActiveSkillSystem {
       return false;
     }
 
-    targets.forEach((target) => {
-      this.fireProjectile(target, stats.damage, 610, 0x60a5fa);
-    });
+    if (this.player.attackType === 'melee') {
+      // Melee multi-slash flurry
+      targets.forEach((target, index) => {
+        this.scene.time.delayedCall(index * 80, () => {
+          if (!target || !target.active || target.isDying || target.isDead) {
+            return;
+          }
+          this.performMeleeSlash(target, stats.damage);
+        });
+      });
+    } else {
+      // Ranged multi-shot projectiles
+      targets.forEach((target) => {
+        this.fireProjectile(target, stats.damage, 610, 0x60a5fa);
+      });
+    }
     this.showCastText(skill.name, '#93c5fd');
     return true;
+  }
+
+  performMeleeSlash(target, damage) {
+    if (!this.player || !this.player.active) return;
+
+    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+    const slash = this.scene.add.graphics();
+    slash.setDepth(this.player.depth + 1);
+
+    const slashColor = this.player.activeSkin?.colors?.border || 0x00d6ff;
+    const slashRadius = 90;
+
+    this.scene.tweens.add({
+      targets: { progress: 0 },
+      progress: 1,
+      duration: 160,
+      ease: 'Quad.easeOut',
+      onUpdate: (tween) => {
+        if (!this.player || !this.player.active) {
+          slash.destroy();
+          return;
+        }
+        slash.clear();
+        const t = tween.getValue();
+        
+        slash.lineStyle(8, slashColor, 0.45 * (1 - t));
+        slash.beginPath();
+        const startAngle = angle - 0.7;
+        const endAngle = startAngle + (1.4 * t);
+        slash.arc(this.player.x, this.player.y, slashRadius, startAngle, endAngle, false);
+        slash.strokePath();
+
+        slash.lineStyle(2.5, 0xffffff, 1 - t);
+        slash.beginPath();
+        slash.arc(this.player.x, this.player.y, slashRadius, startAngle, endAngle, false);
+        slash.strokePath();
+      },
+      onComplete: () => {
+        slash.destroy();
+      }
+    });
+
+    this.combatSystem.applyDamage(target, damage);
   }
 
   castLightningStrike(skill, stats) {

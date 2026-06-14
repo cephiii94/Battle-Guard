@@ -1,5 +1,6 @@
 import { soundManager } from '../../services/soundManager.js';
 import UI from './MenuConfig.js';
+import { resetSaveData, applyPlayerDataToRegistry } from '../../services/saveService.js';
 
 export class SettingsTab {
   constructor(scene) {
@@ -32,13 +33,13 @@ export class SettingsTab {
 
     // Main Settings Panel
     this.add(
-      this.scene.add.rectangle(width / 2, height / 2, 460, 320, 0x0f172a, 0.98)
+      this.scene.add.rectangle(width / 2, height / 2, 460, 380, 0x0f172a, 0.98)
         .setStrokeStyle(3, 0x00d6ff, 0.9)
     );
 
     // Title text
     this.add(
-      this.scene.add.text(width / 2, height / 2 - 110, 'SETTINGS', {
+      this.scene.add.text(width / 2, height / 2 - 140, 'SETTINGS', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '24px',
         color: UI.white,
@@ -49,10 +50,10 @@ export class SettingsTab {
     );
 
     // Close Button
-    this.addCloseButton(width / 2 + 195, height / 2 - 125);
+    this.addCloseButton(width / 2 + 195, height / 2 - 155);
 
     // Music Setting Container
-    const musicY = height / 2 - 20;
+    const musicY = height / 2 - 50;
     this.add(
       this.scene.add.text(width / 2 - 130, musicY, 'BACKGROUND MUSIC', {
         fontFamily: 'Arial, sans-serif',
@@ -95,7 +96,7 @@ export class SettingsTab {
     });
 
     // SFX Setting Container
-    const sfxY = height / 2 + 40;
+    const sfxY = height / 2 + 10;
     this.add(
       this.scene.add.text(width / 2 - 130, sfxY, 'SOUND EFFECTS (SFX)', {
         fontFamily: 'Arial, sans-serif',
@@ -135,6 +136,41 @@ export class SettingsTab {
       soundManager.setSFXEnabled(!soundManager.isSFXEnabled());
       soundManager.playSFX(this.scene, 'click');
       this.show();
+    });
+
+    // Reset Account Container (For Development)
+    const resetY = height / 2 + 90;
+    const resetBtn = this.add(
+      this.scene.add.rectangle(width / 2, resetY, 320, 40, 0x991b1b, 1)
+        .setStrokeStyle(2, 0xfecaca, 1)
+        .setInteractive({ useHandCursor: true })
+    );
+
+    const resetBtnText = this.add(
+      this.scene.add.text(width / 2, resetY, 'RESET ACCOUNT DATA', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '15px',
+        color: UI.white,
+        fontStyle: '900',
+      }).setOrigin(0.5)
+    );
+
+    resetBtn.on('pointerover', () => {
+      resetBtn.setScale(1.05);
+      resetBtnText.setScale(1.05);
+    });
+    resetBtn.on('pointerout', () => {
+      resetBtn.setScale(1);
+      resetBtnText.setScale(1);
+    });
+    resetBtn.on('pointerup', () => {
+      soundManager.playSFX(this.scene, 'click');
+      if (window.confirm('Reset data akun? Game akan dimuat ulang ke keadaan awal.')) {
+        const newPlayerData = resetSaveData();
+        applyPlayerDataToRegistry(this.scene.registry, newPlayerData);
+        this.clear();
+        this.scene.scene.restart();
+      }
     });
   }
 

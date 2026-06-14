@@ -720,11 +720,11 @@ export class HeroTab {
   }
 
   addStatsPanel(x, y, hero, stats) {
-    // 1. Hero Class Name Title ("nama")
+    // 1. Hero Name Title
     this.add(
       this.scene.add.text(x, y, hero.name.toUpperCase(), {
         fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '32px',
+        fontSize: '30px',
         color: UI.yellow,
         fontStyle: '900',
         stroke: '#081735',
@@ -734,70 +734,128 @@ export class HeroTab {
 
     const level = this.scene.registry.get('heroLevels')?.[hero.id] || 1;
     this.add(
-      this.scene.add.text(x, y + 36, `CLASS LEVEL ${level}`, {
+      this.scene.add.text(x, y + 32, `CLASS LEVEL ${level}`, {
         fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '14px',
+        fontSize: '13px',
         color: '#69e6ff',
         fontStyle: '900',
       }).setOrigin(0.5, 0.5)
     );
 
-    // 2. Stats Panel Box ("status hero")
-    const panelY = y + 250;
+    // 2. Panel box
+    const panelW = 320;
+    const panelH = 435;
+    const panelY = y + 290;
+
+    // Outer glow halo
+    const glow = this.scene.add.graphics();
+    glow.fillStyle(0x00d6ff, 0.04);
+    glow.fillRoundedRect(x - panelW / 2 - 5, panelY - panelH / 2 - 5, panelW + 10, panelH + 10, 12);
+    this.add(glow);
+
+    // Panel background
     this.add(
-      this.scene.add.rectangle(x, panelY, 320, 370, 0x07111f, 0.9)
-        .setStrokeStyle(2.5, 0x00d6ff, 0.7)
+      this.scene.add.rectangle(x, panelY, panelW, panelH, 0x07111f, 0.93)
+        .setStrokeStyle(2, 0x00d6ff, 0.6)
     );
 
-    // 3. Render Status List (Spaced details)
+    // Panel header bar
+    this.add(
+      this.scene.add.rectangle(x, panelY - panelH / 2 + 20, panelW, 38, 0x0c2040, 1)
+    );
+    this.add(
+      this.scene.add.text(x, panelY - panelH / 2 + 20, '⚡  CHARACTER ATTRIBUTES', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '11px',
+        color: '#67e8f9',
+        fontStyle: '900',
+        letterSpacing: 2,
+      }).setOrigin(0.5)
+    );
+
+    // Separator line beneath header
+    const sep = this.scene.add.graphics();
+    sep.lineStyle(1, 0x00d6ff, 0.35);
+    sep.lineBetween(
+      x - panelW / 2 + 8, panelY - panelH / 2 + 40,
+      x + panelW / 2 - 8, panelY - panelH / 2 + 40
+    );
+    this.add(sep);
+
+    // 3. Full 11-stat list
     const list = [
-      { name: 'HP (Health)', val: stats.hp, max: 400, color: 0xef4444 },
-      { name: 'Attack Damage', val: stats.damage, max: 100, color: 0xeab308 },
-      { name: 'Attack Speed', val: stats.attackSpeed, max: 3, color: 0x10b981 },
-      { name: 'Movement Speed', val: stats.moveSpeed, max: 400, color: 0x3b82f6 },
-      { name: 'Crit Chance', val: `${Math.round(stats.criticalChance * 100)}%`, fill: stats.criticalChance, max: 1, color: 0x8b5cf6 },
-      { name: 'Armor (Def)', val: stats.armor || 0, max: 50, color: 0x64748b },
-      { name: 'Evasion (Dodge)', val: `${Math.round((stats.evasion || 0) * 100)}%`, fill: stats.evasion, max: 1, color: 0x06b6d4 }
+      { name: 'HP (Health)',    val: stats.hp,                                               fill: stats.hp / 500,                    color: 0xef4444 },
+      { name: 'Attack DMG',    val: stats.damage,                                           fill: stats.damage / 150,                color: 0xeab308 },
+      { name: 'Attack Range',  val: stats.attackRange,                                      fill: stats.attackRange / 400,           color: 0xf97316 },
+      { name: 'Attack Speed',  val: stats.attackSpeed,                                      fill: stats.attackSpeed / 3,             color: 0x10b981 },
+      { name: 'Move Speed',    val: stats.moveSpeed,                                        fill: stats.moveSpeed / 400,             color: 0x3b82f6 },
+      { name: 'Crit Chance',   val: `${Math.round(stats.criticalChance * 100)}%`,          fill: stats.criticalChance,              color: 0x8b5cf6 },
+      { name: 'Armor (DEF)',   val: stats.armor,                                            fill: stats.armor / 50,                  color: 0x64748b },
+      { name: 'HP Regen',      val: `${stats.healthRegen}/s`,                              fill: stats.healthRegen / 10,            color: 0x22d3ee },
+      { name: 'Lifesteal',     val: `${Math.round(stats.lifesteal * 100)}%`,               fill: stats.lifesteal,                   color: 0xf43f5e },
+      { name: 'Evasion',       val: `${Math.round(stats.evasion * 100)}%`,                 fill: stats.evasion,                     color: 0x06b6d4 },
+      { name: 'Cooldown Reduce', val: `${Math.round(stats.cooldownReduction * 100)}%`,     fill: stats.cooldownReduction,           color: 0xf59e0b },
     ];
 
-    list.forEach((item, index) => {
-      const rowY = panelY - 150 + index * 48;
+    const listStartY = panelY - panelH / 2 + 56;
+    const rowH = 34;
 
-      // Stat Label
+    list.forEach((item, index) => {
+      const rowTop = listStartY + index * rowH;
+      const rowCenterY = rowTop + rowH / 2;
+
+      // Alternating row highlight
+      if (index % 2 === 0) {
+        const rowBg = this.scene.add.graphics();
+        rowBg.fillStyle(0x0c2040, 0.5);
+        rowBg.fillRect(x - panelW / 2 + 6, rowTop, panelW - 12, rowH - 1);
+        this.add(rowBg);
+      }
+
+      // Colored indicator dot
+      const dot = this.scene.add.graphics();
+      dot.fillStyle(item.color, 1);
+      dot.fillCircle(x - panelW / 2 + 14, rowCenterY - 6, 3.5);
+      this.add(dot);
+
+      // Stat label
       this.add(
-        this.scene.add.text(x - 140, rowY - 14, item.name, {
+        this.scene.add.text(x - panelW / 2 + 24, rowCenterY - 6, item.name, {
           fontFamily: 'Outfit, Arial, sans-serif',
-          fontSize: '12px',
-          color: '#9af2ff',
-          fontStyle: '800',
+          fontSize: '11px',
+          color: '#a5f3ff',
+          fontStyle: '700',
         }).setOrigin(0, 0.5)
       );
 
-      // Stat Value
+      // Stat value (right-aligned)
       this.add(
-        this.scene.add.text(x + 140, rowY - 14, item.val, {
+        this.scene.add.text(x + panelW / 2 - 8, rowCenterY - 6, String(item.val), {
           fontFamily: 'Outfit, Arial, sans-serif',
           fontSize: '12px',
-          color: UI.white,
+          color: '#ffffff',
           fontStyle: '900',
         }).setOrigin(1, 0.5)
       );
 
-      // Progress bar background
+      // Progress bar
+      const barX = x - panelW / 2 + 14;
+      const barY = rowCenterY + 7;
+      const barW = panelW - 26;
+
       const barBg = this.scene.add.graphics();
       barBg.fillStyle(0x0e274a, 1);
-      barBg.fillRoundedRect(x - 140, rowY + 2, 280, 8, 4);
+      barBg.fillRoundedRect(barX, barY, barW, 4, 2);
       this.add(barBg);
 
-      // Progress bar fill
-      const numericVal = typeof item.val === 'string' ? (item.fill || 0) : item.val;
-      const pct = Math.min(1.0, numericVal / item.max);
+      const pct = Math.min(1.0, Math.max(0, item.fill || 0));
       if (pct > 0) {
         const barFill = this.scene.add.graphics();
-        barFill.fillStyle(item.color, 1);
-        barFill.fillRoundedRect(x - 140, rowY + 2, 280 * pct, 8, 4);
+        barFill.fillStyle(item.color, 0.85);
+        barFill.fillRoundedRect(barX, barY, barW * pct, 4, 2);
         this.add(barFill);
       }
     });
   }
 }
+

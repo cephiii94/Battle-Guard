@@ -14,7 +14,36 @@ export default class LootSystem {
 
   update() {
     this.loots = this.loots.filter((loot) => loot.active);
-    this.loots.forEach((loot) => this.collectIfTouched(loot));
+    
+    const delta = this.scene.game.loop.delta / 1000;
+    // Magnet range scales dynamically with stats and in-game upgrades
+    const magnetRange = this.player.magnetRange || this.player.finalStats.magnetRange || 150;
+
+    this.loots.forEach((loot) => {
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        loot.x,
+        loot.y
+      );
+
+      const pickupRange = loot.pickupRadius + this.player.radius;
+
+      if (distance <= pickupRange) {
+        this.collect(loot);
+      } else if (distance <= magnetRange) {
+        // Accelerate magnet speed towards player
+        if (!loot.magnetSpeed) {
+          loot.magnetSpeed = 160;
+        } else {
+          loot.magnetSpeed += 400 * delta; // Smooth acceleration
+        }
+
+        const angle = Phaser.Math.Angle.Between(loot.x, loot.y, this.player.x, this.player.y);
+        loot.x += Math.cos(angle) * loot.magnetSpeed * delta;
+        loot.y += Math.sin(angle) * loot.magnetSpeed * delta;
+      }
+    });
   }
 
   tryDropGold(x, y) {
@@ -31,22 +60,10 @@ export default class LootSystem {
 
   spawnLoot(x, y, type, value) {
     const loot = new Loot(this.scene, x, y, type, value);
-
     this.loots.push(loot);
   }
 
-  collectIfTouched(loot) {
-    const distance = Phaser.Math.Distance.Between(
-      this.player.x,
-      this.player.y,
-      loot.x,
-      loot.y
-    );
-
-    if (distance > loot.pickupRadius + this.player.radius) {
-      return;
-    }
-
+  collect(loot) {
     if (loot.type === 'gold') {
       this.gameStats.addGold(loot.value);
     } else if (loot.type === 'exp') {

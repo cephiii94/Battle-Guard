@@ -11,6 +11,7 @@ const heroes = [
     id: 'guardian',
     name: 'Guardian',
     description: 'HP tinggi, attack sedang.',
+    attackType: 'melee',
     baseHp: 160,
     baseAttack: 12,
     attackSpeed: 1,
@@ -30,6 +31,7 @@ const heroes = [
     id: 'ranger',
     name: 'Ranger',
     description: 'Attack speed tinggi, range lebih jauh.',
+    attackType: 'ranged',
     baseHp: 105,
     baseAttack: 10,
     attackSpeed: 1.35,
@@ -48,6 +50,7 @@ const heroes = [
     id: 'mage',
     name: 'Mage',
     description: 'Attack tinggi, HP rendah.',
+    attackType: 'ranged',
     baseHp: 80,
     baseAttack: 22,
     attackSpeed: 0.9,
@@ -66,6 +69,7 @@ const heroes = [
     id: 'antman',
     name: 'Ant-Man',
     description: 'Ukuran dinamis, kecepatan tinggi.',
+    attackType: 'melee',
     baseHp: 120,
     baseAttack: 14,
     attackSpeed: 1.1,
@@ -98,7 +102,8 @@ export function getHeroBaseStats(hero) {
     armor: hero.baseArmor || 0,
     lifesteal: hero.baseLifesteal || 0,
     evasion: hero.baseEvasion || 0,
-    cooldownReduction: hero.baseCooldownReduction || 0
+    cooldownReduction: hero.baseCooldownReduction || 0,
+    attackType: hero.attackType || 'ranged'
   };
 
   Object.entries(hero.passiveBonus || {}).forEach(([statName, value]) => {
