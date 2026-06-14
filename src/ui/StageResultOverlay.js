@@ -123,6 +123,14 @@ export default class StageResultOverlay {
       fontStyle: 'bold'
     }).setOrigin(0.5));
 
+    // Hero XP
+    this.add(this.scene.add.text(gridRightX, gridY + 42, `Hero XP: +${result.heroXpGained || 0}`, {
+      fontFamily: '"Trebuchet MS", Arial, sans-serif',
+      fontSize: '13px',
+      color: '#a855f7',
+      fontStyle: 'bold'
+    }).setOrigin(0.5));
+
     // Loot / Drops summary area
     let lootString = 'None';
     if (result.equipmentDrop) {
@@ -289,10 +297,10 @@ export default class StageResultOverlay {
       fontStyle: 'bold'
     }).setOrigin(0.5));
 
-    this.add(this.scene.add.text(statsBoxX, statsBoxY + 30, 'No bonus rewards were saved.', {
+    this.add(this.scene.add.text(statsBoxX, statsBoxY + 30, `⚡ Hero XP Gained: +${result.heroXpGained || 0}`, {
       fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '13px',
-      color: '#ef4444',
+      fontSize: '14px',
+      color: '#a855f7',
       fontStyle: 'bold'
     }).setOrigin(0.5));
 

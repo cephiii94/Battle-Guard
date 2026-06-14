@@ -23,6 +23,20 @@ const heroes = [
       hp: 20,
       armor: 2
     },
+    // Stat growth per level (additive multiplier, e.g. 0.08 = +8% per level)
+    statGrowth: {
+      hp:                 0.08,
+      damage:             0.03,
+      attackSpeed:        0.02,
+      attackRange:        0.01,
+      moveSpeed:          0.01,
+      criticalChance:     0.01,
+      healthRegen:        0.07,
+      armor:              0.07,
+      lifesteal:          0.02,
+      evasion:            0.01,
+      cooldownReduction:  0.01,
+    },
     cosmeticSkinId: 'default-guard',
     assetKey: 'hero-guardian',
     assetPath: '/assets/heroes/guardian.svg'
@@ -41,6 +55,19 @@ const heroes = [
     baseEvasion: 0.05,
     passiveBonus: {
       criticalChance: 0.03
+    },
+    statGrowth: {
+      hp:                 0.03,
+      damage:             0.05,
+      attackSpeed:        0.06,
+      attackRange:        0.05,
+      moveSpeed:          0.03,
+      criticalChance:     0.06,
+      healthRegen:        0.02,
+      armor:              0.01,
+      lifesteal:          0.02,
+      evasion:            0.06,
+      cooldownReduction:  0.02,
     },
     cosmeticSkinId: 'golden-ranger',
     assetKey: 'hero-ranger',
@@ -61,6 +88,19 @@ const heroes = [
       damage: 4,
       cooldownReduction: 0.08
     },
+    statGrowth: {
+      hp:                 0.02,
+      damage:             0.08,
+      attackSpeed:        0.03,
+      attackRange:        0.04,
+      moveSpeed:          0.01,
+      criticalChance:     0.04,
+      healthRegen:        0.01,
+      armor:              0.01,
+      lifesteal:          0.01,
+      evasion:            0.02,
+      cooldownReduction:  0.07,
+    },
     cosmeticSkinId: 'crimson-shadow',
     assetKey: 'hero-mage',
     assetPath: '/assets/heroes/mage.svg'
@@ -79,6 +119,19 @@ const heroes = [
     baseLifesteal: 0.04,
     passiveBonus: {
       moveSpeed: 15
+    },
+    statGrowth: {
+      hp:                 0.05,
+      damage:             0.05,
+      attackSpeed:        0.05,
+      attackRange:        0.02,
+      moveSpeed:          0.06,
+      criticalChance:     0.02,
+      healthRegen:        0.04,
+      armor:              0.02,
+      lifesteal:          0.07,
+      evasion:            0.03,
+      cooldownReduction:  0.02,
     },
     cosmeticSkinId: 'antman-skin',
     assetKey: 'hero-antman',
@@ -103,7 +156,9 @@ export function getHeroBaseStats(hero) {
     lifesteal: hero.baseLifesteal || 0,
     evasion: hero.baseEvasion || 0,
     cooldownReduction: hero.baseCooldownReduction || 0,
-    attackType: hero.attackType || 'ranged'
+    attackType: hero.attackType || 'ranged',
+    // Carry statGrowth so HeroStats.js can apply per-hero scaling
+    statGrowth: hero.statGrowth || null,
   };
 
   Object.entries(hero.passiveBonus || {}).forEach(([statName, value]) => {

@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { getPlayerProgress, addPlayerGold } from '../../systems/PlayerProgress.js';
-import { saveHeroLevel } from '../../services/saveService.js';
+import { saveHeroLevel, saveHeroLevelAndXP } from '../../services/saveService.js';
 import { getAvailableHeroes, setSelectedHero, getSelectedHero, getSelectedHeroBaseStats } from '../../systems/HeroSelection.js';
-import { calculateFinalStats } from '../../systems/HeroStats.js';
+import { calculateFinalStats, MAX_HERO_LEVEL } from '../../systems/HeroStats.js';
 import { getEquippedItems } from '../../systems/EquipmentInventory.js';
 import { soundManager } from '../../services/soundManager.js';
 import UI from './MenuConfig.js';
@@ -613,57 +613,118 @@ export class HeroTab {
   }
 
   addUpgradeButton(cx, y, heroId, level) {
-    const cost = level * 150;
+    const isMaxLevel = level >= MAX_HERO_LEVEL;
+    const cost = Math.floor(100 * level * level);
     const gold = this.scene.playerProgress.gold;
-    const canAfford = gold >= cost;
+    const currentXp = this.scene.registry.get('heroXP')?.[heroId] || 0;
+    const requiredXp = level * 100;
+    const hasEnoughXp = currentXp >= requiredXp;
+    const canAfford = !isMaxLevel && gold >= cost && hasEnoughXp;
 
     this.upgradeContainer = this.scene.add.container(cx, y);
     this.upgradeContainer.setDepth(2000);
 
-    // Frame Button
-    const btnBg = this.scene.add.rectangle(0, 0, 170, 48, canAfford ? 0x1d4ed8 : 0x334155, 0.9)
-      .setStrokeStyle(2.5, canAfford ? 0x60a5fa : 0x475569, 1);
-    
-    const label = this.scene.add.text(0, -10, 'UPGRADE LEVEL', {
+    if (isMaxLevel) {
+      // MAX LEVEL badge
+      const maxBg = this.scene.add.rectangle(0, 0, 180, 48, 0x78350f, 0.95)
+        .setStrokeStyle(2.5, 0xfbbf24, 1);
+      const maxLabel = this.scene.add.text(0, -8, '✦  MAX LEVEL', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '13px',
+        color: '#fbbf24',
+        fontStyle: '900',
+        letterSpacing: 2,
+      }).setOrigin(0.5);
+      const maxSub = this.scene.add.text(0, 10, 'Hero telah mencapai level tertinggi', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '9px',
+        color: '#fde68a',
+        fontStyle: '700',
+      }).setOrigin(0.5);
+      this.upgradeContainer.add([maxBg, maxLabel, maxSub]);
+      return;
+    }
+
+    // Normal upgrade button
+    let btnColor = 0x334155;
+    let strokeColor = 0x475569;
+    if (canAfford) {
+      btnColor = 0x1d4ed8;
+      strokeColor = 0x60a5fa;
+    } else if (!hasEnoughXp) {
+      btnColor = 0x4c1d95; // deep purple
+      strokeColor = 0x8b5cf6;
+    }
+
+    const btnBg = this.scene.add.rectangle(0, 0, 180, 48, btnColor, 0.9)
+      .setStrokeStyle(2.5, strokeColor, 1);
+
+    let labelString = `UPGRADE  Lv${level} → ${level + 1}`;
+    if (!isMaxLevel && !hasEnoughXp) {
+      labelString = `BUTUH XP  Lv${level} → ${level + 1}`;
+    }
+
+    const label = this.scene.add.text(0, -10, labelString, {
       fontFamily: 'Outfit, Arial, sans-serif',
       fontSize: '11px',
-      color: canAfford ? UI.white : '#94a3b8',
+      color: canAfford ? UI.white : (hasEnoughXp ? '#94a3b8' : '#e9d5ff'),
       fontStyle: '900',
       letterSpacing: 1,
     }).setOrigin(0.5);
 
-    const goldIcon = this.scene.add.text(-35, 12, '🪙', { fontSize: '14px' }).setOrigin(0.5);
-    const costText = this.scene.add.text(-20, 12, this.scene.formatCurrency(cost), {
+    const goldIcon = this.scene.add.text(-42, 12, '🪙', { fontSize: '14px' }).setOrigin(0.5);
+    const costText = this.scene.add.text(-26, 12, this.scene.formatCurrency(cost), {
       fontFamily: 'Outfit, Arial, sans-serif',
       fontSize: '14px',
       color: canAfford ? UI.yellow : '#64748b',
       fontStyle: '900',
     }).setOrigin(0, 0.5);
 
-    this.upgradeContainer.add([btnBg, label, goldIcon, costText]);
+    // Progress indicator: level / MAX
+    const progressText = this.scene.add.text(54, 12, `${level} / ${MAX_HERO_LEVEL}`, {
+      fontFamily: 'Outfit, Arial, sans-serif',
+      fontSize: '10px',
+      color: '#94a3b8',
+      fontStyle: '700',
+    }).setOrigin(0.5);
 
-    if (canAfford) {
-      btnBg.setInteractive({ useHandCursor: true });
-      btnBg.on('pointerover', () => {
-        btnBg.setScale(1.05);
-        label.setScale(1.05);
-        goldIcon.setScale(1.05);
-        costText.setScale(1.05);
-        soundManager.playSFX(this.scene, 'hover');
-      });
-      btnBg.on('pointerout', () => {
-        btnBg.setScale(1);
-        label.setScale(1);
-        goldIcon.setScale(1);
-        costText.setScale(1);
-      });
-      btnBg.on('pointerup', () => {
-        this.handleHeroUpgrade(heroId, cost);
-      });
-    }
+    this.upgradeContainer.add([btnBg, label, goldIcon, costText, progressText]);
+
+    btnBg.setInteractive({ useHandCursor: true });
+    btnBg.on('pointerover', () => {
+      btnBg.setScale(1.05);
+      label.setScale(1.05);
+      goldIcon.setScale(1.05);
+      costText.setScale(1.05);
+      soundManager.playSFX(this.scene, 'hover');
+    });
+    btnBg.on('pointerout', () => {
+      btnBg.setScale(1);
+      label.setScale(1);
+      goldIcon.setScale(1);
+      costText.setScale(1);
+    });
+    btnBg.on('pointerup', () => {
+      this.handleHeroUpgrade(heroId, cost);
+    });
   }
 
   handleHeroUpgrade(heroId, cost) {
+    // Guard: cannot exceed MAX level
+    const currentLevel = this.scene.registry.get('heroLevels')?.[heroId] || 1;
+    if (currentLevel >= MAX_HERO_LEVEL) {
+      this.showUpgradeFeedback(false, 'Sudah MAX level!');
+      return;
+    }
+
+    const currentXp = this.scene.registry.get('heroXP')?.[heroId] || 0;
+    const requiredXp = currentLevel * 100;
+    if (currentXp < requiredXp) {
+      soundManager.playSFX(this.scene, 'hit');
+      this.showUpgradeFeedback(false, 'XP Hero belum cukup!');
+      return;
+    }
+
     const currentGold = this.scene.playerProgress.gold;
     if (currentGold < cost) {
       soundManager.playSFX(this.scene, 'hit');
@@ -675,23 +736,27 @@ export class HeroTab {
 
     const nextGold = addPlayerGold(this.scene, -cost);
     this.scene.playerProgress.gold = nextGold;
-    
-    // Increment level
-    const nextLevel = (this.scene.registry.get('heroLevels')?.[heroId] || 1) + 1;
-    saveHeroLevel(heroId, nextLevel);
-    
+
+    const nextLevel = currentLevel + 1;
+    const nextXp = currentXp - requiredXp;
+    saveHeroLevelAndXP(heroId, nextLevel, nextXp);
+
     const heroLevels = this.scene.registry.get('heroLevels') || {};
     heroLevels[heroId] = nextLevel;
     this.scene.registry.set('heroLevels', heroLevels);
 
+    const heroXP = this.scene.registry.get('heroXP') || {};
+    heroXP[heroId] = nextXp;
+    this.scene.registry.set('heroXP', heroXP);
+
     // Refresh data references
     this.scene.refreshHeroLoadout();
     this.scene.refreshBottomStats();
-    
+
     // Refresh display
     this.show();
-    
-    this.showUpgradeFeedback(true, 'Level Up!');
+
+    this.showUpgradeFeedback(true, `Level Up! Lv ${nextLevel}`);
   }
 
   showUpgradeFeedback(success, message) {
@@ -741,6 +806,37 @@ export class HeroTab {
         fontStyle: '900',
       }).setOrigin(0.5, 0.5)
     );
+
+    // Hero XP progress bar
+    const currentXp = this.scene.registry.get('heroXP')?.[hero.id] || 0;
+    const requiredXp = level * 100;
+    const xpRatio = Math.min(1.0, currentXp / requiredXp);
+
+    const barW = 200;
+    const barH = 14;
+    const barX = x - barW / 2;
+    const barY = y + 54;
+
+    const xpBg = this.scene.add.rectangle(x, barY, barW, barH, 0x0c1e3d, 0.95)
+      .setStrokeStyle(1.5, 0x00d6ff, 0.7);
+    this.add(xpBg);
+
+    if (xpRatio > 0) {
+      const isReady = currentXp >= requiredXp;
+      const fillColor = isReady ? 0x22c55e : 0xa855f7; // Green if ready, Purple if charging
+      const xpFill = this.scene.add.rectangle(barX + 1, barY, (barW - 2) * xpRatio, barH - 2, fillColor, 1)
+        .setOrigin(0, 0.5);
+      this.add(xpFill);
+    }
+
+    const xpTextVal = level >= MAX_HERO_LEVEL ? 'MAX' : `${currentXp}/${requiredXp} XP`;
+    const xpText = this.scene.add.text(x, barY, xpTextVal, {
+      fontFamily: 'Outfit, Arial, sans-serif',
+      fontSize: '9px',
+      color: '#ffffff',
+      fontStyle: '800',
+    }).setOrigin(0.5, 0.5);
+    this.add(xpText);
 
     // 2. Panel box
     const panelW = 320;

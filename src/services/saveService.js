@@ -31,6 +31,12 @@ export const defaultPlayerData = {
     mage: 1,
     antman: 1
   },
+  heroXP: {
+    guardian: 0,
+    ranger: 0,
+    mage: 0,
+    antman: 0
+  },
   skillLevels: {
     'fireball': 1,
     'multi-shot': 0,
@@ -235,6 +241,23 @@ export function saveHeroLevel(heroId, level) {
   });
 }
 
+export function saveHeroLevelAndXP(heroId, level, xp) {
+  const playerData = loadPlayerData();
+  const nextHeroLevels = {
+    ...(playerData.heroLevels || {}),
+    [heroId]: level
+  };
+  const nextHeroXP = {
+    ...(playerData.heroXP || {}),
+    [heroId]: xp
+  };
+  return savePlayerData({
+    ...playerData,
+    heroLevels: nextHeroLevels,
+    heroXP: nextHeroXP
+  });
+}
+
 export function saveSkillLevel(skillId, level) {
   const playerData = loadPlayerData();
   const nextSkillLevels = {
@@ -293,6 +316,7 @@ export function applyPlayerDataToRegistry(registry, playerData = loadPlayerData(
   registry.set('unlockedHeroes', [...playerData.unlockedHeroes]);
   registry.set('unlockedPets', [...playerData.unlockedPets]);
   registry.set('heroLevels', { ...playerData.heroLevels });
+  registry.set('heroXP', { ...playerData.heroXP });
 }
 
 function normalizePlayerData(playerData) {
@@ -335,6 +359,7 @@ function normalizePlayerData(playerData) {
     completedStages: uniqueIds(safeData.completedStages || defaultPlayerData.completedStages),
     stageTimes: safeData.stageTimes || {},
     heroLevels: safeData.heroLevels || { ...defaultPlayerData.heroLevels },
+    heroXP: safeData.heroXP || { ...defaultPlayerData.heroXP },
     skillLevels: safeData.skillLevels || { ...defaultPlayerData.skillLevels },
     materials: {
       ...defaultPlayerData.materials,

@@ -1,4 +1,4 @@
-import { saveStageProgress, updateGold, updateMaterials, updateTickets, updateDailyAttempts, savePlayerLevelAndExp, savePlayerProgress } from '../services/saveService.js';
+import { saveStageProgress, updateGold, updateMaterials, updateTickets, updateDailyAttempts, savePlayerLevelAndExp, savePlayerProgress, saveHeroLevelAndXP } from '../services/saveService.js';
 
 const DEFAULT_PROGRESS = {
   gold: 230560,
@@ -229,5 +229,32 @@ export function getSkillLevelsForPlayerLevel(roadLevel) {
   });
 
   return levels;
+}
+
+export function addHeroXP(scene, heroId, amount) {
+  const heroLevels = scene.registry.get('heroLevels') || {};
+  const heroXP = scene.registry.get('heroXP') || {};
+
+  const currentLevel = heroLevels[heroId] || 1;
+  const currentXP = heroXP[heroId] || 0;
+  const requiredXP = currentLevel * 100;
+
+  // Cap at required XP (so they must level up to gain more)
+  const nextXP = Math.min(requiredXP, currentXP + amount);
+
+  heroXP[heroId] = nextXP;
+  scene.registry.set('heroXP', heroXP);
+
+  // Sync registry playerData
+  const playerData = scene.registry.get('playerData') || {};
+  if (!playerData.heroLevels) playerData.heroLevels = {};
+  if (!playerData.heroXP) playerData.heroXP = {};
+  playerData.heroLevels[heroId] = currentLevel;
+  playerData.heroXP[heroId] = nextXP;
+  scene.registry.set('playerData', playerData);
+
+  saveHeroLevelAndXP(heroId, currentLevel, nextXP);
+
+  return nextXP;
 }
 

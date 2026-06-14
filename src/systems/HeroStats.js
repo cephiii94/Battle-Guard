@@ -1,34 +1,55 @@
+const MAX_HERO_LEVEL = 30;
+
 export function calculateFinalStats(baseHeroStats, equippedItems, activeSkin, level = 1) {
+  const clampedLevel = Math.min(level, MAX_HERO_LEVEL);
   const finalStats = { ...baseHeroStats };
+  const sg = baseHeroStats.statGrowth;
 
-  // Base level scaling: +5% HP, Damage, HP Regen, Armor, and Lifesteal per level
-  const levelMultiplier = 1 + (level - 1) * 0.05;
-  finalStats.hp *= levelMultiplier;
-  finalStats.damage *= levelMultiplier;
-  if (finalStats.healthRegen) {
-    finalStats.healthRegen *= levelMultiplier;
-  }
-  if (finalStats.armor) {
-    finalStats.armor *= levelMultiplier;
-  }
-  if (finalStats.lifesteal) {
-    finalStats.lifesteal *= levelMultiplier;
+  if (sg) {
+    // Per-hero stat growth: each stat scales at its own rate
+    const applyGrowth = (key) => {
+      if (sg[key] !== undefined && finalStats[key] !== undefined) {
+        finalStats[key] = finalStats[key] * (1 + (clampedLevel - 1) * sg[key]);
+      }
+    };
+    applyGrowth('hp');
+    applyGrowth('damage');
+    applyGrowth('attackSpeed');
+    applyGrowth('attackRange');
+    applyGrowth('moveSpeed');
+    applyGrowth('criticalChance');
+    applyGrowth('healthRegen');
+    applyGrowth('armor');
+    applyGrowth('lifesteal');
+    applyGrowth('evasion');
+    applyGrowth('cooldownReduction');
+  } else {
+    // Fallback: uniform +5% per level for all core stats
+    const levelMultiplier = 1 + (clampedLevel - 1) * 0.05;
+    finalStats.hp *= levelMultiplier;
+    finalStats.damage *= levelMultiplier;
+    if (finalStats.healthRegen) finalStats.healthRegen *= levelMultiplier;
+    if (finalStats.armor)       finalStats.armor       *= levelMultiplier;
+    if (finalStats.lifesteal)   finalStats.lifesteal   *= levelMultiplier;
   }
 
+  // Apply equipment bonuses (flat, added after scaling)
   equippedItems.forEach((item) => {
     Object.entries(item.bonus).forEach(([statName, value]) => {
       finalStats[statName] += value;
     });
   });
 
-  const skinBonus = activeSkin.getScalingBonus(level, baseHeroStats);
-
+  // Apply skin scaling bonus
+  const skinBonus = activeSkin.getScalingBonus(clampedLevel, baseHeroStats);
   Object.entries(skinBonus).forEach(([statName, value]) => {
     finalStats[statName] += value;
   });
 
   return roundStats(finalStats);
 }
+
+export { MAX_HERO_LEVEL };
 
 export function roundStats(stats) {
   return {
@@ -49,6 +70,5 @@ export function roundStats(stats) {
 
 function roundTo(value, decimals) {
   const multiplier = 10 ** decimals;
-
   return Math.round(value * multiplier) / multiplier;
 }

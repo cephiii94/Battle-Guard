@@ -1,5 +1,6 @@
-import { addPlayerGold, unlockStage, addPlayerTicket, addPlayerExp } from './PlayerProgress.js';
+import { addPlayerGold, unlockStage, addPlayerTicket, addPlayerExp, addHeroXP } from './PlayerProgress.js';
 import { getNextStage } from '../data/stages.js';
+import { MAX_HERO_LEVEL } from './HeroStats.js';
 
 export default class StageSystem {
   constructor(scene, stage, gameStats) {
@@ -69,6 +70,17 @@ export default class StageSystem {
     const expReward = this.stage.stageId * 50 + this.gameStats.killCount * 2;
     const expResult = addPlayerExp(this.scene, expReward);
 
+    // Give Hero XP on victory
+    let heroXpGained = 0;
+    const heroId = this.scene.selectedHero?.id;
+    if (heroId) {
+      const heroLevel = this.scene.registry.get('heroLevels')?.[heroId] || 1;
+      if (heroLevel < MAX_HERO_LEVEL) {
+        heroXpGained = this.stage.stageId * 30 + this.gameStats.killCount;
+        addHeroXP(this.scene, heroId, heroXpGained);
+      }
+    }
+
     // Only unlock next campaign stage if we are playing campaign mode!
     if (gameMode === 'campaign') {
       unlockStage(this.scene, nextStage.stageId, this.stage.stageId, this.elapsedTime);
@@ -97,7 +109,8 @@ export default class StageSystem {
       kills: this.gameStats.killCount,
       expGained: expReward,
       playerLevel: expResult.level,
-      playerLeveledUp: expResult.leveledUp
+      playerLeveledUp: expResult.leveledUp,
+      heroXpGained
     };
 
     this.emit('victory', result);
@@ -112,10 +125,22 @@ export default class StageSystem {
     this.isFinished = true;
     this.timer.paused = true;
 
+    // Give Hero XP on defeat
+    let heroXpGained = 0;
+    const heroId = this.scene.selectedHero?.id;
+    if (heroId) {
+      const heroLevel = this.scene.registry.get('heroLevels')?.[heroId] || 1;
+      if (heroLevel < MAX_HERO_LEVEL) {
+        heroXpGained = Math.max(10, Math.floor(this.gameStats.killCount * 0.5));
+        addHeroXP(this.scene, heroId, heroXpGained);
+      }
+    }
+
     const result = {
       stage: this.stage,
       temporaryGold: this.gameStats.gold,
-      kills: this.gameStats.killCount
+      kills: this.gameStats.killCount,
+      heroXpGained
     };
 
     this.emit('defeat', result);
