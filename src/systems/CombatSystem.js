@@ -124,8 +124,29 @@ export default class CombatSystem {
       }
     });
 
-    // Apply damage to the target immediately
-    this.applyDamage(target, this.getProjectileDamage());
+    // Apply damage to all monsters inside the slash path (AoE)
+    const damage = this.getProjectileDamage();
+    const monsters = this.spawnSystem.getMonsters();
+
+    monsters.forEach((monster) => {
+      if (!monster.active || monster.isDying || monster.isDead) {
+        return;
+      }
+
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, monster.x, monster.y);
+      if (dist <= range) {
+        const monsterAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, monster.x, monster.y);
+        let angleDiff = Phaser.Math.Angle.Normalize(monsterAngle - angle);
+        if (angleDiff > Math.PI) {
+          angleDiff -= 2 * Math.PI;
+        }
+
+        // Within 0.8 radians (about 45 degrees) of the slash trajectory
+        if (Math.abs(angleDiff) <= 0.8) {
+          this.applyDamage(monster, damage);
+        }
+      }
+    });
   }
 
   getAttackCooldown() {

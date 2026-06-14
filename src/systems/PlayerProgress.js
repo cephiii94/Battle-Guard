@@ -239,8 +239,8 @@ export function addHeroXP(scene, heroId, amount) {
   const currentXP = heroXP[heroId] || 0;
   const requiredXP = currentLevel * 100;
 
-  // Cap at required XP (so they must level up to gain more)
-  const nextXP = Math.min(requiredXP, currentXP + amount);
+  // Allow XP to accumulate beyond the current requirement (surplus XP carryover)
+  const nextXP = currentXP + amount;
 
   heroXP[heroId] = nextXP;
   scene.registry.set('heroXP', heroXP);

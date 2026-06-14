@@ -19,7 +19,7 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setCircle(20, 2, 2);
+    this.setCircle(25, -3, -3);
     this.setCollideWorldBounds(true);
     this.body.setAllowGravity(false);
 

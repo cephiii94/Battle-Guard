@@ -11,6 +11,10 @@ export default class SpawnSystem {
     this.maxMonsters = 20;
     this.spawnDelay = stage.enemySpawnRate;
 
+    // Create physics group to handle monster-monster and monster-boss collisions to avoid overlap
+    this.monsterGroup = scene.physics.add.group();
+    scene.physics.add.collider(this.monsterGroup, this.monsterGroup);
+
     this.spawnTimer = scene.time.addEvent({
       delay: this.spawnDelay,
       callback: this.spawnMonster,
@@ -33,6 +37,7 @@ export default class SpawnSystem {
     });
 
     this.monsters.push(monster);
+    this.monsterGroup.add(monster);
   }
 
   update() {
@@ -54,6 +59,7 @@ export default class SpawnSystem {
 
   addMonster(monster) {
     this.monsters.push(monster);
+    this.monsterGroup.add(monster);
   }
 
   getSpawnPointOutsideCamera() {

@@ -53,7 +53,7 @@ export class SettingsTab {
     this.addCloseButton(width / 2 + 195, height / 2 - 155);
 
     // Music Setting Container
-    const musicY = height / 2 - 50;
+    const musicY = height / 2 - 100;
     this.add(
       this.scene.add.text(width / 2 - 130, musicY, 'BACKGROUND MUSIC', {
         fontFamily: 'Arial, sans-serif',
@@ -96,7 +96,7 @@ export class SettingsTab {
     });
 
     // SFX Setting Container
-    const sfxY = height / 2 + 10;
+    const sfxY = height / 2 - 40;
     this.add(
       this.scene.add.text(width / 2 - 130, sfxY, 'SOUND EFFECTS (SFX)', {
         fontFamily: 'Arial, sans-serif',
@@ -138,8 +138,59 @@ export class SettingsTab {
       this.show();
     });
 
+    // Screen Scale Setting Container
+    const scaleY = height / 2 + 20;
+    this.add(
+      this.scene.add.text(width / 2 - 130, scaleY, 'SCREEN SCALE', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '16px',
+        color: UI.white,
+        fontStyle: '900',
+        stroke: '#0c1648',
+        strokeThickness: 3,
+      }).setOrigin(0, 0.5)
+    );
+
+    const currentMode = this.scene.scale.scaleMode;
+    const isStretched = currentMode !== Phaser.Scale.NONE;
+    const scaleBtn = this.add(
+      this.scene.add.rectangle(width / 2 + 85, scaleY, 140, 36, isStretched ? 0x15803d : 0x0284c7, 1)
+        .setStrokeStyle(2, isStretched ? 0x4ade80 : 0x38bdf8, 1)
+        .setInteractive({ useHandCursor: true })
+    );
+
+    const scaleBtnText = this.add(
+      this.scene.add.text(width / 2 + 85, scaleY, isStretched ? 'REGANGKAN' : 'RESOLUSI CANVAS', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '11px',
+        color: UI.white,
+        fontStyle: '900',
+      }).setOrigin(0.5)
+    );
+
+    scaleBtn.on('pointerover', () => {
+      scaleBtn.setScale(1.05);
+      scaleBtnText.setScale(1.05);
+    });
+    scaleBtn.on('pointerout', () => {
+      scaleBtn.setScale(1);
+      scaleBtnText.setScale(1);
+    });
+    scaleBtn.on('pointerup', () => {
+      soundManager.playSFX(this.scene, 'click');
+      if (isStretched) {
+        this.scene.scale.scaleMode = Phaser.Scale.NONE;
+        localStorage.setItem('game-scale-mode', 'canvas');
+      } else {
+        this.scene.scale.scaleMode = Phaser.Scale.FIT;
+        localStorage.setItem('game-scale-mode', 'stretch');
+      }
+      this.scene.scale.refresh();
+      this.show();
+    });
+
     // Reset Account Container (For Development)
-    const resetY = height / 2 + 90;
+    const resetY = height / 2 + 100;
     const resetBtn = this.add(
       this.scene.add.rectangle(width / 2, resetY, 320, 40, 0x991b1b, 1)
         .setStrokeStyle(2, 0xfecaca, 1)

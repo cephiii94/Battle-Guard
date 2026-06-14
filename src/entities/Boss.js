@@ -25,7 +25,7 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setCircle(34, 4, 4);
+    this.setCircle(40, -2, -2);
     this.setCollideWorldBounds(true);
     this.body.setAllowGravity(false);
     this.setDepth(20);

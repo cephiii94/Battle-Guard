@@ -16,14 +16,25 @@ import {
 } from './services/firebase.js';
 import './style.css';
 
+const savedScaleMode = localStorage.getItem('game-scale-mode') || 'stretch';
+let initialScaleMode = Phaser.Scale.FIT;
+if (savedScaleMode === 'canvas') {
+  initialScaleMode = Phaser.Scale.NONE;
+} else if (savedScaleMode === 'stretch_exact') {
+  initialScaleMode = Phaser.Scale.EXACT_FIT;
+}
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
   width: 1280,
   height: 720,
   backgroundColor: '#111827',
+  resolution: window.devicePixelRatio || 1,
+  antialias: true,
+  antialiasGL: true,
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: initialScaleMode,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   physics: {
