@@ -19,7 +19,6 @@ import StageResultOverlay from '../ui/StageResultOverlay.js';
 import SkillHud from '../ui/SkillHud.js';
 import { soundManager } from '../services/soundManager.js';
 import PauseOverlay from '../ui/PauseOverlay.js';
-
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -225,6 +224,9 @@ export default class GameScene extends Phaser.Scene {
     this.activeSkillSystem.update(delta);
     this.lootSystem.update();
     this.updateEnemyDamage(delta);
+    if (this.statsPanel) {
+      this.statsPanel.update(delta);
+    }
   }
 
   setGameplayPaused(isPaused) {
