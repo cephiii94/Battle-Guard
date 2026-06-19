@@ -1,4 +1,8 @@
 import { soundManager } from '../services/soundManager.js';
+import { addPlayerExp } from '../systems/PlayerProgress.js';
+
+// EXP awarded per stage clear
+const STAGE_CLEAR_EXP = 500;
 
 export default class StageResultOverlay {
   constructor(scene) {
@@ -9,7 +13,13 @@ export default class StageResultOverlay {
 
   showVictory(result) {
     this.clear();
-    
+
+    // === RPG CLASS SYSTEM: Award EXP on victory ===
+    const expResult = addPlayerExp(this.scene, STAGE_CLEAR_EXP);
+    const leveledUp   = expResult.leveledUp;
+    const levelsGained = expResult.levelsGained || 0;
+    // ===
+
     // 1. Semi-transparent backdrop
     this.backdrop = this.add(this.scene.add.rectangle(640, 360, 1280, 720, 0x020617, 0.75));
 
@@ -54,6 +64,34 @@ export default class StageResultOverlay {
       color: '#94a3b8',
       fontStyle: 'bold'
     }).setOrigin(0.5));
+
+    // === RPG CLASS SYSTEM: EXP Reward Banner ===
+    const expBannerY = 258;
+    this.add(this.scene.add.text(640, expBannerY, `✨ +${STAGE_CLEAR_EXP} EXP`, {
+      fontFamily: '"Trebuchet MS", Arial, sans-serif',
+      fontSize: '16px',
+      color: '#a78bfa',
+      fontStyle: 'bold',
+      stroke: '#020617',
+      strokeThickness: 4
+    }).setOrigin(0.5));
+
+    if (leveledUp) {
+      const lvlBadge = this.add(this.scene.add.text(640, expBannerY + 26, `🎉 LEVEL UP! x${levelsGained}  —  +${levelsGained * 5} Status Pts  +${levelsGained} Skill Pt`, {
+        fontFamily: '"Trebuchet MS", Arial, sans-serif',
+        fontSize: '13px',
+        color: '#fcd34d',
+        fontStyle: 'bold',
+        stroke: '#020617',
+        strokeThickness: 3
+      }).setOrigin(0.5));
+      this.scene.tweens.add({
+        targets: lvlBadge,
+        scaleX: 1.06, scaleY: 1.06,
+        duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+      });
+    }
+    // === END RPG CLASS SYSTEM ===
 
     // Stats Grid Box Left
     const gridLeftX = 640 - 120;

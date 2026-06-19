@@ -1,16 +1,21 @@
 import heroes, { getHeroBaseStats, getHeroById } from '../data/heroes.js';
-import { saveSelectedHero } from '../services/saveService.js';
+import { GameManager } from './GameManager.js';
 
 const DEFAULT_HERO_ID = heroes[0].id;
 
 export function getSelectedHero(scene) {
-  return getHeroById(scene.registry.get('selectedHeroId') || DEFAULT_HERO_ID);
+  return getHeroById(GameManager.get('selectedHeroId') || DEFAULT_HERO_ID);
 }
 
 export function setSelectedHero(scene, heroId) {
   const hero = getHeroById(heroId);
-  scene.registry.set('selectedHeroId', hero.id);
-  saveSelectedHero(hero.id);
+  const unlockedHeroes = GameManager.get('unlockedHeroes') || [];
+  const nextUnlocked = [...new Set([...unlockedHeroes, heroId])];
+
+  GameManager.setState({
+    selectedHeroId: hero.id,
+    unlockedHeroes: nextUnlocked
+  });
   return hero;
 }
 

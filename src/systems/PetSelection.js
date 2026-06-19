@@ -1,15 +1,22 @@
-import { saveSelectedPet } from '../services/saveService.js';
+
+import { pets } from '../data/pets.js';
+import { GameManager } from './GameManager.js';
 
 export function getSelectedPetId(scene) {
-  return scene.registry.get('selectedPetId') || null;
+  return GameManager.get('selectedPetId') || null;
 }
 
 export function setSelectedPet(scene, petId) {
-  scene.registry.set('selectedPetId', petId);
-  saveSelectedPet(petId);
+  const unlockedPets = GameManager.get('unlockedPets') || [];
+  const nextUnlocked = [...new Set([...unlockedPets, petId])];
+
+  GameManager.setState({
+    selectedPetId: petId,
+    unlockedPets: nextUnlocked
+  });
   return petId;
 }
 
 export function getUnlockedPets(scene) {
-  return scene.registry.get('unlockedPets') || [];
+  return GameManager.get('unlockedPets') || [];
 }

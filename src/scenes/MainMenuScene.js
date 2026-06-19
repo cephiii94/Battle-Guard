@@ -12,23 +12,25 @@ import {
   setSelectedHero
 } from '../systems/HeroSelection.js';
 import { calculateFinalStats } from '../systems/HeroStats.js';
+import { GameManager } from '../systems/GameManager.js';
 import {
   getPlayerProgress,
   addPlayerGold,
 } from '../systems/PlayerProgress.js';
-import { saveHeroLevel } from '../services/saveService.js';
+
 import { soundManager } from '../services/soundManager.js';
 
 // Modular UI imports
-import { InventoryTab } from '../ui/menu/InventoryTab.js';
 import { StageSelectionTab } from '../ui/menu/StageSelectionTab.js';
 import { ModeSelectionTab } from '../ui/menu/ModeSelectionTab.js';
 import { SettingsTab } from '../ui/menu/SettingsTab.js';
-import { BlacksmithTab } from '../ui/menu/BlacksmithTab.js';
-import { SkillsTab } from '../ui/menu/SkillsTab.js';
-import { ShopTab } from '../ui/menu/ShopTab.js';
-import { HeroTab } from '../ui/menu/HeroTab.js';
 import { UI } from '../ui/menu/MenuConfig.js';
+
+// DOM UI
+import { DOMUIManager } from '../ui/dom/DOMUIManager.js';
+import { InventoryDOM } from '../ui/dom/InventoryDOM.js';
+import { HeroDOM } from '../ui/dom/HeroDOM.js';
+import { ShopDOM } from '../ui/dom/ShopDOM.js';
 
 
 
@@ -87,52 +89,40 @@ export default class MainMenuScene extends Phaser.Scene {
     this.activeSkin = skins[0];
 
     // Initialize modular tabs
-    this.inventoryTab = new InventoryTab(this);
     this.stageSelectionTab = new StageSelectionTab(this);
     this.settingsTab = new SettingsTab(this);
-    this.blacksmithTab = new BlacksmithTab(this);
-    this.skillsTab = new SkillsTab(this);
-    this.shopTab = new ShopTab(this);
     this.modeSelectionTab = new ModeSelectionTab(this);
-    this.heroTab = new HeroTab(this);
+
+    // Initialize DOM UI
+    this.domUiManager = new DOMUIManager(this);
+    this.inventoryDom = new InventoryDOM(this, this.domUiManager);
+    this.heroDom = new HeroDOM(this, this.domUiManager);
+    this.shopDom = new ShopDOM(this, this.domUiManager);
 
     this.loadoutSlotAnchors = [];
     this.loadoutSlotLayer = [];
     this.refreshHeroLoadout();
 
-    this.drawCyberBackground(width, height);
+    this.drawCleanBackground(width, height);
     this.addRedesignedTopBar(width);
-    this.addLeftHUD();
     this.addCenterHeroArea(width, height);
-    this.addRightHUDGrid(width);
-    this.addBottomDock(width, height);
+    this.addSideButtons(width, height);
+    this.addBottomUI(width, height);
 
     // Bind Escape key to close any active modal tabs
     this.input.keyboard.on('keydown-ESC', () => {
-      if (this.inventoryTab.isActive()) {
+      if (this.domUiManager && this.domUiManager.activeOverlay) {
         soundManager.playSFX(this, 'click');
-        this.clearInventoryTab();
+        this.domUiManager.closeCurrent();
       } else if (this.stageSelectionTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearStageSelectionTab();
       } else if (this.settingsTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.clearSettingsTab();
-      } else if (this.blacksmithTab.isActive()) {
-        soundManager.playSFX(this, 'click');
-        this.clearBlacksmithTab();
-      } else if (this.skillsTab.isActive()) {
-        soundManager.playSFX(this, 'click');
-        this.clearSkillsTab();
-      } else if (this.shopTab.isActive()) {
-        soundManager.playSFX(this, 'click');
-        this.clearShopTab();
       } else if (this.modeSelectionTab.isActive()) {
         soundManager.playSFX(this, 'click');
         this.modeSelectionTab.clear();
-      } else if (this.heroTab.isActive()) {
-        soundManager.playSFX(this, 'click');
-        this.clearHeroTab();
       }
     });
 
@@ -161,47 +151,16 @@ export default class MainMenuScene extends Phaser.Scene {
     bindTabKey('FIVE', () => handleTabOpen(this.showShopTab));
     bindTabKey('NUMPAD_FIVE', () => handleTabOpen(this.showShopTab));
 
-    // Bind A and D keys to cycle heroes (only active when no modular tabs are open)
+    // (RPG System: Hero cycling removed — single hero, class based progression)
+    
     const isAnyTabActive = () => {
       return (
-        (this.inventoryTab && this.inventoryTab.isActive()) ||
+        (this.domUiManager && this.domUiManager.activeOverlay) ||
         (this.stageSelectionTab && this.stageSelectionTab.isActive()) ||
         (this.settingsTab && this.settingsTab.isActive()) ||
-        (this.blacksmithTab && this.blacksmithTab.isActive()) ||
-        (this.skillsTab && this.skillsTab.isActive()) ||
-        (this.shopTab && this.shopTab.isActive()) ||
-        (this.modeSelectionTab && this.modeSelectionTab.isActive()) ||
-        (this.heroTab && this.heroTab.isActive())
+        (this.modeSelectionTab && this.modeSelectionTab.isActive())
       );
     };
-
-    this.input.keyboard.on('keydown-A', () => {
-      if (!isAnyTabActive()) {
-        soundManager.playSFX(this, 'click');
-        this.cycleHero(-1);
-      }
-    });
-
-    this.input.keyboard.on('keydown-LEFT', () => {
-      if (!isAnyTabActive()) {
-        soundManager.playSFX(this, 'click');
-        this.cycleHero(-1);
-      }
-    });
-
-    this.input.keyboard.on('keydown-D', () => {
-      if (!isAnyTabActive()) {
-        soundManager.playSFX(this, 'click');
-        this.cycleHero(1);
-      }
-    });
-
-    this.input.keyboard.on('keydown-RIGHT', () => {
-      if (!isAnyTabActive()) {
-        soundManager.playSFX(this, 'click');
-        this.cycleHero(1);
-      }
-    });
 
     // Bind S and ENTER keys to open Campaign stage selection
     const handleCampaignOpen = () => {
@@ -219,75 +178,57 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   clearAllTabs() {
-    if (this.inventoryTab) this.inventoryTab.clear();
+    if (this.domUiManager) this.domUiManager.closeCurrent();
     if (this.stageSelectionTab) this.stageSelectionTab.clear();
     if (this.settingsTab) this.settingsTab.clear();
-    if (this.blacksmithTab) this.blacksmithTab.clear();
-    if (this.skillsTab) this.skillsTab.clear();
-    if (this.shopTab) this.shopTab.clear();
     if (this.modeSelectionTab) this.modeSelectionTab.clear();
-    if (this.heroTab) this.heroTab.clear();
   }
 
-  drawCyberBackground(width, height) {
+  drawCleanBackground(width, height) {
     const bg = this.add.graphics();
-    // Sky/Cyber Gradient Background
-    bg.fillGradientStyle(0xdbeefb, 0xdbeefb, 0xaad4fc, 0x89c5f8, 1);
+    bg.fillGradientStyle(0xffffff, 0xffffff, 0xf0e6dc, 0xebd9cc, 1);
     bg.fillRect(0, 0, width, height);
 
-    // Draw cyber grids on the floor (perspective)
-    const floorY = height * 0.65;
-    bg.lineStyle(1.5, 0x4aa6f7, 0.45);
-    
-    // Draw horizontal perspective lines
-    const numHoriz = 12;
-    for (let i = 0; i <= numHoriz; i++) {
-      const ratio = i / numHoriz;
-      const py = floorY + (height - floorY) * Math.pow(ratio, 1.8);
-      bg.lineBetween(0, py, width, py);
-    }
-    
-    // Draw vertical/converging perspective lines
-    const numVert = 20;
-    const vpX = width / 2; // vanishing point X
-    const vpY = floorY - 80; // vanishing point Y
-    for (let i = -numVert/2; i <= numVert/2; i++) {
-      const startX = width / 2 + i * 90;
-      bg.lineBetween(vpX + i * 12, vpY, startX, height);
-    }
+    // Optional subtle soft shapes in background
+    bg.fillStyle(0xffffff, 0.4);
+    bg.fillCircle(width * 0.15, height * 0.3, 150);
+    bg.fillCircle(width * 0.85, height * 0.7, 200);
   }
 
   addRedesignedTopBar(width) {
-    const topY = 42;
+    const topY = 40;
 
     // 1. Profile Area (Top Left)
     const profileBg = this.add.graphics();
-    profileBg.fillStyle(0x4095ff, 0.25);
-    profileBg.fillRoundedRect(16, topY - 26, 220, 52, 26);
-    profileBg.lineStyle(2, 0xffffff, 0.85);
-    profileBg.strokeRoundedRect(16, topY - 26, 220, 52, 26);
+    profileBg.fillStyle(0xf8f4ef, 1);
+    profileBg.fillRoundedRect(20, topY - 20, 220, 50, 12);
+    // Add a slight shadow
+    profileBg.lineStyle(2, 0xe2d5c8, 1);
+    profileBg.strokeRoundedRect(20, topY - 20, 220, 50, 12);
 
-    // Circle Avatar
-    const avatarX = 42;
-    const avatarY = topY;
-    const avatarCircle = this.add.graphics();
-    avatarCircle.fillStyle(0x0e1d3d, 1);
-    avatarCircle.fillCircle(avatarX, avatarY, 22);
-    avatarCircle.lineStyle(2, 0x00d6ff, 1);
-    avatarCircle.strokeCircle(avatarX, avatarY, 22);
-
+    // Hexagon Avatar
+    const avatarX = 40;
+    const avatarY = topY + 5;
+    const hex = this.add.graphics();
+    hex.fillStyle(0xd5bda3, 1);
+    // draw simple hexagon shape
+    hex.fillPoints([
+      {x: avatarX, y: avatarY - 22}, {x: avatarX + 20, y: avatarY - 11}, 
+      {x: avatarX + 20, y: avatarY + 11}, {x: avatarX, y: avatarY + 22}, 
+      {x: avatarX - 20, y: avatarY + 11}, {x: avatarX - 20, y: avatarY - 11}
+    ], true);
+    
     const activeSkin = this.activeSkin;
     const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
-    this.add.image(avatarX, avatarY, visualKey).setDisplaySize(36, 36);
+    this.add.image(avatarX, avatarY, visualKey).setDisplaySize(32, 32);
 
-    // Name & Stats
-    this.add.text(78, topY - 20, 'EUFEME', {
+    // Name
+    const pName = GameManager.get('playerName') || 'Hero';
+    this.add.text(75, topY - 12, pName, {
       fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '15px',
-      color: UI.white,
-      fontStyle: '800',
-      stroke: '#081735',
-      strokeThickness: 2,
+      fontSize: '16px',
+      color: '#4a3f35',
+      fontStyle: '900',
     });
 
     const playerLevel = this.playerProgress.playerLevel || 1;
@@ -295,573 +236,253 @@ export default class MainMenuScene extends Phaser.Scene {
     const requiredExp = playerLevel * 200;
     const expRatio = Math.min(1.0, playerExp / requiredExp);
 
-    // Level Pill
-    const lvlPill = this.add.graphics();
-    lvlPill.fillStyle(0x1d4ed8, 0.95);
-    lvlPill.fillRoundedRect(78, topY + 2, 42, 14, 7);
-    this.add.text(99, topY + 9, `Lv.${playerLevel}`, {
+    // Level bubble
+    this.add.circle(85, topY + 12, 10, 0x6ab5c7);
+    this.add.text(85, topY + 12, playerLevel, {
       fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '9px',
-      color: UI.white,
-      fontStyle: '900',
+      fontSize: '11px',
+      color: '#ffffff',
+      fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // EXP Progress Bar
-    const xpX = 126;
-    const xpY = topY + 2;
+    // EXP Bar
+    const xpX = 100;
+    const xpY = topY + 8;
     const xpW = 100;
-    const xpH = 14;
-    const expGraphics = this.add.graphics();
-    expGraphics.fillStyle(0x0c1e3d, 0.9);
-    expGraphics.fillRoundedRect(xpX, xpY, xpW, xpH, 7);
+    const xpH = 8;
+    this.add.rectangle(xpX + xpW/2, xpY + xpH/2, xpW, xpH, 0xe2d5c8).setOrigin(0.5);
     if (expRatio > 0) {
-      expGraphics.fillStyle(0x00d6ff, 1);
-      expGraphics.fillRoundedRect(xpX + 1, xpY + 1, (xpW - 2) * expRatio, xpH - 2, 6);
+      this.add.rectangle(xpX + (xpW * expRatio)/2, xpY + xpH/2, xpW * expRatio, xpH, 0xf6be4f).setOrigin(0.5);
     }
-    this.add.text(xpX + xpW / 2, xpY + xpH / 2, `${playerExp}/${requiredExp}`, {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '8px',
-      color: UI.white,
-      fontStyle: '900',
-    }).setOrigin(0.5);
 
-    // 2. Resource Bars (Top Middle)
-    // Energy / Mana bar
-    this.addResourcePanel(400, topY, '🧪', '192999', 0x2196f3);
-    // Gems bar
-    this.addResourcePanel(580, topY, '💎', '192999', 0x00bcd4);
-    // Coins/Gold bar
-    this.addResourcePanel(760, topY, '🪙', this.formatCurrency(this.playerProgress.gold), 0xffb300, true);
+    // 2. Center Top (Class Badge)
+    const currentClass = GameManager.get('currentClass') || 'Novice';
+    const cx = width / 2;
+    const classBadge = this.add.graphics();
+    classBadge.fillStyle(0x4a426b, 1);
+    // Draw polygon like reference
+    classBadge.fillPoints([
+      {x: cx - 40, y: topY - 15}, {x: cx + 20, y: topY - 15},
+      {x: cx + 40, y: topY + 5}, {x: cx + 20, y: topY + 25},
+      {x: cx - 40, y: topY + 25}, {x: cx - 60, y: topY + 5}
+    ], true);
+    
+    // Circle for level inside badge
+    this.add.circle(cx - 35, topY + 5, 14, 0x332b4d);
+    this.add.text(cx - 35, topY + 5, playerLevel, { fontSize: '14px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+    // White bar next to it
+    this.add.rectangle(cx + 10, topY + 5, 60, 10, 0xffffff);
 
-    // 3. Top Right Buttons (Mail & Menu)
-    const mailBtn = this.add.container(width - 140, topY);
-    const mBg = this.add.rectangle(0, 0, 44, 44, 0x498ff5, 0.9)
-      .setStrokeStyle(2, 0xffffff, 0.9)
+    // 3. Top Right Resources
+    // Gold
+    this.addCapsule(width - 250, topY, '🪙', this.formatCurrency(this.playerProgress.gold), 0xcca677);
+    // Gems
+    this.addCapsule(width - 150, topY, '💎', '50', 0xcca677);
+    
+    // Settings Button
+    const setBtn = this.add.circle(width - 50, topY + 5, 18, 0xffffff)
       .setInteractive({ useHandCursor: true });
-    const mIcon = this.add.text(0, 0, '✉', { fontSize: '24px', color: '#fff' }).setOrigin(0.5);
-    const mDot = this.add.circle(14, -14, 6, 0xff3b30);
-    mailBtn.add([mBg, mIcon, mDot]);
-
-    mBg.on('pointerover', () => { mBg.setScale(1.1); soundManager.playSFX(this, 'hover'); });
-    mBg.on('pointerout', () => mBg.setScale(1));
-    mBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showSettingsTab();
-    });
-
-    const menuGridBtn = this.add.container(width - 80, topY);
-    const gBg = this.add.rectangle(0, 0, 44, 44, 0x498ff5, 0.9)
-      .setStrokeStyle(2, 0xffffff, 0.9)
-      .setInteractive({ useHandCursor: true });
-    const gIcon = this.add.text(0, 0, '⚏', { fontSize: '24px', color: '#fff' }).setOrigin(0.5);
-    menuGridBtn.add([gBg, gIcon]);
-
-    gBg.on('pointerover', () => { gBg.setScale(1.1); soundManager.playSFX(this, 'hover'); });
-    gBg.on('pointerout', () => gBg.setScale(1));
-    gBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showSettingsTab();
-    });
+    this.add.text(width - 50, topY + 5, '⚙️', { fontSize: '20px', color: '#000' }).setOrigin(0.5);
+    
+    setBtn.on('pointerover', () => { setBtn.setScale(1.1); soundManager.playSFX(this, 'hover'); });
+    setBtn.on('pointerout', () => setBtn.setScale(1));
+    setBtn.on('pointerup', () => { soundManager.playSFX(this, 'click'); this.showSettingsTab(); });
   }
 
-  addResourcePanel(x, y, icon, value, colorHex, isGold = false) {
+  addCapsule(x, y, icon, value, bgColor) {
     const bg = this.add.graphics();
-    bg.fillStyle(0x0c1e3d, 0.85);
-    bg.fillRoundedRect(x - 80, y - 18, 160, 36, 18);
-    bg.lineStyle(2, 0xffffff, 0.8);
-    bg.strokeRoundedRect(x - 80, y - 18, 160, 36, 18);
-
-    // Icon
-    this.add.text(x - 66, y, icon, { fontSize: '20px' }).setOrigin(0.5);
-
-    // Value
-    const valText = this.add.text(x - 12, y, value, {
+    bg.fillStyle(bgColor, 0.4);
+    bg.fillRoundedRect(x - 40, y - 12, 80, 24, 12);
+    
+    this.add.text(x - 30, y, icon, { fontSize: '18px' }).setOrigin(0.5);
+    const valText = this.add.text(x + 10, y, value, {
       fontFamily: 'Outfit, Arial, sans-serif',
       fontSize: '14px',
-      color: UI.white,
-      fontStyle: '800',
+      color: '#4a3f35',
+      fontStyle: '800'
     }).setOrigin(0.5);
 
-    if (isGold) {
+    if (icon === '🪙') {
       this.goldText = valText;
     }
+  }
 
-    // Plus button
-    const plusContainer = this.add.container(x + 58, y);
-    const pBg = this.add.circle(0, 0, 12, 0x007aff)
-      .setInteractive({ useHandCursor: true });
-    const pText = this.add.text(0, -1, '+', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '16px',
-      color: '#ffffff',
-      fontStyle: '900',
-    }).setOrigin(0.5);
-    plusContainer.add([pBg, pText]);
+  addSideButtons(width, height) {
+    // Left Buttons (Shop, Hero, Inventory)
+    const lx = 60;
+    let ly = height * 0.35;
+    
+    const leftBtns = [
+      { label: 'SHOP', icon: '🏪', action: () => this.showShopTab() },
+      { label: 'HERO', icon: '👧', action: () => this.showHeroTab() },
+      { label: 'INVENTORY', icon: '🎒', action: () => this.showInventoryTab() }
+    ];
 
-    pBg.on('pointerover', () => { pBg.setScale(1.15); soundManager.playSFX(this, 'hover'); });
-    pBg.on('pointerout', () => pBg.setScale(1));
-    pBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      if (isGold) {
-        const nextGold = addPlayerGold(this, 10000);
-        this.playerProgress.gold = nextGold;
-        valText.setText(this.formatCurrency(nextGold));
-        soundManager.playSFX(this, 'upgrade');
-      }
+    leftBtns.forEach((btn, i) => {
+      this.addSideButton(lx, ly + i * 85, btn.label, btn.icon, btn.action);
+    });
+
+    // Right Buttons (Skills, Smith)
+    const rx = width - 60;
+    const rightBtns = [
+      { label: 'SKILLS', icon: '⚡', action: () => this.showSkillsTab() },
+      { label: 'SMITH', icon: '⚒️', action: () => this.showBlacksmithTab() }
+    ];
+
+    rightBtns.forEach((btn, i) => {
+      this.addSideButton(rx, ly + i * 85, btn.label, btn.icon, btn.action);
     });
   }
 
-  addLeftHUD() {
-    const lx = 180;
-    const ly = 380;
-    const lw = 280;
-    const lh = 480;
-
-    // Draw the main panel background
-    const bg = this.add.graphics();
-    bg.fillStyle(0x07111f, 0.85);
-    bg.fillRoundedRect(lx - lw / 2, ly - lh / 2, lw, lh, 16);
-    bg.lineStyle(2.5, 0x4aa6f7, 0.85);
-    bg.strokeRoundedRect(lx - lw / 2, ly - lh / 2, lw, lh, 16);
-
-    // Title
-    this.add.text(lx, ly - 210, 'STATUS HERO', {
+  addSideButton(x, y, label, icon, callback) {
+    const container = this.add.container(x, y);
+    const bg = this.add.circle(0, 0, 28, 0xa58b76, 0.9)
+      .setInteractive({ useHandCursor: true });
+    // inner circle
+    const inner = this.add.circle(0, 0, 24, 0x937661, 1);
+    
+    const iconText = this.add.text(0, -4, icon, { fontSize: '24px' }).setOrigin(0.5);
+    const labelText = this.add.text(0, 36, label, {
       fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '20px',
-      color: UI.yellow,
-      fontStyle: '900',
-      stroke: '#07111f',
-      strokeThickness: 3,
+      fontSize: '11px',
+      color: '#705c4b',
+      fontStyle: '800'
     }).setOrigin(0.5);
 
-    // Draw stats list
-    const stats = [
-      ['HP', this.finalHeroStats.hp],
-      ['Attack', this.finalHeroStats.damage],
-      ['Attack Speed', this.finalHeroStats.attackSpeed],
-      ['Move Speed', this.finalHeroStats.moveSpeed],
-      ['Crit Chance', `${Math.round(this.finalHeroStats.criticalChance * 100)}%`],
-      ['HP Regen', `${this.finalHeroStats.healthRegen || 0}/s`],
-      ['Armor', this.finalHeroStats.armor || 0],
-      ['Evasion', `${Math.round((this.finalHeroStats.evasion || 0) * 100)}%`]
-    ];
+    container.add([bg, inner, iconText, labelText]);
 
-    stats.forEach(([label, value], index) => {
-      const rowY = ly - 160 + index * 42;
-      
-      // Stat label
-      this.add.text(lx - 110, rowY, label, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '14px',
-        color: '#9af2ff',
-        fontStyle: '800',
-      }).setOrigin(0, 0.5);
-
-      // Stat value
-      this.add.text(lx + 110, rowY, value, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '14px',
-        color: UI.white,
-        fontStyle: '800',
-      }).setOrigin(1, 0.5);
-
-      // Mini separator line
-      if (index < stats.length - 1) {
-        const line = this.add.graphics();
-        line.lineStyle(1, 0x4aa6f7, 0.25);
-        line.lineBetween(lx - 110, rowY + 21, lx + 110, rowY + 21);
-      }
-    });
-
-    // Small utility buttons underneath the stats panel inside the frame
-    const eyeBtn = this.add.container(lx - 40, ly + 195);
-    const eyeBg = this.add.circle(0, 0, 20, 0x498ff5, 0.9)
-      .setStrokeStyle(2, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const eyeText = this.add.text(0, 0, '👁', { fontSize: '18px', color: '#fff' }).setOrigin(0.5);
-    eyeBtn.add([eyeBg, eyeText]);
-
-    eyeBg.on('pointerover', () => { eyeBg.setScale(1.1); soundManager.playSFX(this, 'hover'); });
-    eyeBg.on('pointerout', () => eyeBg.setScale(1));
-    eyeBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.cameras.main.flash(200, 255, 255, 255);
-    });
-
-    const cycleBtn = this.add.container(lx + 40, ly + 195);
-    const cycleBg = this.add.circle(0, 0, 20, 0x498ff5, 0.9)
-      .setStrokeStyle(2, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const cycleText = this.add.text(0, 0, '🔄', { fontSize: '16px', color: '#fff' }).setOrigin(0.5);
-    cycleBtn.add([cycleBg, cycleText]);
-
-    cycleBg.on('pointerover', () => { cycleBg.setScale(1.1); soundManager.playSFX(this, 'hover'); });
-    cycleBg.on('pointerout', () => cycleBg.setScale(1));
-    cycleBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.cycleHero(1);
-    });
+    bg.on('pointerover', () => { container.setScale(1.1); soundManager.playSFX(this, 'hover'); });
+    bg.on('pointerout', () => container.setScale(1));
+    bg.on('pointerup', () => { soundManager.playSFX(this, 'click'); callback(); });
   }
 
   addCenterHeroArea(width, height) {
     const cx = width / 2;
-    const cy = height / 2 + 10;
+    const cy = height / 2 + 20;
 
-    // Platform/Pedestal Under Hero
-    const pedestal = this.add.ellipse(cx, cy + 180, 240, 60, 0x228df7, 0.8)
-      .setStrokeStyle(3, 0xffffff, 1);
-    pedestal.setDepth(90);
-    const pedestalInner = this.add.ellipse(cx, cy + 180, 200, 48, 0x111e3b, 0.9);
-    pedestalInner.setDepth(95);
+    // Soft shadow under hero
+    this.add.ellipse(cx, cy + 190, 180, 40, 0x000000, 0.15).setDepth(90);
 
-    // Hero Portrait (large in the center)
     const activeSkin = this.activeSkin;
     const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
     this.heroPortrait = this.add.image(cx, cy + 20, visualKey).setDisplaySize(280, 280);
     this.heroPortrait.setDepth(110);
 
-    this.drawHeroFrame(cx, cy + 20);
-
-    // Left Arrow
-    const leftArrow = this.add.text(cx - 210, cy + 20, '◀', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '48px',
-      color: '#00d6ff',
-      stroke: '#ffffff',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    leftArrow.on('pointerover', () => { leftArrow.setScale(1.15); soundManager.playSFX(this, 'hover'); });
-    leftArrow.on('pointerout', () => leftArrow.setScale(1));
-    leftArrow.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.cycleHero(-1);
-    });
-
-    // Right Arrow
-    const rightArrow = this.add.text(cx + 210, cy + 20, '▶', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '48px',
-      color: '#00d6ff',
-      stroke: '#ffffff',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    rightArrow.on('pointerover', () => { rightArrow.setScale(1.15); soundManager.playSFX(this, 'hover'); });
-    rightArrow.on('pointerout', () => rightArrow.setScale(1));
-    rightArrow.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.cycleHero(1);
-    });
-
-    // Upgrades overlay panel - smaller inside character area
-    this.heroClassText = this.add.text(cx, cy - 170, this.selectedHero.name.toUpperCase(), {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '22px',
-      color: UI.yellow,
-      fontStyle: '900',
-      stroke: '#081735',
-      strokeThickness: 4,
-    }).setOrigin(0.5);
-
-    this.heroLevelText = this.add.text(cx, cy - 140, `Lv. ${this.heroLevel}`, {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '18px',
-      color: UI.white,
-      fontStyle: '900',
-      stroke: '#081735',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
-
-    // Also draw the equipment circles in the background
-    this.loadoutSlotAnchors = [
-      { x: cx - 140, y: cy + 120, label: 'WEAPON', slot: 'weapon' },
-      { x: cx, y: cy + 140, label: 'ARMOR', slot: 'armor' },
-      { x: cx + 140, y: cy + 120, label: 'RING', slot: 'ring' },
-    ];
-    this.refreshMainMenuLoadoutDisplay();
-  }
-
-  addRightHUDGrid(width) {
-    const rx = width - 200;
-
-    // 1. Campaign Button (Large Yellow) & Mode Button (Blue square next to it)
-    const campaignContainer = this.add.container(rx - 30, 160);
-    const campBg = this.add.rectangle(0, 0, 180, 90, 0xffc400, 0.95)
-      .setStrokeStyle(3, 0xffffff, 1)
+    // Plus button on the right of hero
+    const plusContainer = this.add.container(cx + 140, cy + 20);
+    const pBg = this.add.rectangle(0, 0, 36, 36, 0xe2d5c8, 0.8)
       .setInteractive({ useHandCursor: true });
-    const campIcon = this.add.text(-56, -10, '⚔', { fontSize: '32px', color: '#fff' }).setOrigin(0.5);
-    const campTitle = this.add.text(-32, -18, 'CAMPAIGN', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '16px',
-      color: '#ffffff',
-      fontStyle: '900',
-    }).setOrigin(0, 0.5);
-    const campStageText = this.add.text(-32, 12, 'Stage 1-1\nRouete 66', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '11px',
-      color: '#fff8e1',
-      fontStyle: '700',
-    }).setOrigin(0, 0.5);
-    const campDot = this.add.circle(74, -34, 7, 0xff3b30);
-    campaignContainer.add([campBg, campIcon, campTitle, campStageText, campDot]);
+    pBg.isStroked = false;
+    const pText = this.add.text(0, 0, '+', { fontSize: '28px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
+    plusContainer.add([pBg, pText]);
 
-    campBg.on('pointerover', () => { campBg.setScale(1.04); soundManager.playSFX(this, 'hover'); });
-    campBg.on('pointerout', () => campBg.setScale(1));
-    campBg.on('pointerup', () => {
+    pBg.on('pointerover', () => { plusContainer.setScale(1.1); soundManager.playSFX(this, 'hover'); });
+    pBg.on('pointerout', () => plusContainer.setScale(1));
+    pBg.on('pointerup', () => {
       soundManager.playSFX(this, 'click');
-      this.showStageSelectionTab();
-    });
-
-    const modeContainer = this.add.container(rx + 115, 160);
-    const modeBg = this.add.rectangle(0, 0, 90, 90, 0x007aff, 0.95)
-      .setStrokeStyle(3, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const modeIcon = this.add.text(0, -10, '🏰', { fontSize: '36px' }).setOrigin(0.5);
-    const modeText = this.add.text(0, 26, 'MODE', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '12px',
-      color: '#ffffff',
-      fontStyle: '900',
-    }).setOrigin(0.5);
-    modeContainer.add([modeBg, modeIcon, modeText]);
-
-    modeBg.on('pointerover', () => { modeBg.setScale(1.05); soundManager.playSFX(this, 'hover'); });
-    modeBg.on('pointerout', () => modeBg.setScale(1));
-    modeBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showModeSelectionTab();
-    });
-
-    // 2. Event Button (Wide Blue)
-    const eventContainer = this.add.container(rx + 10, 245);
-    const eventBg = this.add.rectangle(0, 0, 300, 56, 0x007aff, 0.95)
-      .setStrokeStyle(3, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const eventIcon = this.add.text(-110, 0, '⭐', { fontSize: '24px' }).setOrigin(0.5);
-    const eventText = this.add.text(-70, 0, 'EVENT', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '18px',
-      color: '#ffffff',
-      fontStyle: '900',
-    }).setOrigin(0, 0.5);
-    eventContainer.add([eventBg, eventIcon, eventText]);
-
-    eventBg.on('pointerover', () => { eventBg.setScale(1.03); soundManager.playSFX(this, 'hover'); });
-    eventBg.on('pointerout', () => eventBg.setScale(1));
-    eventBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showModeSelectionTab();
-    });
-
-    // 3. Codex & Quest (Side-by-Side)
-    const codexContainer = this.add.container(rx - 65, 320);
-    const codexBg = this.add.rectangle(0, 0, 145, 66, 0x007aff, 0.95)
-      .setStrokeStyle(3, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const codexIcon = this.add.text(-46, 0, '📖', { fontSize: '24px' }).setOrigin(0.5);
-    const codexText = this.add.text(-16, 0, 'CODEX', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: '900',
-    }).setOrigin(0, 0.5);
-    codexContainer.add([codexBg, codexIcon, codexText]);
-
-    codexBg.on('pointerover', () => { codexBg.setScale(1.05); soundManager.playSFX(this, 'hover'); });
-    codexBg.on('pointerout', () => codexBg.setScale(1));
-    codexBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showInventoryTab();
-    });
-
-    const questContainer = this.add.container(rx + 85, 320);
-    const questBg = this.add.rectangle(0, 0, 145, 66, 0x007aff, 0.95)
-      .setStrokeStyle(3, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const questIcon = this.add.text(-46, 0, '📋', { fontSize: '24px' }).setOrigin(0.5);
-    const questText = this.add.text(-16, 0, 'QUEST', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: '900',
-    }).setOrigin(0, 0.5);
-    const questDot = this.add.circle(62, -24, 6, 0xff3b30);
-    questContainer.add([questBg, questIcon, questText, questDot]);
-
-    questBg.on('pointerover', () => { questBg.setScale(1.05); soundManager.playSFX(this, 'hover'); });
-    questBg.on('pointerout', () => questBg.setScale(1));
-    questBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showModeSelectionTab();
-    });
-
-    // 4. Time Recruit (Clock) & Recruit (Banner)
-    const timeRecruitContainer = this.add.container(rx - 65, 415);
-    const timeBg = this.add.rectangle(0, 0, 145, 96, 0x228df7, 0.95)
-      .setStrokeStyle(3, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const timeIcon = this.add.text(-44, -22, '⏱ 09:00', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: '900',
-    }).setOrigin(0.5);
-    const timeText = this.add.text(0, 14, 'Time\nRecruit', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: '800',
-      align: 'center',
-    }).setOrigin(0.5);
-    timeRecruitContainer.add([timeBg, timeIcon, timeText]);
-
-    timeBg.on('pointerover', () => { timeBg.setScale(1.05); soundManager.playSFX(this, 'hover'); });
-    timeBg.on('pointerout', () => timeBg.setScale(1));
-    timeBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showInventoryTab();
-    });
-
-    const recruitContainer = this.add.container(rx + 85, 415);
-    const recruitBg = this.add.rectangle(0, 0, 145, 96, 0x00bcd4, 0.95)
-      .setStrokeStyle(3, 0xffffff, 1)
-      .setInteractive({ useHandCursor: true });
-    const recruitImg = this.add.text(0, -16, 'Hero RateUp', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '12px',
-      color: '#fff',
-      fontStyle: '900',
-      stroke: '#081735',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
-    const recruitText = this.add.text(0, 22, 'RECRUIT', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '15px',
-      color: '#ffffff',
-      fontStyle: '900',
-      stroke: '#081735',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
-    const recruitDot = this.add.circle(62, -38, 7, 0xff3b30);
-    recruitContainer.add([recruitBg, recruitImg, recruitText, recruitDot]);
-
-    recruitBg.on('pointerover', () => { recruitBg.setScale(1.05); soundManager.playSFX(this, 'hover'); });
-    recruitBg.on('pointerout', () => recruitBg.setScale(1));
-    recruitBg.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showInventoryTab();
+      this.showHeroTab(); 
     });
   }
 
-  addBottomDock(width, height) {
-    const cx = width / 2;
-    const dockY = height - 52;
+  addBottomUI(width, height) {
+    const rx = width - 180;
+    const by = height - 70;
 
-    // Background horizontal dock (shifted right, centered at X = 710)
-    const dockX = cx + 70;
-    const dockW = 580;
-    const dock = this.add.graphics();
-    dock.fillStyle(0xffffff, 0.95);
-    dock.fillRoundedRect(dockX - dockW / 2, dockY - 32, dockW, 64, 16);
-    dock.lineStyle(3, 0x4aa6f7, 1);
-    dock.strokeRoundedRect(dockX - dockW / 2, dockY - 32, dockW, 64, 16);
+    // Event Banner (Shifted up)
+    const eventY = by - 105;
+    const eventBg = this.add.graphics();
+    eventBg.fillStyle(0xa58b76, 1);
+    eventBg.fillRoundedRect(rx - 120, eventY - 20, 240, 44, 8);
+    this.add.text(rx + 20, eventY - 5, 'New events in 02:02:30', {
+      fontFamily: 'Outfit, Arial, sans-serif',
+      fontSize: '10px',
+      color: '#d6c5b3'
+    }).setOrigin(0.5);
+    this.add.text(rx + 20, eventY + 10, 'FaCTory Brawl', {
+      fontFamily: 'Outfit, Arial, sans-serif',
+      fontSize: '14px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
 
-    const tabs = [
-      { name: 'HERO', icon: '👧', color: '#e040fb', dot: false },
-      { name: 'BLACKSMITH', icon: '⚒️', color: '#ffb300', dot: true },
-      { name: 'SKILL', icon: '⚡', color: '#4caf50', dot: false },
-      { name: 'INVENTORY', icon: '🎒', color: '#00e5ff', dot: false },
-      { name: 'SHOP', icon: '🏪', color: '#ff1744', dot: true },
-    ];
+    // Thumbnail for event (left side of banner)
+    const thumbBg = this.add.graphics();
+    thumbBg.fillStyle(0xcce8ef, 1);
+    thumbBg.fillRoundedRect(rx - 130, eventY - 25, 60, 45, 6);
+    thumbBg.lineStyle(2, 0xf6be4f, 1);
+    thumbBg.strokeRoundedRect(rx - 130, eventY - 25, 60, 45, 6);
 
-    const tabWidth = (dockW - 100) / (tabs.length - 1);
-    const startX = dockX - (dockW - 100) / 2;
+    // Info icon on right of banner
+    this.add.circle(rx + 120, eventY - 20, 10, 0xc183a6);
+    this.add.text(rx + 120, eventY - 20, 'i', { fontSize: '12px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
 
-    tabs.forEach((tab, index) => {
-      const tx = startX + index * tabWidth;
-      const tabContainer = this.add.container(tx, dockY);
-      
-      const clickArea = this.add.rectangle(0, 0, tabWidth, 56, 0xffffff, 0.01)
-        .setInteractive({ useHandCursor: true });
-      const icon = this.add.text(0, -10, tab.icon, { fontSize: '24px' }).setOrigin(0.5);
-      const text = this.add.text(0, 18, tab.name, {
-        fontFamily: 'Outfit, Arial, sans-serif',
-        fontSize: '10px',
-        color: '#1a237e',
-        fontStyle: '900',
-      }).setOrigin(0.5);
+    // MODE Button
+    const modeBtn = this.add.container(rx, by - 52);
+    const mBg = this.add.graphics();
+    mBg.fillStyle(0x6ab5c7, 1);
+    mBg.fillRoundedRect(-120, -16, 240, 32, 10);
+    const mZone = this.add.zone(0, 0, 240, 32).setInteractive({ useHandCursor: true });
+    const mText = this.add.text(0, 0, 'MODE SELECTION', {
+      fontFamily: 'Outfit, Arial, sans-serif',
+      fontSize: '14px',
+      color: '#ffffff',
+      fontStyle: '800'
+    }).setOrigin(0.5);
+    modeBtn.add([mBg, mZone, mText]);
 
-      tabContainer.add([clickArea, icon, text]);
-
-      if (tab.dot) {
-        const dot = this.add.circle(18, -18, 5, 0xff3b30);
-        tabContainer.add(dot);
-      }
-
-      clickArea.on('pointerover', () => {
-        tabContainer.setScale(1.1);
-        soundManager.playSFX(this, 'hover');
-      });
-      clickArea.on('pointerout', () => tabContainer.setScale(1));
-      clickArea.on('pointerup', () => {
-        soundManager.playSFX(this, 'click');
-        if (tab.name === 'BLACKSMITH') {
-          this.showBlacksmithTab();
-        } else if (tab.name === 'HERO') {
-          this.showHeroTab();
-        } else if (tab.name === 'INVENTORY') {
-          this.showInventoryTab();
-        } else if (tab.name === 'SKILL') {
-          this.showSkillsTab();
-        } else if (tab.name === 'SHOP') {
-          this.showShopTab();
-        }
-      });
+    mZone.on('pointerover', () => { modeBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
+    mZone.on('pointerout', () => modeBtn.setScale(1));
+    mZone.on('pointerup', () => {
+      soundManager.playSFX(this, 'click');
+      this.showModeSelectionTab();
     });
 
-    // Big Yellow BATTLE Button next to it (centered at X = 1085)
-    const battleBoxX = dockX + dockW / 2 + 85;
-    const battleBoxW = 150;
+    // Giant PLAY Button
+    const playBtn = this.add.container(rx, by);
+    const pBg = this.add.graphics();
+    pBg.fillStyle(0xf6be4f, 1);
+    pBg.fillRoundedRect(-120, -30, 240, 60, 20);
+    // make interactive zone
+    const pZone = this.add.zone(0, 0, 240, 60).setInteractive({ useHandCursor: true });
     
-    const battleBox = this.add.graphics();
-    // Yellow background with white border
-    battleBox.fillStyle(0xffc400, 1);
-    battleBox.fillRoundedRect(battleBoxX - battleBoxW / 2, dockY - 32, battleBoxW, 64, 16);
-    battleBox.lineStyle(3, 0xffffff, 1);
-    battleBox.strokeRoundedRect(battleBoxX - battleBoxW / 2, dockY - 32, battleBoxW, 64, 16);
-
-    const battleBtn = this.add.container(battleBoxX, dockY);
-    const clickBattle = this.add.rectangle(0, 0, battleBoxW, 64, 0xffffff, 0.01)
-      .setInteractive({ useHandCursor: true });
-    const bIcon = this.add.text(0, -10, '⚔️', { fontSize: '26px' }).setOrigin(0.5);
-    const bText = this.add.text(0, 18, 'BATTLE', {
+    const pText = this.add.text(0, 0, 'PLAY', {
       fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '12px',
-      color: '#07111f',
-      fontStyle: '900',
+      fontSize: '28px',
+      color: '#705c4b',
+      fontStyle: '900'
     }).setOrigin(0.5);
-    battleBtn.add([clickBattle, bIcon, bText]);
+    
+    playBtn.add([pBg, pZone, pText]);
 
-    clickBattle.on('pointerover', () => {
-      battleBtn.setScale(1.05);
-      soundManager.playSFX(this, 'hover');
-    });
-    clickBattle.on('pointerout', () => battleBtn.setScale(1));
-    clickBattle.on('pointerup', () => {
+    pZone.on('pointerover', () => { playBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
+    pZone.on('pointerout', () => playBtn.setScale(1));
+    pZone.on('pointerup', () => {
       soundManager.playSFX(this, 'click');
       this.showStageSelectionTab();
     });
 
-    // Added a pulse tween to make the main play button glow and stand out
-    this.tweens.add({
-      targets: battleBtn,
-      scaleX: 1.03,
-      scaleY: 1.03,
-      yoyo: true,
-      repeat: -1,
-      duration: 800
-    });
+    // Left Side "A GIRL PASS" placeholder
+    const passX = 140;
+    const passY = height - 50;
+    const passBg = this.add.graphics();
+    passBg.fillStyle(0x7f6756, 1);
+    passBg.fillRoundedRect(passX - 100, passY - 20, 200, 40, 8);
+    
+    // lightning icon placeholder (triangle)
+    const lightBg = this.add.graphics();
+    lightBg.fillStyle(0x38bdf8, 1);
+    lightBg.fillPoints([{x:passX+80,y:passY-25}, {x:passX+100,y:passY-25}, {x:passX+90,y:passY+15}], true);
+    
+    // progress bar in pass
+    this.add.rectangle(passX - 10, passY + 5, 120, 10, 0x614f40);
+    this.add.rectangle(passX - 60, passY + 5, 40, 10, 0xf6be4f).setOrigin(0, 0.5);
+    
+    this.add.text(passX - 20, passY - 10, 'A GIRL PASS', {
+      fontFamily: 'Outfit, Arial, sans-serif',
+      fontSize: '10px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
   }
 
   cycleHero(dir) {
@@ -946,11 +567,10 @@ export default class MainMenuScene extends Phaser.Scene {
     this.playerProgress.gold = nextGold;
     
     const nextLevel = this.heroLevel + 1;
-    saveHeroLevel(this.selectedHero.id, nextLevel);
     
-    const heroLevels = this.registry.get('heroLevels') || {};
+    const heroLevels = GameManager.get('heroLevels') || {};
     heroLevels[this.selectedHero.id] = nextLevel;
-    this.registry.set('heroLevels', heroLevels);
+    GameManager.set('heroLevels', heroLevels);
 
     this.refreshHeroLoadout();
     this.refreshBottomStats();
@@ -1013,10 +633,10 @@ export default class MainMenuScene extends Phaser.Scene {
     this.activeSkin = this.getDefaultSkinForHero(this.selectedHero);
     this.equippedItems = getEquippedItems(this);
     
-    const heroLevels = this.registry.get('heroLevels') || {};
+    const heroLevels = GameManager.get('heroLevels') || {};
     this.heroLevel = heroLevels[this.selectedHero.id] || 1;
-
-    this.finalHeroStats = calculateFinalStats(this.selectedHeroBaseStats, this.equippedItems, this.activeSkin, this.heroLevel);
+    this.equippedItems = getEquippedItems(this);
+    this.finalHeroStats = calculateFinalStats(this.selectedHeroBaseStats, this.equippedItems, this.activeSkin, this.heroLevel, GameManager.get('allocatedStats'), GameManager.get('currentClass'));
   }
 
   refreshBottomStats() {
@@ -1029,7 +649,8 @@ export default class MainMenuScene extends Phaser.Scene {
     this.bottomStatTexts.attackSpeed.setText(this.finalHeroStats.attackSpeed);
 
     if (this.heroClassText) {
-      this.heroClassText.setText(this.selectedHero.name.toUpperCase());
+      const currentClass = GameManager.get('currentClass') || 'Novice';
+      this.heroClassText.setText(currentClass.toUpperCase());
     }
 
     if (this.heroPortrait) {
@@ -1079,43 +700,11 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   refreshMainMenuLoadoutDisplay() {
-    this.loadoutSlotLayer.forEach((item) => item.destroy());
-    this.loadoutSlotLayer = [];
-
-    this.loadoutSlotAnchors.forEach((anchor) => {
-      const equippedItem = anchor.slot ? getEquippedItemBySlot(this, anchor.slot) : null;
-
-      if (equippedItem) {
-        this.addLoadoutSlotItem(this.add.circle(anchor.x, anchor.y, 21, 0x07111f, 0.9))
-          .setStrokeStyle(2, 0xfacc15, 0.95);
-        this.addLoadoutSlotItem(this.add.text(anchor.x, anchor.y - 2, equippedItem.icon || '?', {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '24px',
-          color: UI.yellow,
-          fontStyle: '900',
-          stroke: '#0c1648',
-          strokeThickness: 4,
-        }).setOrigin(0.5));
-        this.addLoadoutSlotItem(this.add.text(anchor.x, anchor.y + 33, this.getShortEquipmentName(equippedItem.name), {
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '10px',
-          color: UI.white,
-          fontStyle: '900',
-          stroke: '#0c1648',
-          strokeThickness: 3,
-        }).setOrigin(0.5));
-        return;
-      }
-
-      this.addLoadoutSlotItem(this.add.text(anchor.x, anchor.y, anchor.label, {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '9px',
-        color: '#67e8f9',
-        fontStyle: '900',
-        stroke: '#0c1648',
-        strokeThickness: 3,
-      }).setOrigin(0.5));
-    });
+    // Disabled logic: equipment slots no longer display in the main menu for a cleaner look
+    if (this.loadoutSlotLayer) {
+      this.loadoutSlotLayer.forEach((item) => item.destroy());
+      this.loadoutSlotLayer = [];
+    }
   }
 
   addLoadoutSlotItem(item) {
@@ -1133,19 +722,13 @@ export default class MainMenuScene extends Phaser.Scene {
 
   // Compatibility Wrapper Methods delegating to modular tabs
   showHeroTab() {
-    this.heroTab.show();
-  }
-
-  clearHeroTab() {
-    this.heroTab.clear();
+    this.clearAllTabs();
+    this.heroDom.show();
   }
 
   showInventoryTab() {
-    this.inventoryTab.show();
-  }
-
-  clearInventoryTab() {
-    this.inventoryTab.clear();
+    this.clearAllTabs();
+    this.inventoryDom.show();
   }
 
   showStageSelectionTab() {
@@ -1169,27 +752,18 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   showShopTab() {
-    this.shopTab.show();
-  }
-
-  clearShopTab() {
-    this.shopTab.clear();
+    this.clearAllTabs();
+    this.domUiManager.showShop();
   }
 
   showBlacksmithTab() {
-    this.blacksmithTab.show();
-  }
-
-  clearBlacksmithTab() {
-    this.blacksmithTab.clear();
+    this.clearAllTabs();
+    this.domUiManager.showBlacksmith();
   }
 
   showSkillsTab() {
-    this.skillsTab.show();
-  }
-
-  clearSkillsTab() {
-    this.skillsTab.clear();
+    this.clearAllTabs();
+    this.domUiManager.showSkills();
   }
 
   createParticleTexture() {

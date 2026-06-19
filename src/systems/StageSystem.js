@@ -1,5 +1,7 @@
 import { addPlayerGold, unlockStage, addPlayerTicket, addPlayerExp, addHeroXP } from './PlayerProgress.js';
 import { getNextStage } from '../data/stages.js';
+import { getHeroById } from '../data/heroes.js';
+import { GameManager } from './GameManager.js';
 import { MAX_HERO_LEVEL } from './HeroStats.js';
 
 export default class StageSystem {
@@ -74,7 +76,7 @@ export default class StageSystem {
     let heroXpGained = 0;
     const heroId = this.scene.selectedHero?.id;
     if (heroId) {
-      const heroLevel = this.scene.registry.get('heroLevels')?.[heroId] || 1;
+      const heroLevel = GameManager.get('heroLevels')?.[heroId] || 1;
       if (heroLevel < MAX_HERO_LEVEL) {
         heroXpGained = this.stage.stageId * 30 + this.gameStats.killCount;
         addHeroXP(this.scene, heroId, heroXpGained);
@@ -129,7 +131,7 @@ export default class StageSystem {
     let heroXpGained = 0;
     const heroId = this.scene.selectedHero?.id;
     if (heroId) {
-      const heroLevel = this.scene.registry.get('heroLevels')?.[heroId] || 1;
+      const heroLevel = GameManager.get('heroLevels')?.[heroId] || 1;
       if (heroLevel < MAX_HERO_LEVEL) {
         heroXpGained = Math.max(10, Math.floor(this.gameStats.killCount * 0.5));
         addHeroXP(this.scene, heroId, heroXpGained);

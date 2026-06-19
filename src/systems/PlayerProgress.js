@@ -1,55 +1,22 @@
-import { saveStageProgress, updateGold, updateMaterials, updateTickets, updateDailyAttempts, savePlayerLevelAndExp, savePlayerProgress, saveHeroLevelAndXP } from '../services/saveService.js';
+import { GameManager } from './GameManager.js';
 
-const DEFAULT_PROGRESS = {
-  gold: 230560,
-  highestStageUnlocked: 1,
-  materials: {
-    'iron-ore': 0,
-    'magic-gem': 0,
-    'dragon-scale': 0
-  },
-  tickets: {
-    'survival-ticket': 5,
-    'gold-ticket': 5,
-    'boss-ticket': 5
-  },
-  dailyAttempts: {
-    date: '',
-    survival: 3,
-    gold: 3,
-    boss: 3
-  }
-};
-
-export function getPlayerProgress(scene) {
-  const savedProgress = scene.registry.get('playerProgress');
-
-  if (savedProgress) {
-    return savedProgress;
-  }
-
-  const progress = { ...DEFAULT_PROGRESS };
-  scene.registry.set('playerProgress', progress);
-  return progress;
+export function getPlayerProgress() {
+  // Return the entire state from GameManager for compatibility
+  return GameManager.getState();
 }
 
 export function addPlayerGold(scene, amount) {
-  const progress = getPlayerProgress(scene);
-  const nextProgress = {
-    ...progress,
-    gold: progress.gold + amount
-  };
-
-  scene.registry.set('playerProgress', nextProgress);
-  updateGold(nextProgress.gold);
-  return nextProgress.gold;
+  const currentGold = GameManager.get('gold') || 0;
+  const nextGold = currentGold + amount;
+  GameManager.set('gold', nextGold);
+  return nextGold;
 }
 
 export function addPlayerExp(scene, amount) {
-  const progress = getPlayerProgress(scene);
-  let level = progress.playerLevel || 1;
-  let exp = (progress.playerExp || 0) + amount;
+  let level = GameManager.get('playerLevel') || 1;
+  let exp = (GameManager.get('playerExp') || 0) + amount;
   let leveledUp = false;
+  let levelsGained = 0;
 
   while (true) {
     const requiredExp = level * 200;
@@ -57,163 +24,114 @@ export function addPlayerExp(scene, amount) {
       exp -= requiredExp;
       level += 1;
       leveledUp = true;
+      levelsGained++;
     } else {
       break;
     }
   }
 
-  const nextProgress = {
-    ...progress,
+  let statusPoints = GameManager.get('statusPoints') || 0;
+  let skillPoints = GameManager.get('skillPoints') || 0;
+  if (levelsGained > 0) {
+    statusPoints += levelsGained * 5;
+    skillPoints  += levelsGained * 1;
+  }
+
+  GameManager.setState({
     playerLevel: level,
-    playerExp: exp
-  };
+    playerExp: exp,
+    statusPoints,
+    skillPoints
+  });
 
-  scene.registry.set('playerProgress', nextProgress);
-  savePlayerLevelAndExp(level, exp);
-
-  // Sync with registry playerData
-  const playerData = scene.registry.get('playerData') || {};
-  playerData.playerLevel = level;
-  playerData.playerExp = exp;
-  scene.registry.set('playerData', playerData);
-
-  return {
-    level,
-    exp,
-    leveledUp
-  };
+  return { level, exp, leveledUp, levelsGained, statusPoints, skillPoints };
 }
 
 export function addPlayerMaterial(scene, materialId, amount) {
-  const progress = getPlayerProgress(scene);
-  const materials = {
-    ...progress.materials,
-    [materialId]: Math.max(0, (progress.materials[materialId] || 0) + amount)
+  const materials = GameManager.get('materials') || {};
+  const nextMaterials = {
+    ...materials,
+    [materialId]: Math.max(0, (materials[materialId] || 0) + amount)
   };
-  const nextProgress = {
-    ...progress,
-    materials
-  };
-
-  scene.registry.set('playerProgress', nextProgress);
-  updateMaterials(materials);
-  return nextProgress;
+  GameManager.set('materials', nextMaterials);
+  return GameManager.getState();
 }
 
 export function addPlayerTicket(scene, ticketId, amount) {
-  const progress = getPlayerProgress(scene);
-  const tickets = {
-    ...progress.tickets,
-    [ticketId]: Math.max(0, (progress.tickets[ticketId] || 0) + amount)
+  const tickets = GameManager.get('tickets') || {};
+  const nextTickets = {
+    ...tickets,
+    [ticketId]: Math.max(0, (tickets[ticketId] || 0) + amount)
   };
-  const nextProgress = {
-    ...progress,
-    tickets
-  };
-
-  scene.registry.set('playerProgress', nextProgress);
-  updateTickets(tickets);
-  return nextProgress;
+  GameManager.set('tickets', nextTickets);
+  return GameManager.getState();
 }
 
 export function getDailyAttemptsRemaining(scene, mode) {
-  const progress = getPlayerProgress(scene);
-  // Mode mapping:
-  // 'survival' -> 'survival'
-  // 'gold_farm' -> 'gold'
-  // 'looting' -> 'boss'
+  const dailyAttempts = GameManager.get('dailyAttempts') || {};
   const key = mode === 'gold_farm' ? 'gold' : (mode === 'looting' ? 'boss' : 'survival');
-  return progress.dailyAttempts[key] !== undefined ? progress.dailyAttempts[key] : 3;
+  return dailyAttempts[key] !== undefined ? dailyAttempts[key] : 3;
 }
 
 export function consumeDailyAttempt(scene, mode) {
-  const progress = getPlayerProgress(scene);
+  const dailyAttempts = GameManager.get('dailyAttempts') || {};
   const key = mode === 'gold_farm' ? 'gold' : (mode === 'looting' ? 'boss' : 'survival');
   
-  if (!progress.dailyAttempts) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const currentDate = `${year}-${month}-${day}`;
-    progress.dailyAttempts = { date: currentDate, survival: 3, gold: 3, boss: 3 };
-  }
-  
-  const currentAttempts = progress.dailyAttempts[key] !== undefined ? progress.dailyAttempts[key] : 3;
+  const currentAttempts = dailyAttempts[key] !== undefined ? dailyAttempts[key] : 3;
   if (currentAttempts > 0) {
-    const dailyAttempts = {
-      ...progress.dailyAttempts,
-      [key]: currentAttempts - 1
-    };
-    const nextProgress = {
-      ...progress,
-      dailyAttempts
-    };
-    scene.registry.set('playerProgress', nextProgress);
-    updateDailyAttempts(dailyAttempts);
+    const nextAttempts = { ...dailyAttempts, [key]: currentAttempts - 1 };
+    GameManager.set('dailyAttempts', nextAttempts);
     return true;
   }
   return false;
 }
 
 export function hasTicket(scene, ticketId) {
-  const progress = getPlayerProgress(scene);
-  return (progress.tickets && progress.tickets[ticketId] > 0);
+  const tickets = GameManager.get('tickets') || {};
+  return tickets[ticketId] > 0;
 }
 
 export function consumeTicket(scene, ticketId) {
-  const progress = getPlayerProgress(scene);
-  if (hasTicket(scene, ticketId)) {
-    const tickets = {
-      ...progress.tickets,
-      [ticketId]: progress.tickets[ticketId] - 1
-    };
-    const nextProgress = {
-      ...progress,
-      tickets
-    };
-    scene.registry.set('playerProgress', nextProgress);
-    updateTickets(tickets);
+  const tickets = GameManager.get('tickets') || {};
+  if (tickets[ticketId] > 0) {
+    const nextTickets = { ...tickets, [ticketId]: tickets[ticketId] - 1 };
+    GameManager.set('tickets', nextTickets);
     return true;
   }
   return false;
 }
 
 export function unlockStage(scene, stageId, completedStageId = null, clearTime = null) {
-  const progress = getPlayerProgress(scene);
-  const stageTimes = { ...(progress.stageTimes || {}) };
+  const highestStage = GameManager.get('highestStage') || 1;
+  const stageTimes = { ...(GameManager.get('stageTimes') || {}) };
+  const completedStages = [...(GameManager.get('completedStages') || [])];
 
-  if (completedStageId !== null && clearTime !== null) {
-    const existingTime = stageTimes[completedStageId];
-    if (existingTime === undefined || clearTime < existingTime) {
-      stageTimes[completedStageId] = clearTime;
+  if (completedStageId !== null) {
+    if (!completedStages.includes(completedStageId)) {
+      completedStages.push(completedStageId);
+    }
+    if (clearTime !== null) {
+      const existingTime = stageTimes[completedStageId];
+      if (existingTime === undefined || clearTime < existingTime) {
+        stageTimes[completedStageId] = clearTime;
+      }
     }
   }
 
-  const nextProgress = {
-    ...progress,
-    highestStageUnlocked: Math.max(progress.highestStageUnlocked, stageId),
+  const nextHighest = Math.max(highestStage, stageId);
+  GameManager.setState({
+    highestStage: nextHighest,
+    completedStages,
     stageTimes
-  };
-
-  scene.registry.set('playerProgress', nextProgress);
-  saveStageProgress({ highestStage: nextProgress.highestStageUnlocked, completedStageId, stageTimes });
-  return nextProgress.highestStageUnlocked;
+  });
+  
+  return nextHighest;
 }
 
 export function getSkillLevelsForPlayerLevel(roadLevel) {
   const skillsList = [
-    'fireball',
-    'multi-shot',
-    'lightning-strike',
-    'spin-attack',
-    'magnet',
-    'movespeed',
-    'aspd',
-    'hp-regen',
-    'shield',
-    'attack-range',
-    'knock'
+    'fireball', 'multi-shot', 'lightning-strike', 'spin-attack',
+    'magnet', 'movespeed', 'aspd', 'hp-regen', 'shield', 'attack-range', 'knock'
   ];
 
   const levels = {};
@@ -227,34 +145,65 @@ export function getSkillLevelsForPlayerLevel(roadLevel) {
     }
     levels[skillId] = count;
   });
-
   return levels;
 }
 
 export function addHeroXP(scene, heroId, amount) {
-  const heroLevels = scene.registry.get('heroLevels') || {};
-  const heroXP = scene.registry.get('heroXP') || {};
+  const heroLevels = GameManager.get('heroLevels') || {};
+  const heroXP = GameManager.get('heroXP') || {};
 
   const currentLevel = heroLevels[heroId] || 1;
   const currentXP = heroXP[heroId] || 0;
-  const requiredXP = currentLevel * 100;
-
-  // Allow XP to accumulate beyond the current requirement (surplus XP carryover)
+  
   const nextXP = currentXP + amount;
-
-  heroXP[heroId] = nextXP;
-  scene.registry.set('heroXP', heroXP);
-
-  // Sync registry playerData
-  const playerData = scene.registry.get('playerData') || {};
-  if (!playerData.heroLevels) playerData.heroLevels = {};
-  if (!playerData.heroXP) playerData.heroXP = {};
-  playerData.heroLevels[heroId] = currentLevel;
-  playerData.heroXP[heroId] = nextXP;
-  scene.registry.set('playerData', playerData);
-
-  saveHeroLevelAndXP(heroId, currentLevel, nextXP);
-
+  const nextHeroXP = { ...heroXP, [heroId]: nextXP };
+  
+  GameManager.set('heroXP', nextHeroXP);
   return nextXP;
 }
 
+export function setCurrentClass(scene, className) {
+  const currentClass = GameManager.get('currentClass');
+  
+  if (currentClass && currentClass !== className) {
+    const allocated = GameManager.get('allocatedStats') || {};
+    const refundedPoints = (allocated.strength || 0) + (allocated.agility || 0) + (allocated.intelligence || 0);
+    
+    if (refundedPoints > 0) {
+      const statusPoints = (GameManager.get('statusPoints') || 0) + refundedPoints;
+      GameManager.setState({
+        statusPoints,
+        allocatedStats: { strength: 0, agility: 0, intelligence: 0 }
+      });
+    }
+  }
+
+  GameManager.set('currentClass', className);
+  return className;
+}
+
+export function allocateStatPoint(scene, stat) {
+  const statusPoints = GameManager.get('statusPoints') || 0;
+  if (statusPoints <= 0) return { success: false };
+
+  const allocatedStats = { ...(GameManager.get('allocatedStats') || { strength: 0, agility: 0, intelligence: 0 }) };
+  allocatedStats[stat] = (allocatedStats[stat] || 0) + 1;
+  const newStatusPoints = statusPoints - 1;
+
+  GameManager.setState({
+    statusPoints: newStatusPoints,
+    allocatedStats
+  });
+
+  return { success: true, allocatedStats, statusPoints: newStatusPoints };
+}
+
+export function spendSkillPoint(scene) {
+  const skillPoints = GameManager.get('skillPoints') || 0;
+  if (skillPoints <= 0) return { success: false };
+
+  const newSkillPoints = skillPoints - 1;
+  GameManager.set('skillPoints', newSkillPoints);
+
+  return { success: true, skillPoints: newSkillPoints };
+}

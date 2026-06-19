@@ -3,12 +3,25 @@ import { saveToFirestore, resetInFirestore, isFirebaseConfigured } from './fireb
 const SAVE_KEY = 'battle-guard-player-data';
 
 export const defaultPlayerData = {
+  playerName: null,
   gold: 230560,
   playerLevel: 1,
   playerExp: 0,
   unlockedSkillLevel: 1,
   selectedHeroId: 'guardian',
   selectedPetId: null,
+  // === RPG CLASS SYSTEM ===
+  // Possible values: 'Novice', 'Swordsman', 'Archer', 'Mage', 'Knight', 'Hunter', 'Wizard'
+  currentClass: 'Novice',
+  // Points awarded on level up (5 status points + 1 skill point per level)
+  statusPoints: 0,
+  skillPoints: 0,
+  allocatedStats: {
+    strength: 0,  // +1.5 Damage per point
+    agility: 0,   // +1.5% Attack Speed, +1% Move Speed per point
+    intelligence: 0,  // +1 Armor, +1% CD Reduc, +0.5% Lifesteal per point
+  },
+  // === END RPG CLASS SYSTEM ===
   ownedEquipment: [
     'wooden-sword',
     'iron-sword',
@@ -143,180 +156,9 @@ export function savePlayerData(playerData) {
   return normalizedData;
 }
 
-export function updateGold(gold) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    gold: Math.max(0, Math.round(gold))
-  });
-}
-
-export function updateMaterials(materials) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    materials: {
-      ...playerData.materials,
-      ...materials
-    }
-  });
-}
-
-export function updateTickets(tickets) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    tickets: {
-      ...playerData.tickets,
-      ...tickets
-    }
-  });
-}
-
-export function updateDailyAttempts(dailyAttempts) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    dailyAttempts: {
-      ...playerData.dailyAttempts,
-      ...dailyAttempts
-    }
-  });
-}
-
-export function saveSelectedHero(heroId) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    selectedHeroId: heroId,
-    unlockedHeroes: uniqueIds([...playerData.unlockedHeroes, heroId])
-  });
-}
-
-export function saveSelectedPet(petId) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    selectedPetId: petId,
-    unlockedPets: petId ? uniqueIds([...playerData.unlockedPets, petId]) : playerData.unlockedPets
-  });
-}
-
-export function saveEquipment({ ownedEquipment, equippedItems }) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    ownedEquipment: uniqueIds(ownedEquipment || playerData.ownedEquipment),
-    equippedItems: {
-      ...defaultPlayerData.equippedItems,
-      ...playerData.equippedItems,
-      ...(equippedItems || {})
-    }
-  });
-}
-
-export function saveStageProgress({ highestStage, completedStageId, stageTimes }) {
-  const playerData = loadPlayerData();
-  const completedStages = completedStageId
-    ? uniqueIds([...playerData.completedStages, completedStageId])
-    : playerData.completedStages;
-
-  return savePlayerData({
-    ...playerData,
-    highestStage: Math.max(playerData.highestStage, highestStage || playerData.highestStage),
-    completedStages,
-    stageTimes: stageTimes || playerData.stageTimes || {}
-  });
-}
-
-export function saveHeroLevel(heroId, level) {
-  const playerData = loadPlayerData();
-  const nextHeroLevels = {
-    ...(playerData.heroLevels || {}),
-    [heroId]: level
-  };
-  return savePlayerData({
-    ...playerData,
-    heroLevels: nextHeroLevels
-  });
-}
-
-export function saveHeroLevelAndXP(heroId, level, xp) {
-  const playerData = loadPlayerData();
-  const nextHeroLevels = {
-    ...(playerData.heroLevels || {}),
-    [heroId]: level
-  };
-  const nextHeroXP = {
-    ...(playerData.heroXP || {}),
-    [heroId]: xp
-  };
-  return savePlayerData({
-    ...playerData,
-    heroLevels: nextHeroLevels,
-    heroXP: nextHeroXP
-  });
-}
-
-export function saveSkillLevel(skillId, level) {
-  const playerData = loadPlayerData();
-  const nextSkillLevels = {
-    ...(playerData.skillLevels || {}),
-    [skillId]: level
-  };
-  return savePlayerData({
-    ...playerData,
-    skillLevels: nextSkillLevels
-  });
-}
-
-export function savePlayerLevelAndExp(level, exp) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    playerLevel: level,
-    playerExp: exp
-  });
-}
-
-export function savePlayerProgress(unlockedSkillLevel, skillLevels) {
-  const playerData = loadPlayerData();
-  return savePlayerData({
-    ...playerData,
-    unlockedSkillLevel: unlockedSkillLevel,
-    skillLevels: skillLevels
-  });
-}
-
 export function resetSaveData() {
   storageAdapter.reset();
   return savePlayerData(defaultPlayerData);
-}
-
-export function applyPlayerDataToRegistry(registry, playerData = loadPlayerData()) {
-  registry.set('playerData', playerData);
-  registry.set('playerProgress', {
-    gold: playerData.gold,
-    playerLevel: playerData.playerLevel || 1,
-    playerExp: playerData.playerExp || 0,
-    unlockedSkillLevel: playerData.unlockedSkillLevel || 1,
-    highestStageUnlocked: playerData.highestStage,
-    completedStages: [...playerData.completedStages],
-    materials: { ...playerData.materials },
-    tickets: { ...playerData.tickets },
-    dailyAttempts: { ...playerData.dailyAttempts },
-    stageTimes: { ...(playerData.stageTimes || {}) }
-  });
-  registry.set('selectedHeroId', playerData.selectedHeroId);
-  registry.set('selectedPetId', playerData.selectedPetId);
-  registry.set('equipmentInventory', {
-    items: [...playerData.ownedEquipment],
-    equipped: { ...playerData.equippedItems }
-  });
-  registry.set('unlockedHeroes', [...playerData.unlockedHeroes]);
-  registry.set('unlockedPets', [...playerData.unlockedPets]);
-  registry.set('heroLevels', { ...playerData.heroLevels });
-  registry.set('heroXP', { ...playerData.heroXP });
 }
 
 function normalizePlayerData(playerData) {
@@ -369,7 +211,15 @@ function normalizePlayerData(playerData) {
       ...defaultPlayerData.tickets,
       ...(safeData.tickets || {})
     },
-    dailyAttempts
+    dailyAttempts,
+    // RPG Class System normalization
+    currentClass: safeData.currentClass || defaultPlayerData.currentClass,
+    statusPoints: Number.isFinite(safeData.statusPoints) ? safeData.statusPoints : 0,
+    skillPoints: Number.isFinite(safeData.skillPoints) ? safeData.skillPoints : 0,
+    allocatedStats: {
+      ...defaultPlayerData.allocatedStats,
+      ...(safeData.allocatedStats || {})
+    },
   };
 }
 

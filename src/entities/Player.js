@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { getHeroById, getHeroBaseStats } from '../data/heroes.js';
+import { GameManager } from '../systems/GameManager.js';
 
 
 
@@ -82,6 +84,15 @@ export default class Player extends Phaser.GameObjects.Container {
     this.gameplayFrameTweens = [];
     this.drawGameplayFrame(scene);
 
+    // === RPG CLASS SYSTEM: Floating Weapon & Shield ===
+    this.weaponTween = null;
+    this.shieldOrbitTween = null;
+    this.weaponAngle = 0;     // Current angle (radians) of weapon around player
+    this.weaponOrbitRadius = 30; // Distance from center to weapon
+    this._lastAttackTime = 0;
+    this.drawFloatingWeapon(scene);
+    // === END RPG CLASS SYSTEM ===
+
     // 5. Create the outer HP bar (draws dynamically)
     this.hpBar = scene.add.graphics();
     this.hpBar.setDepth(10);
@@ -111,7 +122,7 @@ export default class Player extends Phaser.GameObjects.Container {
 
 
 
-  update(delta) {
+  update(delta, monsters) {
     const direction = new Phaser.Math.Vector2(0, 0);
 
     if (this.keys.left.isDown || this.keys.arrowLeft.isDown) {
@@ -182,6 +193,10 @@ export default class Player extends Phaser.GameObjects.Container {
 
     this.keepInsideMap();
     this.updateHpBar();
+    // Rotate weapon toward nearest enemy
+    if (monsters && monsters.length > 0) {
+      this.updateWeaponDirection(monsters);
+    }
   }
 
   updateHpBar() {
@@ -247,6 +262,8 @@ export default class Player extends Phaser.GameObjects.Container {
       this.gameplayFrameTweens.forEach(t => t.destroy());
       this.gameplayFrameTweens = [];
     }
+    if (this.weaponTween)     { this.weaponTween.destroy();     this.weaponTween = null; }
+    if (this.shieldOrbitTween){ this.shieldOrbitTween.destroy(); this.shieldOrbitTween = null; }
     if (this.auraShader) {
       this.auraShader.destroy();
     }
@@ -560,5 +577,167 @@ export default class Player extends Phaser.GameObjects.Container {
       });
       this.gameplayFrameTweens.push(cTween);
     }
+  }
+
+  // ============================================================
+  // RPG CLASS SYSTEM — Floating Weapon
+  // ============================================================
+
+  /**
+   * Returns the weapon emoji and style for a given class name.
+   */
+  static getClassWeaponConfig(className) {
+    switch (className) {
+      case 'Swordsman': return { emoji: '🗡️', fontSize: '20px', type: 'melee',  shield: false };
+      case 'Knight':    return { emoji: '⚔️', fontSize: '22px', type: 'melee',  shield: true  };
+      case 'Archer':    return { emoji: '🏹', fontSize: '20px', type: 'ranged', shield: false };
+      case 'Hunter':    return { emoji: '🏹', fontSize: '22px', type: 'ranged', shield: false };
+      case 'Mage':      return { emoji: '🪄', fontSize: '20px', type: 'magic',  shield: false };
+      case 'Wizard':    return { emoji: '🔮', fontSize: '22px', type: 'magic',  shield: false };
+      default:          return { emoji: '🗡️', fontSize: '16px', type: 'melee',  shield: false }; // Novice
+    }
+  }
+
+  /**
+   * Create the floating weapon sprite around the hero circle.
+   */
+  drawFloatingWeapon(scene) {
+    // Destroy any existing weapon objects
+    if (this.floatingWeapon) { this.floatingWeapon.destroy(); this.floatingWeapon = null; }
+    if (this.floatingShield) { this.floatingShield.destroy(); this.floatingShield = null; }
+
+    const className = GameManager.get('currentClass') || 'Novice';
+    const config = Player.getClassWeaponConfig(className);
+    this._weaponType = config.type;
+
+    // Create weapon emoji text object at orbit position
+    this.floatingWeapon = scene.add.text(this.weaponOrbitRadius, 0, config.emoji, {
+      fontSize: config.fontSize,
+    }).setOrigin(0.5);
+    this.add(this.floatingWeapon);
+
+    // Knight gets an orbiting shield as well
+    if (config.shield) {
+      this.floatingShield = scene.add.text(-this.weaponOrbitRadius, 0, '🛡️', {
+        fontSize: '18px',
+      }).setOrigin(0.5);
+      this.add(this.floatingShield);
+    }
+  }
+
+  /**
+   * Rotate weapon to face nearest monster, and trigger attack animation when ready.
+   */
+  updateWeaponDirection(monsters) {
+    if (!this.floatingWeapon || !monsters || monsters.length === 0) return;
+
+    // Find nearest alive monster
+    let nearest = null;
+    let minDist = Infinity;
+    monsters.forEach(m => {
+      if (!m || !m.active) return;
+      const d = Phaser.Math.Distance.Between(this.x, this.y, m.x, m.y);
+      if (d < minDist) { minDist = d; nearest = m; }
+    });
+    if (!nearest) return;
+
+    // Angle from player to nearest monster
+    const angle = Phaser.Math.Angle.Between(this.x, this.y, nearest.x, nearest.y);
+
+    // Smoothly move weapon along orbit to face the enemy
+    const r = this.weaponOrbitRadius;
+    this.floatingWeapon.x = r * Math.cos(angle);
+    this.floatingWeapon.y = r * Math.sin(angle);
+
+    // Flip shield to opposite side if it exists
+    if (this.floatingShield) {
+      this.floatingShield.x = r * Math.cos(angle + Math.PI);
+      this.floatingShield.y = r * Math.sin(angle + Math.PI);
+    }
+
+    // Trigger attack animation at cooldown based on attackType
+    const now = this.scene.time.now;
+    // Map attackType to animation cooldown (ms): melee=600, ranged=500, magic=800
+    const attackCooldowns = { melee: 600, ranged: 500, magic: 800 };
+    const cooldown = attackCooldowns[this._weaponType] || 600;
+
+    if (now - this._lastAttackTime > cooldown) {
+      this._lastAttackTime = now;
+      this.playAttackAnimation(angle);
+    }
+  }
+
+  /**
+   * Play a class-appropriate attack animation on the floating weapon.
+   */
+  playAttackAnimation(angle) {
+    if (!this.floatingWeapon) return;
+    const r = this.weaponOrbitRadius;
+
+    if (this._weaponType === 'melee') {
+      // Slash: weapon swings in an arc ±50 degrees and snaps back
+      const swingDeg = 50;
+      const baseAngleDeg = Phaser.Math.RadToDeg(angle);
+
+      this.scene.tweens.add({
+        targets: this.floatingWeapon,
+        props: {
+          x: { value: r * Math.cos(Phaser.Math.DegToRad(baseAngleDeg + swingDeg)), ease: 'Cubic.easeOut' },
+          y: { value: r * Math.sin(Phaser.Math.DegToRad(baseAngleDeg + swingDeg)), ease: 'Cubic.easeOut' },
+          scaleX: { value: 1.4, ease: 'Quad.easeOut' },
+          scaleY: { value: 1.4, ease: 'Quad.easeOut' },
+        },
+        duration: 120,
+        yoyo: true,
+        onComplete: () => {
+          if (this.floatingWeapon) {
+            this.floatingWeapon.x = r * Math.cos(angle);
+            this.floatingWeapon.y = r * Math.sin(angle);
+            this.floatingWeapon.setScale(1);
+          }
+        }
+      });
+
+    } else if (this._weaponType === 'ranged') {
+      // Recoil: weapon pulls back toward player center then returns
+      this.scene.tweens.add({
+        targets: this.floatingWeapon,
+        props: {
+          x: { value: (r * 0.45) * Math.cos(angle), ease: 'Cubic.easeOut' },
+          y: { value: (r * 0.45) * Math.sin(angle), ease: 'Cubic.easeOut' },
+        },
+        duration: 80,
+        yoyo: true,
+        onComplete: () => {
+          if (this.floatingWeapon) {
+            this.floatingWeapon.x = r * Math.cos(angle);
+            this.floatingWeapon.y = r * Math.sin(angle);
+          }
+        }
+      });
+
+    } else if (this._weaponType === 'magic') {
+      // Magic pulse: scale up and fade briefly, then return
+      this.scene.tweens.add({
+        targets: this.floatingWeapon,
+        scaleX: 1.7,
+        scaleY: 1.7,
+        alpha: 0.5,
+        duration: 150,
+        yoyo: true,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          if (this.floatingWeapon) { this.floatingWeapon.setScale(1).setAlpha(1); }
+        }
+      });
+    }
+  }
+
+  /**
+   * Called when the player promotes to a new class.
+   * Redraws the floating weapon with the new class emoji.
+   */
+  updateClass(newClassName) {
+    this.drawFloatingWeapon(this.scene);
   }
 }

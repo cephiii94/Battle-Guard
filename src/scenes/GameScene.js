@@ -18,6 +18,7 @@ import StatsPanel from '../ui/StatsPanel.js';
 import StageResultOverlay from '../ui/StageResultOverlay.js';
 import SkillHud from '../ui/SkillHud.js';
 import { soundManager } from '../services/soundManager.js';
+import { GameManager } from '../systems/GameManager.js';
 import PauseOverlay from '../ui/PauseOverlay.js';
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -47,15 +48,17 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.selectedHero = data.selectedHero || getSelectedHero(this);
-    this.baseHeroStats = data.baseHeroStats || getSelectedHeroBaseStats(this) || baseHeroStats;
+    this.selectedHeroBaseStats = data.baseHeroStats || getSelectedHeroBaseStats(this) || baseHeroStats;
     this.equippedItems = data.equippedItems || getEquippedItems(this);
     this.activeSkin = data.activeSkin || skins[0];
     this.heroLevel = data.heroLevel || 1;
     this.finalStats = data.finalStats || calculateFinalStats(
-      this.baseHeroStats,
-      this.equippedItems,
-      this.activeSkin,
-      this.heroLevel
+      this.selectedHeroBaseStats, 
+      this.equippedItems, 
+      this.activeSkin, 
+      this.heroLevel, 
+      GameManager.get('allocatedStats'), 
+      GameManager.get('currentClass')
     );
     this.enemyDamageCooldown = 0;
     this.isStageFinished = false;
@@ -216,7 +219,8 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.player.update(delta);
+    const monsters = this.spawnSystem ? this.spawnSystem.getMonsters() : [];
+    this.player.update(delta, monsters);
 
     this.spawnSystem.update();
     this.bossSystem.update(delta);
@@ -242,12 +246,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   applyLevelScaling(level) {
-    const totalLevel = this.heroLevel + (level - 1);
     const nextStats = calculateFinalStats(
-      this.baseHeroStats,
+      this.selectedHeroBaseStats,
       this.equippedItems,
       this.activeSkin,
-      totalLevel
+      this.heroLevel,
+      GameManager.get('allocatedStats'),
+      GameManager.get('currentClass')
     );
     const hpIncrease = nextStats.hp - this.finalStats.hp;
 

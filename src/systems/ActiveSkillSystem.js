@@ -3,6 +3,7 @@ import skills, { createSkillState, getSkillLevelStats } from '../data/skills.js'
 import Projectile from '../entities/Projectile.js';
 import SkillChoicePopup from '../ui/SkillChoicePopup.js';
 import { soundManager } from '../services/soundManager.js';
+import { GameManager } from './GameManager.js';
 
 export default class ActiveSkillSystem {
   constructor(scene, player, spawnSystem, combatSystem, gameStats) {
@@ -104,7 +105,7 @@ export default class ActiveSkillSystem {
   }
 
   applyGlobalPassiveUpgrades() {
-    const playerData = this.scene.registry.get('playerData');
+    const playerData = GameManager.getState();
     const globalSkillLevels = playerData?.skillLevels || {};
 
     // Magnet
@@ -144,7 +145,7 @@ export default class ActiveSkillSystem {
   }
 
   applyPassiveInGameBonus(id, level) {
-    const playerData = this.scene.registry.get('playerData');
+    const playerData = GameManager.getState();
     const globalSkillLevels = playerData?.skillLevels || {};
     const globalLvl = globalSkillLevels[id] || 0;
     const totalLvl = globalLvl + level;
@@ -219,7 +220,7 @@ export default class ActiveSkillSystem {
     const stats = getSkillLevelStats(skill);
     
     // Apply passive buffs from main menu skill levels
-    const playerData = this.scene.registry.get('playerData');
+    const playerData = GameManager.getState();
     const mainMenuSkillLevels = playerData?.skillLevels || {};
     const buffLvl = mainMenuSkillLevels[skill.id] || 0;
     

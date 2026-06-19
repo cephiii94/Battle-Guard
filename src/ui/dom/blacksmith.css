@@ -1,0 +1,495 @@
+.blacksmith-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(9, 15, 29, 0.9);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+  color: #fff;
+  font-family: 'Outfit', Arial, sans-serif;
+}
+
+.blacksmith-container {
+  width: 95%;
+  max-width: 1300px;
+  height: 90%;
+  background: rgba(13, 21, 39, 0.85);
+  border: 2px solid #00f0ff;
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.blacksmith-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 25px;
+  background: rgba(7, 17, 31, 0.9);
+  border-bottom: 2px solid #00f0ff;
+}
+
+.blacksmith-title h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.blacksmith-title p {
+  margin: 5px 0 0 0;
+  font-size: 13px;
+  color: #9af2ff;
+  font-weight: 600;
+}
+
+.blacksmith-resources {
+  display: flex;
+  gap: 15px;
+  font-size: 16px;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid #4aa6f7;
+}
+
+.blacksmith-close-btn {
+  background: #d97706;
+  border: 2px solid #fef08a;
+  color: white;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: transform 0.2s;
+}
+
+.blacksmith-close-btn:hover {
+  transform: scale(1.1);
+}
+
+.blacksmith-content {
+  flex: 1;
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.blacksmith-panel {
+  background: rgba(13, 21, 39, 0.85);
+  border: 2px solid #1e293b;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.blacksmith-panel.left {
+  width: 300px;
+  flex-shrink: 0;
+}
+.blacksmith-panel.left::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20px; right: 20px; height: 3px;
+  background: #00f0ff;
+}
+
+.blacksmith-panel.center {
+  flex: 1;
+  background: rgba(10, 16, 31, 0.7);
+  align-items: center;
+  justify-content: center;
+  border-color: #334155;
+}
+
+.blacksmith-panel.right {
+  width: 320px;
+  flex-shrink: 0;
+}
+.blacksmith-panel.right::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20px; right: 20px; height: 3px;
+  background: #ffdc5a;
+}
+
+.panel-title {
+  padding: 20px;
+  font-size: 15px;
+  font-weight: 900;
+}
+.panel-title.blue { color: #89c5f8; }
+.panel-title.yellow { color: #ffdc5a; }
+
+.recipe-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 15px 15px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recipe-card {
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.recipe-card:hover {
+  background: #182235;
+}
+
+.recipe-card.active {
+  background: #1e293b;
+  border-color: #00f0ff;
+}
+
+.recipe-icon {
+  width: 44px;
+  height: 44px;
+  background: #0b0f19;
+  border: 1.5px solid #4aa6f7;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+}
+.recipe-card.owned .recipe-icon {
+  border-color: #4ade80;
+}
+
+.recipe-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.recipe-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffffff;
+}
+.recipe-card.active .recipe-name { color: #00f0ff; }
+.recipe-card.owned .recipe-name { color: #4ade80; }
+
+.recipe-slot {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.recipe-cost {
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffdc5a;
+}
+.recipe-card.owned .recipe-cost {
+  color: #4ade80;
+}
+
+.forge-chamber {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.forge-rings {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px; height: 300px;
+  pointer-events: none;
+  z-index: 0;
+}
+.forge-rings circle {
+  fill: none;
+  stroke: rgba(0, 240, 255, 0.15);
+  stroke-width: 2;
+}
+
+.forge-target {
+  width: 80px;
+  height: 80px;
+  background: #090f1d;
+  border: 2px solid #00f0ff;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 40px;
+  position: relative;
+  margin-bottom: 60px;
+  z-index: 10;
+}
+.forge-target.owned {
+  border-color: #4ade80;
+}
+
+.forge-target-label {
+  position: absolute;
+  top: -30px;
+  font-size: 12px;
+  color: #89c5f8;
+  font-weight: 900;
+  text-shadow: 0 0 2px #000;
+  white-space: nowrap;
+}
+
+.forge-materials-label {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 900;
+  margin-bottom: 20px;
+  z-index: 10;
+}
+
+.forge-materials {
+  display: flex;
+  gap: 20px;
+  position: relative;
+  z-index: 10;
+}
+
+.forge-material-slot {
+  width: 80px;
+  height: 80px;
+  background: #0d1527;
+  border: 2px solid #ef4444;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  transition: transform 0.2s;
+}
+.forge-material-slot.sufficient {
+  border-color: #10b981;
+}
+
+.forge-material-slot:hover {
+  transform: scale(1.05);
+}
+
+.mat-icon {
+  font-size: 28px;
+  margin-bottom: 5px;
+}
+
+.mat-count {
+  font-size: 12px;
+  font-weight: 900;
+  color: #f87171;
+}
+.forge-material-slot.sufficient .mat-count {
+  color: #10b981;
+}
+
+.forge-lines {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.forge-action {
+  margin-top: 50px;
+  width: 280px;
+  z-index: 10;
+}
+
+.btn-forge {
+  width: 100%;
+  padding: 15px;
+  background: #d97706;
+  border: 2px solid #fcd34d;
+  color: white;
+  font-size: 16px;
+  font-weight: 900;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-forge:hover:not(:disabled) {
+  background: #eab308;
+  transform: scale(1.05);
+}
+.btn-forge:disabled {
+  background: #334155;
+  border-color: #475569;
+  color: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-crafted {
+  width: 100%;
+  padding: 15px;
+  background: #1e293b;
+  border: 2px solid #475569;
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 900;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 20px;
+  background: #07111f;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #00f0ff;
+  transition: width 1.2s linear;
+}
+
+.progress-text {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #00f0ff;
+  font-weight: 900;
+  text-align: center;
+}
+
+.specs-content {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.specs-icon {
+  width: 90px;
+  height: 90px;
+  background: #0f172a;
+  border: 3px solid #ffdc5a;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 46px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+.specs-icon.owned {
+  border-color: #4ade80;
+}
+
+.specs-name {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.specs-name.owned { color: #4ade80; }
+
+.specs-slot {
+  background: #1e293b;
+  border: 1px solid rgba(74, 166, 247, 0.5);
+  padding: 4px 15px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #89c5f8;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.specs-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(30, 41, 59, 0.8);
+  margin-bottom: 15px;
+}
+
+.specs-stats {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.specs-stats-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #cbd5e1;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 900;
+  color: #00f0ff;
+}
+
+.specs-desc {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.4;
+  margin-top: auto;
+  margin-bottom: 20px;
+}
+
+.specs-status {
+  font-size: 16px;
+  font-weight: 900;
+  margin-bottom: 20px;
+}
+.specs-status.owned { color: #4ade80; }
+.specs-status.ready { color: #00f0ff; }

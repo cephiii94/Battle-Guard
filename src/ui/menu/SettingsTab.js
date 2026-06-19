@@ -1,6 +1,7 @@
 import { soundManager } from '../../services/soundManager.js';
 import UI from './MenuConfig.js';
-import { resetSaveData, applyPlayerDataToRegistry } from '../../services/saveService.js';
+import { resetSaveData } from '../../services/saveService.js';
+import { GameManager } from '../../systems/GameManager.js';
 
 export class SettingsTab {
   constructor(scene) {
@@ -218,7 +219,7 @@ export class SettingsTab {
       soundManager.playSFX(this.scene, 'click');
       if (window.confirm('Reset data akun? Game akan dimuat ulang ke keadaan awal.')) {
         const newPlayerData = resetSaveData();
-        applyPlayerDataToRegistry(this.scene.registry, newPlayerData);
+        GameManager.setState(newPlayerData);
         this.clear();
         this.scene.scene.restart();
       }

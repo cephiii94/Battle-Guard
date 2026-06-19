@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
+import TitleScreen from './scenes/TitleScreen.js';
 import MainMenuScene from './scenes/MainMenuScene.js';
 import GameScene from './scenes/GameScene.js';
 import {
-  applyPlayerDataToRegistry,
   loadPlayerData,
   savePlayerData,
   setSaveStorageAdapter,
@@ -15,6 +15,8 @@ import {
   isFirebaseConfigured
 } from './services/firebase.js';
 import './style.css';
+import './ui/dom/inventory.css';
+import './ui/dom/hero.css';
 
 const savedScaleMode = localStorage.getItem('game-scale-mode') || 'stretch';
 let initialScaleMode = Phaser.Scale.FIT;
@@ -43,7 +45,10 @@ const config = {
       debug: false
     }
   },
-  scene: [MainMenuScene, GameScene]
+  dom: {
+    createContainer: true
+  },
+  scene: [TitleScreen, MainMenuScene, GameScene]
 };
 
 async function startApp() {
@@ -80,7 +85,6 @@ async function startApp() {
   const playerData = loadPlayerData();
 
   savePlayerData(playerData);
-  applyPlayerDataToRegistry(game.registry, playerData);
 }
 
 function showLoadingScreen() {

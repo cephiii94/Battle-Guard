@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Projectile from '../entities/Projectile.js';
 import { soundManager } from '../services/soundManager.js';
+import { GameManager } from '../systems/GameManager.js';
 
 export default class CombatSystem {
   constructor(scene, player, spawnSystem, gameStats, lootSystem) {
@@ -173,7 +174,7 @@ export default class CombatSystem {
     soundManager.playSFX(this.scene, 'hit');
 
     // Knockback (Heavy Impact) Passive mechanic
-    const playerData = this.scene.registry.get('playerData');
+    const playerData = GameManager.getState();
     const globalSkillLevels = playerData?.skillLevels || {};
     const activeSkillSystem = this.scene.activeSkillSystem;
     const ownedKnock = activeSkillSystem?.ownedSkills.find(s => s.id === 'knock');

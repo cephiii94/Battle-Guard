@@ -1,29 +1,12 @@
 import equipment from '../data/equipment.js';
-import { saveEquipment } from '../services/saveService.js';
+import { GameManager } from './GameManager.js';
 
 export const EQUIPMENT_SLOTS = ['weapon', 'armor', 'accessory'];
 
-const DEFAULT_INVENTORY = {
-  items: equipment.map((item) => item.id),
-  equipped: {
-    weapon: null,
-    armor: null,
-    accessory: null
-  }
-};
-
 export function getEquipmentInventory(scene) {
-  const savedInventory = scene.registry.get('equipmentInventory');
-
-  if (savedInventory) {
-    const inventory = normalizeInventory(savedInventory);
-    scene.registry.set('equipmentInventory', inventory);
-    return inventory;
-  }
-
-  const inventory = cloneDefaultInventory();
-  scene.registry.set('equipmentInventory', inventory);
-  return inventory;
+  const ownedEquipment = GameManager.get('ownedEquipment') || [];
+  const equippedItems = GameManager.get('equippedItems') || { weapon: null, armor: null, accessory: null };
+  return { items: ownedEquipment, equipped: equippedItems };
 }
 
 export function getInventoryItems(scene) {
@@ -66,7 +49,6 @@ export function equipItem(scene, itemId) {
     }
   };
 
-  scene.registry.set('equipmentInventory', nextInventory);
   persistEquipment(nextInventory);
   return nextInventory;
 }
@@ -89,7 +71,6 @@ export function addEquipmentToInventory(scene, itemId) {
     items: [...inventory.items, itemId]
   };
 
-  scene.registry.set('equipmentInventory', nextInventory);
   persistEquipment(nextInventory);
   return nextInventory;
 }
@@ -109,7 +90,6 @@ export function unequipSlot(scene, slot) {
     }
   };
 
-  scene.registry.set('equipmentInventory', nextInventory);
   persistEquipment(nextInventory);
   return nextInventory;
 }
@@ -152,29 +132,8 @@ function formatSignedValue(statName, value) {
   return `+${value}`;
 }
 
-function cloneDefaultInventory() {
-  return {
-    items: [...DEFAULT_INVENTORY.items],
-    equipped: { ...DEFAULT_INVENTORY.equipped }
-  };
-}
-
-function normalizeInventory(inventory) {
-  const savedItems = Array.isArray(inventory.items) ? inventory.items : [];
-
-  const nextInventory = {
-    items: [...new Set([...savedItems, ...DEFAULT_INVENTORY.items])],
-    equipped: {
-      ...DEFAULT_INVENTORY.equipped,
-      ...(inventory.equipped || {})
-    }
-  };
-
-  return nextInventory;
-}
-
 function persistEquipment(inventory) {
-  saveEquipment({
+  GameManager.setState({
     ownedEquipment: inventory.items,
     equippedItems: inventory.equipped
   });
