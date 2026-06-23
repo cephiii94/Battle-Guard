@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import TitleScreen from './scenes/TitleScreen.js';
 import MainMenuScene from './scenes/MainMenuScene.js';
 import GameScene from './scenes/GameScene.js';
+import PreloadScene from './scenes/PreloadScene.js';
+import LoadingScene from './scenes/LoadingScene.js';
 import {
   loadPlayerData,
   savePlayerData,
@@ -48,7 +50,7 @@ const config = {
   dom: {
     createContainer: true
   },
-  scene: [TitleScreen, MainMenuScene, GameScene]
+  scene: [PreloadScene, TitleScreen, MainMenuScene, LoadingScene, GameScene]
 };
 
 async function startApp() {

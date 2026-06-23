@@ -40,47 +40,7 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   preload() {
-    getAvailableHeroes().forEach((hero) => {
-      if (hero.assetPath.endsWith('.svg')) {
-        this.load.svg(hero.assetKey, hero.assetPath, { width: 160, height: 160 });
-        return;
-      }
-
-      this.load.image(hero.assetKey, hero.assetPath);
-    });
-
-    // Preload custom skins assets if they have them
-    skins.forEach((skin) => {
-      if (skin.assetKey && skin.assetPath) {
-        if (skin.assetPath.endsWith('.svg')) {
-          this.load.svg(skin.assetKey, skin.assetPath, { width: 160, height: 160 });
-        } else {
-          this.load.image(skin.assetKey, skin.assetPath);
-        }
-      }
-    });
-
-    this.load.image('ui-settings-dot', '/assets/ui/settings-gear.svg');
-    this.load.image('ui-avatar-ring', '/assets/ui/avatar-ring.svg');
-    this.load.image('ui-icon-gem', '/assets/ui/icon-gem.svg');
-    this.load.image('ui-icon-gold', '/assets/ui/icon-gold.svg');
-    this.load.image('ui-currency-bar', '/assets/ui/currency-bar.svg');
-    this.load.image('ui-side-button', '/assets/ui/neon-side-button.svg');
-    this.load.image('ui-battle-button', '/assets/ui/neon-battle-button.svg');
-    this.load.image('ui-purple-button', '/assets/ui/neon-purple-button.svg');
-    this.load.image('ui-hex-slot', '/assets/ui/neon-hex-slot.svg');
-    this.load.image('ui-hex-active', '/assets/ui/neon-hex-active.svg');
-    this.load.image('ui-character-orb', '/assets/ui/neon-character-orb.svg');
-    this.load.image('ui-bottom-panel', '/assets/ui/neon-panel-bottom.svg');
-    this.load.image('ui-stat-damage', '/assets/ui/icon-damage.svg');
-    this.load.image('ui-stat-hp', '/assets/ui/icon-hp.svg');
-    this.load.image('ui-stat-aspd', '/assets/ui/icon-aspd.svg');
-
-    // Load Lucide Lock icon dynamically as SVG using Blob URL to ensure XHR compatibility in Phaser
-    const lockSvgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
-    const blob = new Blob([lockSvgStr], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    this.load.svg('ui-lock-icon', url, { width: 48, height: 48 });
+    // Assets are preloaded in PreloadScene
   }
 
   create() {

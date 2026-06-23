@@ -1,260 +1,162 @@
 import { soundManager } from '../../services/soundManager.js';
-import UI from './MenuConfig.js';
 import { resetSaveData } from '../../services/saveService.js';
 import { GameManager } from '../../systems/GameManager.js';
+import Phaser from 'phaser';
 
 export class SettingsTab {
   constructor(scene) {
     this.scene = scene;
-    this.layer = [];
-  }
-
-  add(item) {
-    item.setScrollFactor(0);
-    item.setDepth(2000);
-    this.layer.push(item);
-    return item;
   }
 
   clear() {
-    this.layer.forEach((item) => item.destroy());
-    this.layer = [];
+    if (this.scene.domUiManager && this.scene.domUiManager.isActive('settings')) {
+      this.scene.domUiManager.closeCurrent();
+    }
   }
 
   isActive() {
-    return this.layer.length > 0;
+    return this.scene.domUiManager && this.scene.domUiManager.isActive('settings');
   }
 
   show() {
     this.scene.clearAllTabs();
-    const { width, height } = this.scene.scale;
-
-    // Dim Background
-    this.add(this.scene.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.75));
-
-    // Main Settings Panel
-    this.add(
-      this.scene.add.rectangle(width / 2, height / 2, 460, 380, 0x0f172a, 0.98)
-        .setStrokeStyle(3, 0x00d6ff, 0.9)
-    );
-
-    // Title text
-    this.add(
-      this.scene.add.text(width / 2, height / 2 - 140, 'SETTINGS', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '24px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0f172a',
-        strokeThickness: 3,
-      }).setOrigin(0.5)
-    );
-
-    // Close Button
-    this.addCloseButton(width / 2 + 195, height / 2 - 155);
-
-    // Music Setting Container
-    const musicY = height / 2 - 100;
-    this.add(
-      this.scene.add.text(width / 2 - 130, musicY, 'BACKGROUND MUSIC', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0c1648',
-        strokeThickness: 3,
-      }).setOrigin(0, 0.5)
-    );
-
     const isMusicOn = soundManager.isMusicEnabled();
-    const musicBtn = this.add(
-      this.scene.add.rectangle(width / 2 + 80, musicY, 100, 36, isMusicOn ? 0x15803d : 0xb91c1c, 1)
-        .setStrokeStyle(2, isMusicOn ? 0x4ade80 : 0xfca5a5, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    const musicBtnText = this.add(
-      this.scene.add.text(width / 2 + 80, musicY, isMusicOn ? 'ON' : 'OFF', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    musicBtn.on('pointerover', () => {
-      musicBtn.setScale(1.05);
-      musicBtnText.setScale(1.05);
-    });
-    musicBtn.on('pointerout', () => {
-      musicBtn.setScale(1);
-      musicBtnText.setScale(1);
-    });
-    musicBtn.on('pointerup', () => {
-      soundManager.playSFX(this.scene, 'click');
-      soundManager.setMusicEnabled(!soundManager.isMusicEnabled());
-      this.show();
-    });
-
-    // SFX Setting Container
-    const sfxY = height / 2 - 40;
-    this.add(
-      this.scene.add.text(width / 2 - 130, sfxY, 'SOUND EFFECTS (SFX)', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0c1648',
-        strokeThickness: 3,
-      }).setOrigin(0, 0.5)
-    );
-
     const isSfxOn = soundManager.isSFXEnabled();
-    const sfxBtn = this.add(
-      this.scene.add.rectangle(width / 2 + 80, sfxY, 100, 36, isSfxOn ? 0x15803d : 0xb91c1c, 1)
-        .setStrokeStyle(2, isSfxOn ? 0x4ade80 : 0xfca5a5, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    const sfxBtnText = this.add(
-      this.scene.add.text(width / 2 + 80, sfxY, isSfxOn ? 'ON' : 'OFF', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    sfxBtn.on('pointerover', () => {
-      sfxBtn.setScale(1.05);
-      sfxBtnText.setScale(1.05);
-    });
-    sfxBtn.on('pointerout', () => {
-      sfxBtn.setScale(1);
-      sfxBtnText.setScale(1);
-    });
-    sfxBtn.on('pointerup', () => {
-      soundManager.setSFXEnabled(!soundManager.isSFXEnabled());
-      soundManager.playSFX(this.scene, 'click');
-      this.show();
-    });
-
-    // Screen Scale Setting Container
-    const scaleY = height / 2 + 20;
-    this.add(
-      this.scene.add.text(width / 2 - 130, scaleY, 'SCREEN SCALE', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-        stroke: '#0c1648',
-        strokeThickness: 3,
-      }).setOrigin(0, 0.5)
-    );
-
     const currentMode = this.scene.scale.scaleMode;
     const isStretched = currentMode !== Phaser.Scale.NONE;
-    const scaleBtn = this.add(
-      this.scene.add.rectangle(width / 2 + 85, scaleY, 140, 36, isStretched ? 0x15803d : 0x0284c7, 1)
-        .setStrokeStyle(2, isStretched ? 0x4ade80 : 0x38bdf8, 1)
-        .setInteractive({ useHandCursor: true })
-    );
 
-    const scaleBtnText = this.add(
-      this.scene.add.text(width / 2 + 85, scaleY, isStretched ? 'REGANGKAN' : 'RESOLUSI CANVAS', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '11px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
+    const htmlString = `
+      <div class="settings-container">
+        <div class="settings-header">
+          <div class="settings-title">
+            <h2>⚙️ SETTINGS</h2>
+          </div>
+          <button class="settings-close-btn" id="btn-close-settings">✖</button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-row">
+            <span class="settings-label">BACKGROUND MUSIC</span>
+            <button class="settings-toggle-btn ${isMusicOn ? 'btn-on' : 'btn-off'}" id="btn-toggle-music">
+              ${isMusicOn ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">SOUND EFFECTS (SFX)</span>
+            <button class="settings-toggle-btn ${isSfxOn ? 'btn-on' : 'btn-off'}" id="btn-toggle-sfx">
+              ${isSfxOn ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">SCREEN SCALE</span>
+            <button class="settings-scale-btn ${isStretched ? 'btn-stretch' : 'btn-canvas'}" id="btn-toggle-scale">
+              ${isStretched ? 'REGANGKAN' : 'RESOLUSI CANVAS'}
+            </button>
+          </div>
+          <div class="settings-reset-row">
+            <button class="settings-reset-btn" id="btn-reset-data">RESET ACCOUNT DATA</button>
+          </div>
+        </div>
+      </div>
+    `;
 
-    scaleBtn.on('pointerover', () => {
-      scaleBtn.setScale(1.05);
-      scaleBtnText.setScale(1.05);
-    });
-    scaleBtn.on('pointerout', () => {
-      scaleBtn.setScale(1);
-      scaleBtnText.setScale(1);
-    });
-    scaleBtn.on('pointerup', () => {
-      soundManager.playSFX(this.scene, 'click');
-      if (isStretched) {
-        this.scene.scale.scaleMode = Phaser.Scale.NONE;
-        localStorage.setItem('game-scale-mode', 'canvas');
-      } else {
-        this.scene.scale.scaleMode = Phaser.Scale.FIT;
-        localStorage.setItem('game-scale-mode', 'stretch');
-      }
-      this.scene.scale.refresh();
-      this.show();
-    });
+    this.scene.domUiManager.showOverlay('settings', htmlString, 'settings-overlay', (wrapper) => {
+      this.wrapper = wrapper;
 
-    // Reset Account Container (For Development)
-    const resetY = height / 2 + 100;
-    const resetBtn = this.add(
-      this.scene.add.rectangle(width / 2, resetY, 320, 40, 0x991b1b, 1)
-        .setStrokeStyle(2, 0xfecaca, 1)
-        .setInteractive({ useHandCursor: true })
-    );
-
-    const resetBtnText = this.add(
-      this.scene.add.text(width / 2, resetY, 'RESET ACCOUNT DATA', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
-
-    resetBtn.on('pointerover', () => {
-      resetBtn.setScale(1.05);
-      resetBtnText.setScale(1.05);
-    });
-    resetBtn.on('pointerout', () => {
-      resetBtn.setScale(1);
-      resetBtnText.setScale(1);
-    });
-    resetBtn.on('pointerup', () => {
-      soundManager.playSFX(this.scene, 'click');
-      if (window.confirm('Reset data akun? Game akan dimuat ulang ke keadaan awal.')) {
-        const newPlayerData = resetSaveData();
-        GameManager.setState(newPlayerData);
+      // Close button
+      wrapper.querySelector('#btn-close-settings').addEventListener('click', () => {
+        soundManager.playSFX(this.scene, 'click');
         this.clear();
-        this.scene.scene.restart();
-      }
-    });
-  }
+      });
 
-  addCloseButton(x, y) {
-    const button = this.add(
-      this.scene.add.rectangle(x, y, 36, 36, 0xd97706, 1)
-        .setStrokeStyle(2, 0xfef08a, 1)
-        .setInteractive({ useHandCursor: true })
-    );
+      const musicBtn = wrapper.querySelector('#btn-toggle-music');
+      const updateMusicBtn = () => {
+        const isMusicOn = soundManager.isMusicEnabled();
+        musicBtn.textContent = isMusicOn ? 'ON' : 'OFF';
+        if (isMusicOn) {
+          musicBtn.classList.remove('btn-off');
+          musicBtn.classList.add('btn-on');
+        } else {
+          musicBtn.classList.remove('btn-on');
+          musicBtn.classList.add('btn-off');
+        }
+      };
 
-    const text = this.add(
-      this.scene.add.text(x, y, 'X', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '16px',
-        color: UI.white,
-        fontStyle: '900',
-      }).setOrigin(0.5)
-    );
+      // Toggle Music
+      musicBtn.addEventListener('click', () => {
+        soundManager.playSFX(this.scene, 'click');
+        soundManager.setMusicEnabled(!soundManager.isMusicEnabled());
+        updateMusicBtn();
+      });
 
-    button.on('pointerover', () => {
-      button.setScale(1.1);
-      text.setScale(1.1);
-    });
+      const sfxBtn = wrapper.querySelector('#btn-toggle-sfx');
+      const updateSfxBtn = () => {
+        const isSfxOn = soundManager.isSFXEnabled();
+        sfxBtn.textContent = isSfxOn ? 'ON' : 'OFF';
+        if (isSfxOn) {
+          sfxBtn.classList.remove('btn-off');
+          sfxBtn.classList.add('btn-on');
+        } else {
+          sfxBtn.classList.remove('btn-on');
+          sfxBtn.classList.add('btn-off');
+        }
+      };
 
-    button.on('pointerout', () => {
-      button.setScale(1);
-      text.setScale(1);
-    });
+      // Toggle SFX
+      sfxBtn.addEventListener('click', () => {
+        soundManager.setSFXEnabled(!soundManager.isSFXEnabled());
+        soundManager.playSFX(this.scene, 'click');
+        updateSfxBtn();
+      });
 
-    button.on('pointerup', () => {
-      soundManager.playSFX(this.scene, 'click');
-      this.clear();
+      const scaleBtn = wrapper.querySelector('#btn-toggle-scale');
+      const updateScaleBtn = () => {
+        const currentScaleMode = this.scene.scale.scaleMode;
+        const isStretchedMode = currentScaleMode !== Phaser.Scale.NONE;
+        scaleBtn.textContent = isStretchedMode ? 'REGANGKAN' : 'RESOLUSI CANVAS';
+        if (isStretchedMode) {
+          scaleBtn.classList.remove('btn-canvas');
+          scaleBtn.classList.add('btn-stretch');
+        } else {
+          scaleBtn.classList.remove('btn-stretch');
+          scaleBtn.classList.add('btn-canvas');
+        }
+      };
+
+      // Toggle Scale
+      scaleBtn.addEventListener('click', () => {
+        soundManager.playSFX(this.scene, 'click');
+        const currentScaleMode = this.scene.scale.scaleMode;
+        const isStretchedMode = currentScaleMode !== Phaser.Scale.NONE;
+        if (isStretchedMode) {
+          this.scene.scale.scaleMode = Phaser.Scale.NONE;
+          localStorage.setItem('game-scale-mode', 'canvas');
+          
+          // Clear Phaser inline styles from the canvas so it shrinks back to 1280x720
+          const canvas = this.scene.sys.game.canvas;
+          if (canvas) {
+            canvas.style.width = '';
+            canvas.style.height = '';
+            canvas.style.marginLeft = '';
+            canvas.style.marginTop = '';
+          }
+        } else {
+          this.scene.scale.scaleMode = Phaser.Scale.FIT;
+          localStorage.setItem('game-scale-mode', 'stretch');
+        }
+        this.scene.scale.refresh();
+        updateScaleBtn();
+      });
+
+      // Reset Account Data
+      wrapper.querySelector('#btn-reset-data').addEventListener('click', () => {
+        soundManager.playSFX(this.scene, 'click');
+        if (window.confirm('Reset data akun? Game akan dimuat ulang ke keadaan awal.')) {
+          const newPlayerData = resetSaveData();
+          GameManager.setState(newPlayerData);
+          this.clear();
+          this.scene.scene.restart();
+        }
+      });
     });
   }
 }

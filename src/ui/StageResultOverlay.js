@@ -1,222 +1,158 @@
+import './dom/stage-result.css';
 import { soundManager } from '../services/soundManager.js';
-import { addPlayerExp } from '../systems/PlayerProgress.js';
-
-// EXP awarded per stage clear
-const STAGE_CLEAR_EXP = 500;
 
 export default class StageResultOverlay {
   constructor(scene) {
     this.scene = scene;
-    this.items = [];
-    this.backdrop = null;
+    this.overlayElement = null;
   }
 
   showVictory(result) {
     this.clear();
 
-    // === RPG CLASS SYSTEM: Award EXP on victory ===
-    const expResult = addPlayerExp(this.scene, STAGE_CLEAR_EXP);
-    const leveledUp   = expResult.leveledUp;
-    const levelsGained = expResult.levelsGained || 0;
-    // ===
+    // Disable Phaser inputs
+    if (this.scene.input) {
+      this.scene.input.enabled = false;
+      if (this.scene.input.keyboard) {
+        this.scene.input.keyboard.enabled = false;
+      }
+    }
 
-    // 1. Semi-transparent backdrop
-    this.backdrop = this.add(this.scene.add.rectangle(640, 360, 1280, 720, 0x020617, 0.75));
+    const uiRoot = document.getElementById('ui-root');
+    if (uiRoot) {
+      uiRoot.style.pointerEvents = 'auto';
+    }
 
-    // 2. Panel Background Box (Gold border for victory)
-    const panelWidth = 540;
-    const panelHeight = 480;
-    const panelBg = this.add(this.scene.add.rectangle(640, 360, panelWidth, panelHeight, 0x0f172a, 0.98))
-      .setStrokeStyle(3, 0xfacc15, 0.9);
+    this.overlayElement = document.createElement('div');
+    this.overlayElement.className = 'stage-result-overlay';
 
-    // Visual accent light line
-    const panelAccent = this.add(this.scene.add.graphics());
-    panelAccent.fillStyle(0xfde047, 0.4);
-    panelAccent.fillRoundedRect(640 - panelWidth / 2 + 16, 360 - panelHeight / 2 + 6, panelWidth - 32, 3, 1.5);
+    // Prevent click propagation
+    const stopProp = (e) => e.stopPropagation();
+    this.overlayElement.addEventListener('pointerdown', stopProp);
+    this.overlayElement.addEventListener('pointerup', stopProp);
+    this.overlayElement.addEventListener('click', stopProp);
+    this.overlayElement.addEventListener('mousedown', stopProp);
+    this.overlayElement.addEventListener('mouseup', stopProp);
 
-    // 3. Header Title (VICTORY)
-    const title = this.add(this.scene.add.text(640, 180, 'VICTORY', {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '48px',
-      color: '#facc15',
-      fontStyle: 'bold',
-      stroke: '#020617',
-      strokeThickness: 8
-    }).setOrigin(0.5));
-
-    // Pulsing animation for title
-    this.scene.tweens.add({
-      targets: title,
-      scaleX: 1.05,
-      scaleY: 1.05,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-
-    // Subtitle
     const gameMode = result.gameMode || 'campaign';
     const subTitleText = result.stage.stageName.toUpperCase() + ` (${gameMode.replace('_', ' ').toUpperCase()})`;
-    this.add(this.scene.add.text(640, 230, subTitleText, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '15px',
-      color: '#94a3b8',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
 
-    // === RPG CLASS SYSTEM: EXP Reward Banner ===
-    const expBannerY = 258;
-    this.add(this.scene.add.text(640, expBannerY, `✨ +${STAGE_CLEAR_EXP} EXP`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '16px',
-      color: '#a78bfa',
-      fontStyle: 'bold',
-      stroke: '#020617',
-      strokeThickness: 4
-    }).setOrigin(0.5));
-
-    if (leveledUp) {
-      const lvlBadge = this.add(this.scene.add.text(640, expBannerY + 26, `🎉 LEVEL UP! x${levelsGained}  —  +${levelsGained * 5} Status Pts  +${levelsGained} Skill Pt`, {
-        fontFamily: '"Trebuchet MS", Arial, sans-serif',
-        fontSize: '13px',
-        color: '#fcd34d',
-        fontStyle: 'bold',
-        stroke: '#020617',
-        strokeThickness: 3
-      }).setOrigin(0.5));
-      this.scene.tweens.add({
-        targets: lvlBadge,
-        scaleX: 1.06, scaleY: 1.06,
-        duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
-      });
-    }
-    // === END RPG CLASS SYSTEM ===
-
-    // Stats Grid Box Left
-    const gridLeftX = 640 - 120;
-    const gridY = 340;
-    const gridW = 210;
-    const gridH = 150;
-
-    const leftBox = this.add(this.scene.add.graphics());
-    leftBox.fillStyle(0x1e293b, 0.6);
-    leftBox.fillRoundedRect(gridLeftX - gridW/2, gridY - gridH/2, gridW, gridH, 8);
-    leftBox.lineStyle(1.5, 0x334155, 0.8);
-    leftBox.strokeRoundedRect(gridLeftX - gridW/2, gridY - gridH/2, gridW, gridH, 8);
-
-    this.add(this.scene.add.text(gridLeftX, gridY - 50, 'STAGE STATISTICS', {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '11px',
-      color: '#38bdf8',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    this.add(this.scene.add.text(gridLeftX, gridY - 10, `💀 Kills: ${result.kills}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '14px',
-      color: '#f8fafc',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    const goldEarned = result.temporaryGold;
-    this.add(this.scene.add.text(gridLeftX, gridY + 20, `🪙 Found: +${goldEarned}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '14px',
-      color: '#fbbf24',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    // Rewards Grid Box Right
-    const gridRightX = 640 + 120;
-    const rightBox = this.add(this.scene.add.graphics());
-    rightBox.fillStyle(0x1e293b, 0.6);
-    rightBox.fillRoundedRect(gridRightX - gridW/2, gridY - gridH/2, gridW, gridH, 8);
-    rightBox.lineStyle(1.5, 0xfacc15, 0.5);
-    rightBox.strokeRoundedRect(gridRightX - gridW/2, gridY - gridH/2, gridW, gridH, 8);
-
-    this.add(this.scene.add.text(gridRightX, gridY - 50, 'REWARDS EARNED', {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '11px',
-      color: '#facc15',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
+    // Gold rewards
     const rewardGold = result.stageGoldReward || result.goldReward || 0;
     const bossGold = result.bossGoldReward || 0;
     const totalGoldGained = rewardGold + bossGold;
 
-    this.add(this.scene.add.text(gridRightX, gridY - 15, `Gold Bonus: +${totalGoldGained}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '13px',
-      color: '#fbbf24',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    // EXP
-    this.add(this.scene.add.text(gridRightX, gridY + 15, `EXP Gained: +${result.expGained}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '13px',
-      color: '#c084fc',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    // Hero XP
-    this.add(this.scene.add.text(gridRightX, gridY + 42, `Hero XP: +${result.heroXpGained || 0}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '13px',
-      color: '#a855f7',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    // Loot / Drops summary area
+    // Loot / Drops summary
     let lootString = 'None';
+    let hasLoot = false;
     if (result.equipmentDrop) {
       lootString = `🛡️ ${result.equipmentDrop.name}`;
+      hasLoot = true;
     } else if (result.materialDrops) {
       const dropEntries = Object.entries(result.materialDrops);
       if (dropEntries.length > 0) {
         const labels = { 'iron-ore': 'Iron Ore', 'magic-gem': 'Magic Gem', 'dragon-scale': 'Dragon Scale' };
         lootString = dropEntries.map(([mat, qty]) => `${labels[mat] || mat} x${qty}`).join(', ');
+        hasLoot = true;
       }
     } else if (result.ticketDrop) {
       const labels = { 'survival-ticket': 'Survival Ticket', 'gold-ticket': 'Gold Ticket', 'boss-ticket': 'Boss Ticket' };
       lootString = `🎫 ${labels[result.ticketDrop] || result.ticketDrop}`;
+      hasLoot = true;
     }
 
-    const lootPanel = this.add(this.scene.add.graphics());
-    lootPanel.fillStyle(0x0f172a, 0.8);
-    lootPanel.fillRoundedRect(640 - panelWidth/2 + 30, gridY + gridH/2 + 15, panelWidth - 60, 42, 6);
-    lootPanel.lineStyle(1, 0x334155);
-    lootPanel.strokeRoundedRect(640 - panelWidth/2 + 30, gridY + gridH/2 + 15, panelWidth - 60, 42, 6);
-
-    this.add(this.scene.add.text(640, gridY + gridH/2 + 36, `LOOT DETECTED: ${lootString.toUpperCase()}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '12px',
-      color: '#34d399',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    // Global Level up alert
-    if (result.playerLeveledUp) {
-      const lvUpBg = this.add(this.scene.add.rectangle(640, 470, panelWidth - 60, 26, 0xa855f7, 0.9));
-      this.add(this.scene.add.text(640, 470, `🌟 GLOBAL LEVEL UP! NOW LV. ${result.playerLevel} 🌟`, {
-        fontFamily: '"Trebuchet MS", Arial, sans-serif',
-        fontSize: '11px',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5));
+    // Level up badges
+    let levelUpHtml = '';
+    
+    // Check if player leveled up from combined EXP results
+    if (result.playerLeveledUp && result.playerLevelsGained > 0) {
+      levelUpHtml += `
+        <div class="stage-level-up-badge">
+          🎉 LEVEL UP! x${result.playerLevelsGained}  —  +${result.playerStatusPointsGained} Status Pts  +${result.playerSkillPointsGained} Skill Pt
+        </div>
+      `;
+      levelUpHtml += `
+        <div class="stage-global-level-up-badge">
+          🌟 GLOBAL LEVEL UP! NOW LV. ${result.playerLevel} 🌟
+        </div>
+      `;
     }
 
-    // 4. Action buttons (passing full initialization properties to prevent reload freezing)
+    // Render Victory panel
+    this.overlayElement.innerHTML = `
+      <div class="stage-result-container victory">
+        <div class="stage-result-header">
+          <h1 class="stage-result-title">VICTORY</h1>
+          <div class="stage-result-subtitle">${subTitleText}</div>
+        </div>
+        <div class="stage-result-body">
+          <div class="stage-result-exp-section">
+            <div class="stage-clear-exp">✨ +${result.expGained} EXP</div>
+            ${levelUpHtml}
+          </div>
+          
+          <div class="stage-result-columns">
+            <div class="stage-result-column victory-col">
+              <div class="column-title">STAGE STATISTICS</div>
+              <div class="column-list">
+                <div class="column-item">
+                  <span class="label-kills">💀 Kills:</span>
+                  <span>${result.kills}</span>
+                </div>
+                <div class="column-item">
+                  <span class="label-gold">🪙 Found:</span>
+                  <span class="label-gold">+${result.temporaryGold}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="stage-result-column rewards-col">
+              <div class="column-title">REWARDS EARNED</div>
+              <div class="column-list">
+                <div class="column-item">
+                  <span class="label-gold">Gold Bonus:</span>
+                  <span class="label-gold">+${totalGoldGained}</span>
+                </div>
+                <div class="column-item">
+                  <span class="label-exp">EXP Gained:</span>
+                  <span class="label-exp">+${result.expGained}</span>
+                </div>
+                <div class="column-item">
+                  <span class="label-hero-xp">Hero XP:</span>
+                  <span class="label-hero-xp">+${result.heroXpGained}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="stage-result-loot-panel ${hasLoot ? 'has-loot' : ''}">
+            LOOT DETECTED: ${lootString.toUpperCase()}
+          </div>
+        </div>
+        
+        <div class="stage-result-footer">
+          ${gameMode === 'campaign' ? `
+            <button class="stage-result-btn btn-blue" id="next-stage-btn">NEXT STAGE</button>
+          ` : `
+            <button class="stage-result-btn btn-blue" id="retry-btn">RETRY</button>
+          `}
+          <button class="stage-result-btn btn-slate" id="main-menu-btn">MAIN MENU</button>
+        </div>
+      </div>
+    `;
+
+    // Button event listeners
     if (gameMode === 'campaign') {
-      this.addButton(640 - 110, 535, 'NEXT STAGE', 0x2563eb, () => {
-        // Safe check for next stage ID casting to Number
+      const nextBtn = this.overlayElement.querySelector('#next-stage-btn');
+      nextBtn.addEventListener('mouseenter', () => soundManager.playSFX(this.scene, 'hover'));
+      nextBtn.addEventListener('click', () => {
+        soundManager.playSFX(this.scene, 'click');
+        this.clear();
         const nextStageId = Number((result && result.nextStage && result.nextStage.stageId) 
           ? result.nextStage.stageId 
           : (this.scene.stage ? (this.scene.stage.stageId + 1) : 1));
 
-        this.scene.scene.start('GameScene', {
+        this.scene.scene.start('LoadingScene', {
           stageId: nextStageId,
           gameMode: 'campaign',
           selectedHero: this.scene.selectedHero || null,
@@ -227,16 +163,17 @@ export default class StageResultOverlay {
           heroLevel: this.scene.heroLevel || 1
         });
       });
-      this.addButton(640 + 110, 535, 'MAIN MENU', 0x475569, () => {
-        this.scene.scene.start('MainMenuScene');
-      });
     } else {
-      this.addButton(640 - 110, 535, 'RETRY', 0x2563eb, () => {
+      const retryBtn = this.overlayElement.querySelector('#retry-btn');
+      retryBtn.addEventListener('mouseenter', () => soundManager.playSFX(this.scene, 'hover'));
+      retryBtn.addEventListener('click', () => {
+        soundManager.playSFX(this.scene, 'click');
+        this.clear();
         const stageId = Number((result && result.stage && result.stage.stageId) 
           ? result.stage.stageId 
           : (this.scene.stage ? this.scene.stage.stageId : 1));
 
-        this.scene.scene.start('GameScene', {
+        this.scene.scene.start('LoadingScene', {
           stageId: stageId,
           gameMode,
           selectedHero: this.scene.selectedHero || null,
@@ -247,108 +184,96 @@ export default class StageResultOverlay {
           heroLevel: this.scene.heroLevel || 1
         });
       });
-      this.addButton(640 + 110, 535, 'MAIN MENU', 0x475569, () => {
-        this.scene.scene.start('MainMenuScene');
-      });
     }
 
-    // Fade-in entry animation
-    this.items.forEach(item => item.setAlpha(0));
-    this.scene.tweens.add({
-      targets: this.items,
-      alpha: 1,
-      duration: 350
+    const menuBtn = this.overlayElement.querySelector('#main-menu-btn');
+    menuBtn.addEventListener('mouseenter', () => soundManager.playSFX(this.scene, 'hover'));
+    menuBtn.addEventListener('click', () => {
+      soundManager.playSFX(this.scene, 'click');
+      this.clear();
+      this.scene.scene.start('MainMenuScene');
     });
+
+    uiRoot.appendChild(this.overlayElement);
   }
 
   showDefeat(result) {
     this.clear();
-    
-    // 1. Semi-transparent backdrop
-    this.backdrop = this.add(this.scene.add.rectangle(640, 360, 1280, 720, 0x020617, 0.75));
 
-    // 2. Panel Background Box (Red border for defeat)
-    const panelWidth = 540;
-    const panelHeight = 440;
-    const panelBg = this.add(this.scene.add.rectangle(640, 360, panelWidth, panelHeight, 0x0f172a, 0.98))
-      .setStrokeStyle(3, 0xef4444, 0.9);
+    // Disable Phaser inputs
+    if (this.scene.input) {
+      this.scene.input.enabled = false;
+      if (this.scene.input.keyboard) {
+        this.scene.input.keyboard.enabled = false;
+      }
+    }
 
-    // Visual accent light line
-    const panelAccent = this.add(this.scene.add.graphics());
-    panelAccent.fillStyle(0xef4444, 0.4);
-    panelAccent.fillRoundedRect(640 - panelWidth / 2 + 16, 360 - panelHeight / 2 + 6, panelWidth - 32, 3, 1.5);
+    const uiRoot = document.getElementById('ui-root');
+    if (uiRoot) {
+      uiRoot.style.pointerEvents = 'auto';
+    }
 
-    // 3. Header Title (DEFEAT)
-    const title = this.add(this.scene.add.text(640, 210, 'DEFEAT', {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '48px',
-      color: '#f87171',
-      fontStyle: 'bold',
-      stroke: '#020617',
-      strokeThickness: 8
-    }).setOrigin(0.5));
+    this.overlayElement = document.createElement('div');
+    this.overlayElement.className = 'stage-result-overlay';
 
-    // Pulsing animation for title
-    this.scene.tweens.add({
-      targets: title,
-      scaleX: 1.05,
-      scaleY: 1.05,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+    // Prevent click propagation
+    const stopProp = (e) => e.stopPropagation();
+    this.overlayElement.addEventListener('pointerdown', stopProp);
+    this.overlayElement.addEventListener('pointerup', stopProp);
+    this.overlayElement.addEventListener('click', stopProp);
+    this.overlayElement.addEventListener('mousedown', stopProp);
+    this.overlayElement.addEventListener('mouseup', stopProp);
 
-    // Subtitle
     const gameMode = this.scene.gameMode || 'campaign';
     const subTitleText = result.stage.stageName.toUpperCase() + ` (${gameMode.replace('_', ' ').toUpperCase()})`;
-    this.add(this.scene.add.text(640, 260, subTitleText, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '15px',
-      color: '#94a3b8',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
 
-    // Stats Box
-    const statsBoxX = 640;
-    const statsBoxY = 380;
-    const boxW = 380;
-    const boxH = 120;
+    // Render Defeat panel
+    this.overlayElement.innerHTML = `
+      <div class="stage-result-container defeat">
+        <div class="stage-result-header">
+          <h1 class="stage-result-title">DEFEAT</h1>
+          <div class="stage-result-subtitle">${subTitleText}</div>
+        </div>
+        <div class="stage-result-body">
+          <div class="stage-result-columns">
+            <div class="stage-result-column defeat-col">
+              <div class="column-title">DEFEAT DETAILS</div>
+              <div class="column-list">
+                <div class="column-item centered">
+                  <span>💀 Monsters Slain:</span>
+                  <span class="label-kills">${result.kills}</span>
+                </div>
+                <div class="column-item centered">
+                  <span>🪙 Gold Gathered:</span>
+                  <span class="label-gold">${result.temporaryGold}</span>
+                </div>
+                <div class="column-item centered">
+                  <span>⚡ Hero XP Gained:</span>
+                  <span class="label-hero-xp">+${result.heroXpGained || 0}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stage-result-footer">
+          <button class="stage-result-btn btn-red" id="retry-btn">RETRY</button>
+          <button class="stage-result-btn btn-slate" id="main-menu-btn">MAIN MENU</button>
+        </div>
+      </div>
+    `;
 
-    const statsBg = this.add(this.scene.add.graphics());
-    statsBg.fillStyle(0x1e293b, 0.6);
-    statsBg.fillRoundedRect(statsBoxX - boxW/2, statsBoxY - boxH/2, boxW, boxH, 8);
-    statsBg.lineStyle(1.5, 0xef4444, 0.3);
-    statsBg.strokeRoundedRect(statsBoxX - boxW/2, statsBoxY - boxH/2, boxW, boxH, 8);
-
-    this.add(this.scene.add.text(statsBoxX, statsBoxY - 30, `💀 Monsters Slain: ${result.kills}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '16px',
-      color: '#f8fafc',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    this.add(this.scene.add.text(statsBoxX, statsBoxY, `🪙 Gold Gathered: ${result.temporaryGold}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '15px',
-      color: '#fbbf24',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    this.add(this.scene.add.text(statsBoxX, statsBoxY + 30, `⚡ Hero XP Gained: +${result.heroXpGained || 0}`, {
-      fontFamily: '"Trebuchet MS", Arial, sans-serif',
-      fontSize: '14px',
-      color: '#a855f7',
-      fontStyle: 'bold'
-    }).setOrigin(0.5));
-
-    // Buttons (passing full initialization properties to prevent reload freezing)
-    this.addButton(640 - 110, 505, 'RETRY', 0xef4444, () => {
+    // Button event listeners
+    const retryBtn = this.overlayElement.querySelector('#retry-btn');
+    retryBtn.addEventListener('mouseenter', () => soundManager.playSFX(this.scene, 'hover'));
+    retryBtn.addEventListener('click', () => {
+      soundManager.playSFX(this.scene, 'click');
+      this.clear();
       const stageId = Number((result && result.stage && result.stage.stageId) 
         ? result.stage.stageId 
         : (this.scene.stage ? this.scene.stage.stageId : 1));
 
-      this.scene.scene.start('GameScene', {
+      this.scene.scene.start('LoadingScene', {
         stageId: stageId,
         gameMode,
         selectedHero: this.scene.selectedHero || null,
@@ -359,83 +284,35 @@ export default class StageResultOverlay {
         heroLevel: this.scene.heroLevel || 1
       });
     });
-    this.addButton(640 + 110, 505, 'MAIN MENU', 0x475569, () => {
+
+    const menuBtn = this.overlayElement.querySelector('#main-menu-btn');
+    menuBtn.addEventListener('mouseenter', () => soundManager.playSFX(this.scene, 'hover'));
+    menuBtn.addEventListener('click', () => {
+      soundManager.playSFX(this.scene, 'click');
+      this.clear();
       this.scene.scene.start('MainMenuScene');
     });
 
-    // Fade-in entry animation
-    this.items.forEach(item => item.setAlpha(0));
-    this.scene.tweens.add({
-      targets: this.items,
-      alpha: 1,
-      duration: 350
-    });
-  }
-
-  addButton(x, y, label, fillColor, onClick) {
-    const btnWidth = 160;
-    const btnHeight = 46;
-
-    const button = this.add(this.scene.add.rectangle(x, y, btnWidth, btnHeight, fillColor, 1))
-      .setStrokeStyle(1.5, 0xffffff, 0.6)
-      .setInteractive({ useHandCursor: true });
-
-    const text = this.add(this.scene.add.text(x, y, label, {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '15px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      stroke: '#0f172a',
-      strokeThickness: 3
-    }).setOrigin(0.5));
-
-    button.on('pointerover', () => {
-      button.setFillStyle(Phaser.Display.Color.IntegerToColor(fillColor).brighten(18).color);
-      this.scene.tweens.add({
-        targets: [button, text],
-        scaleX: 1.04,
-        scaleY: 1.04,
-        duration: 120
-      });
-      soundManager.playSFX(this.scene, 'hover');
-    });
-
-    button.on('pointerout', () => {
-      button.setFillStyle(fillColor);
-      this.scene.tweens.add({
-        targets: [button, text],
-        scaleX: 1,
-        scaleY: 1,
-        duration: 120
-      });
-    });
-
-    button.on('pointerdown', () => {
-      button.setScale(0.96);
-      text.setScale(0.96);
-    });
-
-    button.on('pointerup', () => {
-      button.setScale(1.04);
-      text.setScale(1.04);
-      soundManager.playSFX(this.scene, 'click');
-      onClick();
-    });
-  }
-
-  add(item) {
-    item.setScrollFactor(0);
-    item.setDepth(2000);
-    this.items.push(item);
-    return item;
+    uiRoot.appendChild(this.overlayElement);
   }
 
   clear() {
-    if (this.backdrop) {
-      this.backdrop.destroy();
-      this.backdrop = null;
+    if (this.overlayElement) {
+      this.overlayElement.remove();
+      this.overlayElement = null;
     }
-    this.items.forEach((item) => item.destroy());
-    this.items = [];
+
+    // Re-enable Phaser inputs
+    if (this.scene.input) {
+      this.scene.input.enabled = true;
+      if (this.scene.input.keyboard) {
+        this.scene.input.keyboard.enabled = true;
+      }
+    }
+
+    const uiRoot = document.getElementById('ui-root');
+    if (uiRoot) {
+      uiRoot.style.pointerEvents = 'none';
+    }
   }
 }

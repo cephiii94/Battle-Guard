@@ -1,9 +1,6 @@
 import Phaser from 'phaser';
-import equipment from '../data/equipment.js';
 import { getBossForStage } from '../data/bosses.js';
 import Boss from '../entities/Boss.js';
-import { addEquipmentToInventory } from './EquipmentInventory.js';
-import { addPlayerMaterial } from './PlayerProgress.js';
 import BossHpBar from '../ui/BossHpBar.js';
 
 export default class BossSystem {
@@ -102,30 +99,7 @@ export default class BossSystem {
     
     this.bossesDefeated++;
 
-    const equipmentDrop = this.rollEquipmentDrop(boss.bossData);
-    
-    // Looting Mode Crafting Materials Rewards
-    let materialDrops = null;
-    const gameMode = this.scene.gameMode || 'campaign';
-    if (gameMode === 'looting') {
-      const ironOreAmount = Phaser.Math.Between(3, 6);
-      const magicGemAmount = Math.random() < 0.5 ? Phaser.Math.Between(1, 3) : 0;
-      const dragonScaleAmount = Math.random() < 0.25 ? 1 : 0;
-
-      materialDrops = {};
-      if (ironOreAmount > 0) {
-        addPlayerMaterial(this.scene, 'iron-ore', ironOreAmount);
-        materialDrops['iron-ore'] = ironOreAmount;
-      }
-      if (magicGemAmount > 0) {
-        addPlayerMaterial(this.scene, 'magic-gem', magicGemAmount);
-        materialDrops['magic-gem'] = magicGemAmount;
-      }
-      if (dragonScaleAmount > 0) {
-        addPlayerMaterial(this.scene, 'dragon-scale', dragonScaleAmount);
-        materialDrops['dragon-scale'] = dragonScaleAmount;
-      }
-    }
+    const { equipmentDrop, materialDrops } = this.scene.lootSystem.rollBossLoot(boss);
 
     if (this.boss === boss) {
       if (this.activeBosses.length > 0) {
@@ -137,7 +111,7 @@ export default class BossSystem {
       }
     }
 
-    const totalBossesToDefeat = gameMode === 'campaign' ? (this.stageSystem.stage.bossCount || 1) : 1;
+    const totalBossesToDefeat = (this.scene.gameMode || 'campaign') === 'campaign' ? (this.stageSystem.stage.bossCount || 1) : 1;
 
     boss.die(() => {
       if (this.bossesDefeated >= totalBossesToDefeat) {
@@ -169,16 +143,6 @@ export default class BossSystem {
         this.stageSystem.completeDefeat();
       }
     }
-  }
-
-  rollEquipmentDrop(bossData) {
-    if (Math.random() > bossData.equipmentDropChance) {
-      return null;
-    }
-
-    const item = Phaser.Utils.Array.GetRandom(equipment);
-    addEquipmentToInventory(this.scene, item.id);
-    return item;
   }
 
   getBossSpawnPoint() {

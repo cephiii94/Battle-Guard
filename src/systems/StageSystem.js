@@ -68,8 +68,9 @@ export default class StageSystem {
     const totalGold = addPlayerGold(this.scene, goldReward);
     const nextStage = getNextStage(this.stage.stageId);
 
-    // Give Player EXP on victory
-    const expReward = this.stage.stageId * 50 + this.gameStats.killCount * 2;
+    // Give Player EXP on victory (including 500 flat clear EXP)
+    const clearExp = 500;
+    const expReward = clearExp + this.stage.stageId * 50 + this.gameStats.killCount * 2;
     const expResult = addPlayerExp(this.scene, expReward);
 
     // Give Hero XP on victory
@@ -112,6 +113,9 @@ export default class StageSystem {
       expGained: expReward,
       playerLevel: expResult.level,
       playerLeveledUp: expResult.leveledUp,
+      playerLevelsGained: expResult.levelsGained || 0,
+      playerStatusPointsGained: (expResult.levelsGained || 0) * 5,
+      playerSkillPointsGained: (expResult.levelsGained || 0) * 1,
       heroXpGained
     };
 

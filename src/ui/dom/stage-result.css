@@ -1,0 +1,262 @@
+.stage-result-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 25, 40, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+  color: #fff;
+  font-family: 'Outfit', Arial, sans-serif;
+}
+
+.stage-result-container {
+  width: 560px;
+  background: rgba(15, 30, 50, 0.96);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  animation: zoomInScale 0.2s ease-out;
+  box-sizing: border-box;
+}
+
+.stage-result-container.victory {
+  border: 3px solid #facc15;
+  box-shadow: 0 0 35px rgba(250, 204, 21, 0.35);
+}
+
+.stage-result-container.defeat {
+  border: 3px solid #ef4444;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.35);
+}
+
+.stage-result-header {
+  padding: 25px 20px 10px 20px;
+  text-align: center;
+  background: rgba(7, 17, 31, 0.85);
+}
+
+.stage-result-title {
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.victory .stage-result-title {
+  color: #facc15;
+  text-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+}
+
+.defeat .stage-result-title {
+  color: #f87171;
+  text-shadow: 0 0 15px rgba(248, 113, 113, 0.5);
+}
+
+.stage-result-subtitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-top: 5px;
+  text-transform: uppercase;
+}
+
+.stage-result-body {
+  padding: 20px 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.stage-result-exp-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stage-clear-exp {
+  font-size: 16px;
+  font-weight: 900;
+  color: #c084fc;
+  text-shadow: 0 0 8px rgba(192, 132, 252, 0.4);
+}
+
+.stage-level-up-badge {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid #f59e0b;
+  color: #fcd34d;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.stage-global-level-up-badge {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid #a855f7;
+  color: #ffffff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+  margin-top: 5px;
+}
+
+.stage-result-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.stage-result-column {
+  background: rgba(30, 41, 59, 0.55);
+  border-radius: 8px;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.stage-result-column.victory-col {
+  border: 1.5px solid #334155;
+}
+
+.stage-result-column.rewards-col {
+  border: 1.5px solid rgba(250, 204, 21, 0.35);
+}
+
+.stage-result-column.defeat-col {
+  border: 1.5px solid rgba(239, 68, 68, 0.25);
+  grid-column: span 2;
+}
+
+.column-title {
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.victory-col .column-title {
+  color: #38bdf8;
+}
+
+.rewards-col .column-title {
+  color: #facc15;
+}
+
+.defeat-col .column-title {
+  color: #f87171;
+  text-align: center;
+}
+
+.column-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.column-item {
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+}
+
+.column-item.centered {
+  justify-content: center;
+  gap: 20px;
+}
+
+.label-gold { color: #fbbf24; }
+.label-exp { color: #c084fc; }
+.label-hero-xp { color: #a855f7; }
+.label-kills { color: #f8fafc; }
+
+.stage-result-loot-panel {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 10px 15px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+  color: #34d399;
+  letter-spacing: 1px;
+}
+
+.stage-result-loot-panel.has-loot {
+  border-color: #34d399;
+  text-shadow: 0 0 5px rgba(52, 211, 153, 0.3);
+}
+
+.stage-result-footer {
+  padding: 15px 25px 25px 25px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  background: rgba(7, 17, 31, 0.6);
+}
+
+.stage-result-btn {
+  width: 160px;
+  height: 44px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+}
+
+.stage-result-btn.btn-blue {
+  background: #2563eb;
+  border-color: #60a5fa;
+}
+
+.stage-result-btn.btn-blue:hover {
+  background: #1d4ed8;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+  transform: scale(1.03);
+}
+
+.stage-result-btn.btn-red {
+  background: #ef4444;
+  border-color: #f87171;
+}
+
+.stage-result-btn.btn-red:hover {
+  background: #dc2626;
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+  transform: scale(1.03);
+}
+
+.stage-result-btn.btn-slate {
+  background: #475569;
+}
+
+.stage-result-btn.btn-slate:hover {
+  background: #334155;
+  box-shadow: 0 0 10px rgba(71, 85, 105, 0.3);
+  transform: scale(1.03);
+}

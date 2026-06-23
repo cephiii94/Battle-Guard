@@ -1,5 +1,9 @@
 import Phaser from 'phaser';
 import Loot from '../entities/Loot.js';
+import { soundManager } from '../services/soundManager.js';
+import equipment from '../data/equipment.js';
+import { addEquipmentToInventory } from '../systems/EquipmentInventory.js';
+import { addPlayerMaterial } from '../systems/PlayerProgress.js';
 
 export default class LootSystem {
   constructor(scene, player, gameStats) {
@@ -71,5 +75,51 @@ export default class LootSystem {
     }
 
     loot.destroy();
+  }
+
+  handleMonsterKilled(monster) {
+    this.gameStats.addKill();
+    this.tryDropGold(monster.x, monster.y);
+    this.dropExpOrb(monster.x, monster.y);
+    soundManager.playSFX(this.scene, 'kill');
+    monster.die();
+  }
+
+  rollBossLoot(boss) {
+    const equipmentDrop = this.rollEquipmentDrop(boss.bossData);
+    let materialDrops = null;
+    const gameMode = this.scene.gameMode || 'campaign';
+    
+    if (gameMode === 'looting') {
+      const ironOreAmount = Phaser.Math.Between(3, 6);
+      const magicGemAmount = Math.random() < 0.5 ? Phaser.Math.Between(1, 3) : 0;
+      const dragonScaleAmount = Math.random() < 0.25 ? 1 : 0;
+
+      materialDrops = {};
+      if (ironOreAmount > 0) {
+        addPlayerMaterial(this.scene, 'iron-ore', ironOreAmount);
+        materialDrops['iron-ore'] = ironOreAmount;
+      }
+      if (magicGemAmount > 0) {
+        addPlayerMaterial(this.scene, 'magic-gem', magicGemAmount);
+        materialDrops['magic-gem'] = magicGemAmount;
+      }
+      if (dragonScaleAmount > 0) {
+        addPlayerMaterial(this.scene, 'dragon-scale', dragonScaleAmount);
+        materialDrops['dragon-scale'] = dragonScaleAmount;
+      }
+    }
+    
+    return { equipmentDrop, materialDrops };
+  }
+
+  rollEquipmentDrop(bossData) {
+    if (Math.random() > bossData.equipmentDropChance) {
+      return null;
+    }
+
+    const item = Phaser.Utils.Array.GetRandom(equipment);
+    addEquipmentToInventory(this.scene, item.id);
+    return item;
   }
 }

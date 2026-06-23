@@ -13,6 +13,7 @@ Fase ini berfokus pada stabilisasi *engine*, performa, dan pemindahan antarmuka 
 - [x] **Migrasi Menu Inventory**: Memindahkan UI inventory, status senjata, dan filter ke DOM CSS Grid.
 - [x] **Migrasi Menu Hero**: Memindahkan UI layar Hero dan peningkatan level.
 - [x] **Migrasi Menu Shop & Skills**: Memindahkan Shop dan Skill Tree ke dalam DOM.
+- [x] **Migrasi Menu Stage Selection, Settings, & Mode Selection**: Memindahkan menu Battlefield, Pengaturan, dan Mode Tantangan ke DOM.
 - [x] **Pembersihan Canvas UI**: Menghapus file UI lama (`InventoryTab.js` dkk) yang membebani Phaser.
 
 ### 1.2 State Management (Priority: Menengah)
@@ -25,12 +26,12 @@ Fase ini berfokus pada stabilisasi *engine*, performa, dan pemindahan antarmuka 
 Fase ini berfokus pada fitur inti dari pengalaman bermain RPG jangka panjang dan pengurangan waktu *loading*.
 
 ### 2.1 Lazy Loading Aset (Priority: Menengah)
-- [ ] Refactor `PreloadScene.js` agar hanya memuat aset Main Menu.
-- [ ] Membuat `LoadingScreen` dinamis sebelum berpindah Stage untuk meload aset musuh, bos, dan musik secara spesifik.
+- [x] Refactor arsitektur pemuatan aset dengan membuat `PreloadScene.js` untuk aset Main Menu.
+- [x] Membuat `LoadingScene` dinamis sebelum berpindah Stage untuk meload aset musuh, bos, dan musik secara spesifik.
 
 ### 2.2 Refactoring GameScene (Priority: Menengah)
-- [ ] **Sistem Pertarungan**: Memisahkan kalkulasi *Damage*, *Critical*, dan *Evasion* ke `CombatSystem.js`.
-- [ ] **Sistem Loot/Drop**: Memisahkan logika hadiah musuh mati ke `LootSystem.js`.
+- [x] **Sistem Pertarungan**: Memisahkan kalkulasi *Damage*, *Critical*, dan *Evasion* ke `CombatSystem.js`.
+- [x] **Sistem Loot/Drop**: Memisahkan logika hadiah musuh mati ke `LootSystem.js`.
 
 ### 2.3 Sistem Baru dalam Game (Priority: Menengah)
 - [ ] Sistem *Equipment* Set (Set Bonus untuk kombinasi armor tertentu).

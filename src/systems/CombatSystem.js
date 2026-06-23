@@ -242,11 +242,30 @@ export default class CombatSystem {
       return;
     }
 
-    this.gameStats.addKill();
-    this.lootSystem.tryDropGold(monster.x, monster.y);
-    this.lootSystem.dropExpOrb(monster.x, monster.y);
-    soundManager.playSFX(this.scene, 'kill');
-    monster.die();
+    this.lootSystem.handleMonsterKilled(monster);
+  }
+
+  processPlayerDamage(attacker) {
+    // 1. Check Evasion (Dodge)
+    if (Math.random() < this.player.evasion) {
+      this.scene.showPlayerMiss();
+      return true; // dodged
+    }
+
+    // 2. Reduce damage using Armor
+    const finalDamage = Math.max(1, Math.round(attacker.damage - this.player.armor));
+
+    const hpDamage = this.player.takeDamage(finalDamage);
+    if (hpDamage <= 0) {
+      this.scene.showPlayerShieldBlock(finalDamage);
+    } else {
+      this.scene.showPlayerHit(hpDamage);
+      if (finalDamage > hpDamage) {
+        this.scene.showPlayerShieldBlock(finalDamage - hpDamage);
+      }
+    }
+    soundManager.playSFX(this.scene, 'hit');
+    return false; // not dodged
   }
 
   showDamageText(monster, damage) {

@@ -1,0 +1,155 @@
+.upgrade-popup-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 25, 40, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+  color: #fff;
+  font-family: 'Outfit', Arial, sans-serif;
+}
+
+.upgrade-popup-container {
+  width: 950px;
+  background: rgba(15, 30, 50, 0.97);
+  border-radius: 12px;
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 35px rgba(56, 189, 248, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  animation: zoomInScale 0.2s ease-out;
+  box-sizing: border-box;
+}
+
+.upgrade-popup-header {
+  padding: 20px;
+  text-align: center;
+  background: rgba(7, 17, 31, 0.9);
+  border-bottom: 2px solid #facc15;
+  position: relative;
+}
+
+.upgrade-popup-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin: 0;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.upgrade-popup-body {
+  padding: 35px 30px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  box-sizing: border-box;
+}
+
+.upgrade-card {
+  width: 260px;
+  height: 320px;
+  background: #111e30;
+  border: 2px solid #475569;
+  border-radius: 10px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 15px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upgrade-card-accent {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  height: 6px;
+  background: #f59e0b;
+  border-radius: 3px 3px 0 0;
+}
+
+.upgrade-card-icon-container {
+  width: 64px;
+  height: 64px;
+  background: #1e293b;
+  border: 2px solid #facc15;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 15px;
+  font-size: 30px;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.2);
+  transition: all 0.2s ease-out;
+}
+
+.upgrade-card-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #f8fafc;
+  margin: 15px 0 8px 0;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.upgrade-card-divider {
+  width: 75%;
+  height: 1px;
+  background: rgba(71, 85, 105, 0.5);
+  margin-bottom: 12px;
+}
+
+.upgrade-card-description {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cbd5e1;
+  text-align: center;
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.upgrade-card-select-btn {
+  font-size: 14px;
+  font-weight: 900;
+  color: #facc15;
+  text-transform: uppercase;
+  margin-top: auto;
+  letter-spacing: 1px;
+  transition: all 0.2s ease-out;
+}
+
+/* Hover & Active Effects */
+.upgrade-card:hover {
+  background: #1e3a5f;
+  border-color: #facc15;
+  box-shadow: 0 0 25px rgba(250, 204, 21, 0.35);
+  transform: translateY(-8px);
+}
+
+.upgrade-card:hover .upgrade-card-icon-container {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(250, 204, 21, 0.4);
+}
+
+.upgrade-card:hover .upgrade-card-select-btn {
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.upgrade-card:active {
+  transform: translateY(-4px) scale(0.98);
+}

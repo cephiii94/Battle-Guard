@@ -10,6 +10,11 @@ import './hero.css';
 import './shop.css';
 import './blacksmith.css';
 import './skills.css';
+import './stage-selection.css';
+import './settings.css';
+import './mode-selection.css';
+import './stage-result.css';
+import './upgrade-popup.css';
 
 export class DOMUIManager {
   constructor(scene) {

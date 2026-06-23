@@ -1,0 +1,56 @@
+.preload-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle, #0a1128 0%, #030712 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  font-family: 'Outfit', Arial, sans-serif;
+  color: #ffffff;
+}
+
+.preload-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 90%;
+  max-width: 450px;
+}
+
+.preload-title {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #ffdc5a;
+  text-shadow: 0 0 15px rgba(255, 220, 90, 0.4);
+}
+
+.preload-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 214, 255, 0.2);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.preload-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00BCD4 0%, #3B82F6 100%);
+  box-shadow: 0 0 10px rgba(0, 214, 255, 0.7);
+  transition: width 0.1s ease-out;
+}
+
+.preload-status {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #69e6ff;
+  text-shadow: 0 0 5px rgba(105, 230, 255, 0.3);
+}

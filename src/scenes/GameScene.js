@@ -69,32 +69,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    skills.forEach((skill) => {
-      this.load.svg(skill.assetKey, skill.assetPath, { width: 96, height: 96 });
-    });
-
-    this.loadHeroAsset(this.selectedHero);
-
-    // Also load the active skin asset if it defines a custom key and path
-    if (this.activeSkin && this.activeSkin.assetKey && this.activeSkin.assetPath) {
-      if (this.activeSkin.assetPath.endsWith('.svg')) {
-        this.load.svg(this.activeSkin.assetKey, this.activeSkin.assetPath, { width: 160, height: 160 });
-      } else {
-        this.load.image(this.activeSkin.assetKey, this.activeSkin.assetPath);
-      }
-    }
-  }
-
-  loadHeroAsset(hero) {
-    if (!hero || !hero.assetKey || !hero.assetPath) {
-      return;
-    }
-
-    if (hero.assetPath.endsWith('.svg')) {
-      this.load.svg(hero.assetKey, hero.assetPath, { width: 160, height: 160 });
-    } else {
-      this.load.image(hero.assetKey, hero.assetPath);
-    }
+    // Assets are preloaded in LoadingScene
   }
 
   create() {
@@ -288,26 +263,8 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    // 1. Check Evasion (Dodge)
-    if (Math.random() < this.player.evasion) {
-      this.showPlayerMiss();
-      this.enemyDamageCooldown = 700;
-      return;
-    }
-
-    // 2. Reduce damage using Armor
-    const finalDamage = Math.max(1, Math.round(attacker.damage - this.player.armor));
-
-    const hpDamage = this.player.takeDamage(finalDamage);
-    if (hpDamage <= 0) {
-      this.showPlayerShieldBlock(finalDamage);
-    } else {
-      this.showPlayerHit(hpDamage);
-      if (finalDamage > hpDamage) {
-        this.showPlayerShieldBlock(finalDamage - hpDamage);
-      }
-    }
-    soundManager.playSFX(this, 'hit');
+    // Delegate combat calculation to CombatSystem
+    this.combatSystem.processPlayerDamage(attacker);
     this.enemyDamageCooldown = 700;
 
     if (this.player.hp <= 0) {
