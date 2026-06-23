@@ -2,7 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- PWA -->
+    <meta name="theme-color" content="#070b14" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Battle Guard" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>Battle Guard</title>
     <script>
       window.addEventListener('error', function(e) {
@@ -23,6 +31,14 @@
     </script>
   </head>
   <body>
+    <!-- Portrait rotate notice -->
+    <div id="rotate-notice">
+      <div class="rotate-notice-inner">
+        <div class="rotate-icon">&#8635;</div>
+        <p class="rotate-title">Putar Perangkat</p>
+        <p class="rotate-subtitle">Battle Guard dimainkan dalam mode <strong>landscape</strong></p>
+      </div>
+    </div>
     <div id="game-container">
       <div id="game"></div>
       <div id="ui-root"></div>

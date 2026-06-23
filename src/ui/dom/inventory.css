@@ -265,6 +265,7 @@
   padding: 15px;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .inv-placeholder {
@@ -347,4 +348,58 @@
 .inv-action-btn.unequip {
   background: #c183a6;
   color: white;
+}
+
+/* Equipment Set Detail Styles */
+.detail-set-info {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  background: rgba(226, 213, 200, 0.4);
+  border: 1px dashed #d5bda3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.set-header {
+  font-weight: bold;
+  color: #705c4b;
+  margin-bottom: 5px;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.set-items-list {
+  font-size: 11px;
+  color: #a58b76;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.set-item-name {
+  color: #a58b76;
+  margin-right: 4px;
+}
+
+.set-item-name.active {
+  color: #4a3f35;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.set-bonuses {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.set-bonus-row {
+  font-size: 11px;
+  color: #a58b76;
+}
+
+.set-bonus-row.active {
+  color: #16a34a;
+  font-weight: bold;
 }

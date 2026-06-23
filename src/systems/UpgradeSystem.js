@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import UpgradePopup from '../ui/UpgradePopup.js';
+import EffectSystem from './EffectSystem.js';
 
 const UPGRADE_DEFINITIONS = [
   {
@@ -78,6 +79,7 @@ export default class UpgradeSystem {
 
   queueUpgradeChoice() {
     this.pendingLevelUps += 1;
+    EffectSystem.createLevelUpEffect(this.scene, this.player.x, this.player.y);
 
     if (!this.isChoosing) {
       this.showNextChoice();

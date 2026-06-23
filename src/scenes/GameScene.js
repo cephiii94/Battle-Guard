@@ -20,6 +20,8 @@ import SkillHud from '../ui/SkillHud.js';
 import { soundManager } from '../services/soundManager.js';
 import { GameManager } from '../systems/GameManager.js';
 import PauseOverlay from '../ui/PauseOverlay.js';
+import { renderMap } from '../maps/MapRenderer.js';
+
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -102,7 +104,10 @@ export default class GameScene extends Phaser.Scene {
       0x182536
     );
 
-    this.drawArena();
+    renderMap(this, this.mapBounds, this.stage.mapTheme);
+
+
+    Player.createParticleTexture(this);
 
     this.player = new Player(
       this,
@@ -155,38 +160,6 @@ export default class GameScene extends Phaser.Scene {
       this.gameStats
     );
     this.skillHud = new SkillHud(this, this.activeSkillSystem);
-  }
-
-  drawArena() {
-    const gridColor = 0x26384f;
-    for (let x = 0; x <= this.mapBounds.width; x += 120) {
-      this.add.line(0, 0, x, 0, x, this.mapBounds.height, gridColor, 0.32);
-    }
-    for (let y = 0; y <= this.mapBounds.height; y += 120) {
-      this.add.line(0, 0, 0, y, this.mapBounds.width, y, gridColor, 0.32);
-    }
-
-    this.add.rectangle(this.mapBounds.width / 2, this.mapBounds.height / 2, this.mapBounds.width - 70, this.mapBounds.height - 70, 0xffffff, 0)
-      .setStrokeStyle(6, 0xf59e0b, 0.35);
-    this.add.rectangle(this.mapBounds.width / 2, this.mapBounds.height / 2, this.mapBounds.width - 150, this.mapBounds.height - 150, 0xffffff, 0)
-      .setStrokeStyle(2, 0x38bdf8, 0.28);
-
-    this.add.text(this.mapBounds.width / 2, 150, 'BATTLE GUARD', {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '62px',
-      color: '#f8fafc',
-      fontStyle: 'bold',
-      stroke: '#020617',
-      strokeThickness: 8
-    }).setOrigin(0.5);
-    this.add.text(this.mapBounds.width / 2, 210, 'Hold the line', {
-      fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '22px',
-      color: '#facc15',
-      fontStyle: 'bold',
-      stroke: '#020617',
-      strokeThickness: 5
-    }).setOrigin(0.5);
   }
 
   update(_, delta) {
@@ -376,7 +349,7 @@ export default class GameScene extends Phaser.Scene {
 
   restartGame() {
     this.pauseOverlay.hide();
-    this.scene.start('GameScene', {
+    this.scene.start('LoadingScene', {
       stageId: Number(this.stage.stageId),
       gameMode: this.gameMode,
       selectedHero: this.selectedHero,

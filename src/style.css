@@ -41,3 +41,75 @@ canvas {
   display: block;
   image-rendering: auto;
 }
+
+/* ── Portrait / Rotate Notice ───────────────────────────────── */
+#rotate-notice {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(ellipse at center, #0d1829 0%, #070b14 100%);
+  align-items: center;
+  justify-content: center;
+}
+
+.rotate-notice-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px;
+  text-align: center;
+  animation: rotateNoticeFade 0.5s ease;
+}
+
+.rotate-icon {
+  font-size: 72px;
+  color: #00d6ff;
+  filter: drop-shadow(0 0 18px #00d6ff88);
+  animation: rotateIconSpin 2s ease-in-out infinite;
+  line-height: 1;
+}
+
+.rotate-title {
+  margin: 0;
+  font-family: "Outfit", "Trebuchet MS", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.rotate-subtitle {
+  margin: 0;
+  font-family: "Outfit", "Trebuchet MS", Arial, sans-serif;
+  font-size: 15px;
+  color: #8ba3c7;
+  line-height: 1.6;
+}
+
+.rotate-subtitle strong {
+  color: #00d6ff;
+}
+
+@keyframes rotateIconSpin {
+  0%   { transform: rotate(0deg);   }
+  30%  { transform: rotate(-90deg); }
+  60%  { transform: rotate(-90deg); }
+  90%  { transform: rotate(0deg);   }
+  100% { transform: rotate(0deg);   }
+}
+
+@keyframes rotateNoticeFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* Show rotate notice only on portrait screens */
+@media screen and (orientation: portrait) {
+  #rotate-notice {
+    display: flex;
+  }
+}
+

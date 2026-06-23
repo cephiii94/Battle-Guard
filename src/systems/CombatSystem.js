@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Projectile from '../entities/Projectile.js';
 import { soundManager } from '../services/soundManager.js';
 import { GameManager } from '../systems/GameManager.js';
+import EffectSystem from './EffectSystem.js';
 
 export default class CombatSystem {
   constructor(scene, player, spawnSystem, gameStats, lootSystem) {
@@ -59,14 +60,16 @@ export default class CombatSystem {
   }
 
   fireAt(target) {
+    const damageInfo = this.getProjectileDamage();
     const projectile = new Projectile(
       this.scene,
       this.player.x,
       this.player.y,
       target,
       this.projectileSpeed,
-      this.getProjectileDamage()
+      damageInfo.damage
     );
+    projectile.isCritical = damageInfo.isCritical;
 
     soundManager.playSFX(this.scene, 'attack');
 
@@ -76,7 +79,7 @@ export default class CombatSystem {
         return;
       }
 
-      this.applyDamage(target, projectile.damage);
+      this.applyDamage(target, projectile.damage, projectile.isCritical);
       projectile.destroy();
     });
   }
@@ -126,7 +129,7 @@ export default class CombatSystem {
     });
 
     // Apply damage to all monsters inside the slash path (AoE)
-    const damage = this.getProjectileDamage();
+    const damageInfo = this.getProjectileDamage();
     const monsters = this.spawnSystem.getMonsters();
 
     monsters.forEach((monster) => {
@@ -144,7 +147,7 @@ export default class CombatSystem {
 
         // Within 0.8 radians (about 45 degrees) of the slash trajectory
         if (Math.abs(angleDiff) <= 0.8) {
-          this.applyDamage(monster, damage);
+          this.applyDamage(monster, damageInfo.damage, damageInfo.isCritical);
         }
       }
     });
@@ -156,22 +159,27 @@ export default class CombatSystem {
 
   getProjectileDamage() {
     let damage = this.baseDamage * this.player.damageMultiplier;
+    let isCritical = false;
 
     if (Math.random() < this.player.criticalChance) {
       damage *= 2;
+      isCritical = true;
     }
 
-    return Math.round(damage);
+    return { damage: Math.round(damage), isCritical };
   }
 
-  applyDamage(monster, damage) {
+  applyDamage(monster, damage, isCritical = false) {
     if (!monster.active || monster.isDying || monster.isDead) {
       return;
     }
 
     monster.hp -= damage;
-    this.showDamageText(monster, damage);
+    this.showDamageText(monster, damage, isCritical);
     soundManager.playSFX(this.scene, 'hit');
+
+    // Spawn hit particles!
+    EffectSystem.createHitEffect(this.scene, monster.x, monster.y, isCritical);
 
     // Knockback (Heavy Impact) Passive mechanic
     const playerData = GameManager.getState();
@@ -268,14 +276,14 @@ export default class CombatSystem {
     return false; // not dodged
   }
 
-  showDamageText(monster, damage) {
+  showDamageText(monster, damage, isCritical = false) {
     const damageText = this.scene.add.text(monster.x, monster.y - 34, `-${damage}`, {
       fontFamily: 'Arial, Helvetica, sans-serif',
-      fontSize: '22px',
-      color: '#facc15',
+      fontSize: isCritical ? '28px' : '22px',
+      color: isCritical ? '#ef4444' : '#facc15', // Crimson for critical hits, Gold for standard
       fontStyle: 'bold',
       stroke: '#111827',
-      strokeThickness: 4
+      strokeThickness: isCritical ? 6 : 4
     }).setOrigin(0.5);
 
     this.scene.tweens.add({

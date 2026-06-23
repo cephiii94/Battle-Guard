@@ -77,7 +77,8 @@ export const defaultPlayerData = {
     survival: 3,
     gold: 3,
     boss: 3
-  }
+  },
+  lastSavedTime: 0
 };
 
 const localStorageAdapter = {
@@ -151,7 +152,11 @@ export function loadPlayerData() {
 }
 
 export function savePlayerData(playerData) {
-  const normalizedData = normalizePlayerData(playerData);
+  const dataWithTime = {
+    ...playerData,
+    lastSavedTime: Date.now()
+  };
+  const normalizedData = normalizePlayerData(dataWithTime);
   storageAdapter.save(normalizedData);
   return normalizedData;
 }
@@ -220,6 +225,8 @@ function normalizePlayerData(playerData) {
       ...defaultPlayerData.allocatedStats,
       ...(safeData.allocatedStats || {})
     },
+    // Idle Offline Reward timestamp
+    lastSavedTime: Number.isFinite(safeData.lastSavedTime) ? safeData.lastSavedTime : 0,
   };
 }
 

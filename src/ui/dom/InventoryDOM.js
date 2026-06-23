@@ -1,10 +1,13 @@
 import { 
   getInventoryItems, 
   getEquippedItemBySlot, 
+  getEquippedItems,
+  getEquipmentById,
   equipItem, 
   unequipSlot, 
   EQUIPMENT_SLOTS 
 } from '../../systems/EquipmentInventory.js';
+import equipmentSets from '../../data/equipmentSets.js';
 
 export class InventoryDOM {
   constructor(scene, domManager) {
@@ -198,6 +201,48 @@ export class InventoryDOM {
     const slot = item.slot || 'unknown';
     const desc = item.description || 'A powerful item found in the world.';
 
+    // Equipment Set Calculations
+    const itemSet = equipmentSets.find(set => set.items.includes(item.id));
+    let setInfoHtml = '';
+    
+    if (itemSet) {
+      const equippedItemsList = getEquippedItems(this.scene);
+      const equippedIds = equippedItemsList.map(eq => eq.id);
+      const equippedCount = itemSet.items.filter(itemId => equippedIds.includes(itemId)).length;
+      
+      const itemsHtml = itemSet.items.map(itemId => {
+        const isPartEquipped = equippedIds.includes(itemId);
+        const partItem = getEquipmentById(itemId);
+        const name = partItem ? partItem.name : itemId;
+        return `<span class="set-item-name ${isPartEquipped ? 'active' : ''}">${name}</span>`;
+      }).join(', ');
+
+      const bonusesHtml = Object.entries(itemSet.bonuses).map(([thresholdStr, bonus]) => {
+        const threshold = parseInt(thresholdStr, 10);
+        const isActive = equippedCount >= threshold;
+        const statDescriptions = Object.entries(bonus).map(([statName, value]) => {
+          return `${statName}: +${value}`;
+        }).join(', ');
+        return `
+          <div class="set-bonus-row ${isActive ? 'active' : ''}">
+            (${threshold} Set): ${statDescriptions}
+          </div>
+        `;
+      }).join('');
+
+      setInfoHtml = `
+        <div class="detail-set-info">
+          <div class="set-header">${itemSet.name} (${equippedCount}/${itemSet.items.length})</div>
+          <div class="set-items-list">
+            Set: ${itemsHtml}
+          </div>
+          <div class="set-bonuses">
+            ${bonusesHtml}
+          </div>
+        </div>
+      `;
+    }
+
     detail.innerHTML = `
       <div class="detail-header">
         <div class="item-icon-text large">${item.icon || '?'}</div>
@@ -215,6 +260,7 @@ export class InventoryDOM {
           </div>
         `).join('')}
       </div>
+      ${setInfoHtml}
       <div class="detail-actions">
         ${actionBtnHTML}
       </div>

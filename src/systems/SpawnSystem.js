@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import Monster from '../entities/Monster.js';
+import { getRandomMonsterType } from '../data/monsters.js';
 
 export default class SpawnSystem {
   constructor(scene, player, mapBounds, stage) {
@@ -31,9 +32,11 @@ export default class SpawnSystem {
     }
 
     const spawnPoint = this.getSpawnPointOutsideCamera();
+    const typeData = getRandomMonsterType(this.stage.allowedMonsters);
     const monster = new Monster(this.scene, spawnPoint.x, spawnPoint.y, this.player, {
       hpMultiplier: this.stage.enemyHpMultiplier,
-      damageMultiplier: this.stage.enemyDamageMultiplier
+      damageMultiplier: this.stage.enemyDamageMultiplier,
+      typeData: typeData
     });
 
     this.monsters.push(monster);

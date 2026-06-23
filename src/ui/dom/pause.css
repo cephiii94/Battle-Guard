@@ -1,0 +1,104 @@
+.pause-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 25, 40, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 2100;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+  color: #fff;
+  font-family: 'Outfit', Arial, sans-serif;
+}
+
+.pause-container {
+  width: 380px;
+  background: rgba(15, 30, 50, 0.98);
+  border-radius: 12px;
+  border: 3px solid #38bdf8;
+  box-shadow: 0 0 35px rgba(56, 189, 248, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  animation: zoomInScale 0.2s ease-out;
+  box-sizing: border-box;
+}
+
+.pause-header {
+  padding: 25px 20px 15px 20px;
+  text-align: center;
+  background: rgba(7, 17, 31, 0.9);
+  border-bottom: 2px solid #38bdf8;
+}
+
+.pause-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin: 0;
+  color: #38bdf8;
+  text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+  text-transform: uppercase;
+}
+
+.pause-body {
+  padding: 30px 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
+.pause-btn {
+  width: 240px;
+  height: 44px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.pause-btn.btn-resume {
+  background: #0ea5e9;
+  border-color: #38bdf8;
+}
+
+.pause-btn.btn-resume:hover {
+  background: #0284c7;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+  transform: scale(1.03);
+}
+
+.pause-btn.btn-restart {
+  background: #d97706;
+  border-color: #fbbf24;
+}
+
+.pause-btn.btn-restart:hover {
+  background: #b45309;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+  transform: scale(1.03);
+}
+
+.pause-btn.btn-leave {
+  background: #475569;
+}
+
+.pause-btn.btn-leave:hover {
+  background: #334155;
+  box-shadow: 0 0 10px rgba(71, 85, 105, 0.3);
+  transform: scale(1.03);
+}

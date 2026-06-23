@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { getBossForStage } from '../data/bosses.js';
 import Boss from '../entities/Boss.js';
 import BossHpBar from '../ui/BossHpBar.js';
+import EffectSystem from './EffectSystem.js';
 
 export default class BossSystem {
   constructor(scene, player, spawnSystem, stageSystem, mapBounds) {
@@ -98,6 +99,9 @@ export default class BossSystem {
     }
     
     this.bossesDefeated++;
+
+    // Trigger Boss Death Particles!
+    EffectSystem.createBossDeathEffect(this.scene, boss.x, boss.y);
 
     const { equipmentDrop, materialDrops } = this.scene.lootSystem.rollBossLoot(boss);
 

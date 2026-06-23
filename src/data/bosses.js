@@ -13,7 +13,11 @@ const bosses = [
   }
 ];
 
-export function getBossForStage() {
+export function getBossForStage(stage) {
+  if (stage && stage.bossId) {
+    const boss = bosses.find(b => b.id === stage.bossId);
+    if (boss) return boss;
+  }
   return bosses[0];
 }
 

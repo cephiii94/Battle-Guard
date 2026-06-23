@@ -15,6 +15,8 @@ import './settings.css';
 import './mode-selection.css';
 import './stage-result.css';
 import './upgrade-popup.css';
+import './pause.css';
+import './idle-reward.css';
 
 export class DOMUIManager {
   constructor(scene) {

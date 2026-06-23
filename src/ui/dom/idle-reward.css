@@ -1,0 +1,141 @@
+.idle-reward-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 25, 40, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 3000; /* highest stack level */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+  color: #fff;
+  font-family: 'Outfit', Arial, sans-serif;
+}
+
+.idle-reward-container {
+  width: 440px;
+  background: rgba(15, 30, 50, 0.98);
+  border-radius: 16px;
+  border: 3px solid #fbbf24;
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  animation: zoomInScale 0.25s ease-out;
+  box-sizing: border-box;
+}
+
+.idle-reward-header {
+  padding: 25px 20px 10px 20px;
+  text-align: center;
+  background: rgba(7, 17, 31, 0.85);
+  border-bottom: 1.5px solid rgba(251, 191, 36, 0.25);
+}
+
+.idle-reward-title {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  margin: 0;
+  color: #fbbf24;
+  text-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+  text-transform: uppercase;
+}
+
+.idle-reward-subtitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-top: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.idle-reward-body {
+  padding: 30px 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.idle-reward-chest {
+  font-size: 64px;
+  animation: floatChest 2s infinite ease-in-out;
+  filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.4));
+}
+
+@keyframes floatChest {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.idle-reward-time-text {
+  font-size: 15px;
+  font-weight: 800;
+  color: #cbd5e1;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.idle-reward-time-text span {
+  color: #38bdf8;
+  font-weight: 900;
+}
+
+.idle-reward-amount-box {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 80%;
+  box-sizing: border-box;
+}
+
+.idle-reward-amount-val {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+}
+
+.idle-reward-footer {
+  padding: 15px 25px 25px 25px;
+  display: flex;
+  justify-content: center;
+  background: rgba(7, 17, 31, 0.6);
+}
+
+.idle-reward-btn {
+  width: 100%;
+  height: 46px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fbbf24;
+  border: 2px solid #fef08a;
+  color: #4a3f35;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.idle-reward-btn:hover {
+  background: #f59e0b;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.6);
+  transform: scale(1.02);
+}
+
+.idle-reward-btn:active {
+  transform: scale(0.98);
+}

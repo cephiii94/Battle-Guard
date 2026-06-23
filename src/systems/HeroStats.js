@@ -1,3 +1,5 @@
+import equipmentSets from '../data/equipmentSets.js';
+
 const MAX_HERO_LEVEL = 30;
 
 export function calculateFinalStats(baseHeroStats, equippedItems, activeSkin, level = 1, allocatedStats = null, currentClass = 'Novice') {
@@ -37,6 +39,20 @@ export function calculateFinalStats(baseHeroStats, equippedItems, activeSkin, le
   equippedItems.forEach((item) => {
     Object.entries(item.bonus).forEach(([statName, value]) => {
       finalStats[statName] += value;
+    });
+  });
+
+  // Apply equipment set bonuses
+  const equippedIds = equippedItems.map((item) => item.id);
+  equipmentSets.forEach((set) => {
+    const equippedCount = set.items.filter((itemId) => equippedIds.includes(itemId)).length;
+    Object.entries(set.bonuses).forEach(([thresholdStr, bonus]) => {
+      const threshold = parseInt(thresholdStr, 10);
+      if (equippedCount >= threshold) {
+        Object.entries(bonus).forEach(([statName, value]) => {
+          finalStats[statName] = (finalStats[statName] || 0) + value;
+        });
+      }
     });
   });
 

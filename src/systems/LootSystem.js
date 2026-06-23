@@ -4,6 +4,7 @@ import { soundManager } from '../services/soundManager.js';
 import equipment from '../data/equipment.js';
 import { addEquipmentToInventory } from '../systems/EquipmentInventory.js';
 import { addPlayerMaterial } from '../systems/PlayerProgress.js';
+import EffectSystem from './EffectSystem.js';
 
 export default class LootSystem {
   constructor(scene, player, gameStats) {
@@ -82,6 +83,10 @@ export default class LootSystem {
     this.tryDropGold(monster.x, monster.y);
     this.dropExpOrb(monster.x, monster.y);
     soundManager.playSFX(this.scene, 'kill');
+    
+    // Spawn death particles!
+    EffectSystem.createDeathEffect(this.scene, monster.x, monster.y);
+    
     monster.die();
   }
 

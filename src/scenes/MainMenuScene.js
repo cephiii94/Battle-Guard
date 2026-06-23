@@ -31,6 +31,7 @@ import { DOMUIManager } from '../ui/dom/DOMUIManager.js';
 import { InventoryDOM } from '../ui/dom/InventoryDOM.js';
 import { HeroDOM } from '../ui/dom/HeroDOM.js';
 import { ShopDOM } from '../ui/dom/ShopDOM.js';
+import { savePlayerData } from '../services/saveService.js';
 
 
 
@@ -68,6 +69,8 @@ export default class MainMenuScene extends Phaser.Scene {
     this.addCenterHeroArea(width, height);
     this.addSideButtons(width, height);
     this.addBottomUI(width, height);
+
+    this.checkOfflineRewards();
 
     // Bind Escape key to close any active modal tabs
     this.input.keyboard.on('keydown-ESC', () => {
@@ -1043,5 +1046,111 @@ export default class MainMenuScene extends Phaser.Scene {
         }
       });
     }
+  }
+  checkOfflineRewards() {
+    const lastSaved = GameManager.get('lastSavedTime') || 0;
+    if (lastSaved > 0) {
+      const now = Date.now();
+      const diffMs = now - lastSaved;
+      const diffSec = Math.floor(diffMs / 1000);
+      
+      // Minimum idle time: 1 minute (60 seconds)
+      if (diffSec >= 60) {
+        const highestStage = GameManager.get('highestStage') || 1;
+        const goldPerMinute = highestStage * 2; // e.g. Stage 1 -> 2 Gold/min, Stage 5 -> 10 Gold/min
+        
+        // Cap idle time at 12 hours (720 minutes)
+        const idleMinutes = Math.min(Math.floor(diffSec / 60), 720);
+        const goldEarned = idleMinutes * goldPerMinute;
+        
+        if (goldEarned > 0) {
+          this.showOfflineRewardsPopup(diffSec, goldEarned);
+        }
+      }
+    }
+  }
+
+  showOfflineRewardsPopup(awaySeconds, goldGained) {
+    if (this.input) {
+      this.input.enabled = false;
+      if (this.input.keyboard) {
+        this.input.keyboard.enabled = false;
+      }
+    }
+
+    const uiRoot = document.getElementById('ui-root');
+    if (uiRoot) {
+      uiRoot.style.pointerEvents = 'auto';
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'idle-reward-overlay';
+
+    const stopProp = (e) => e.stopPropagation();
+    overlay.addEventListener('pointerdown', stopProp);
+    overlay.addEventListener('pointerup', stopProp);
+    overlay.addEventListener('click', stopProp);
+    overlay.addEventListener('mousedown', stopProp);
+    overlay.addEventListener('mouseup', stopProp);
+
+    const hrs = Math.floor(awaySeconds / 3600);
+    const mins = Math.floor((awaySeconds % 3600) / 60);
+    const secs = awaySeconds % 60;
+    
+    let timeStr = '';
+    if (hrs > 0) timeStr += `<span>${hrs}</span> jam `;
+    if (mins > 0 || hrs > 0) timeStr += `<span>${mins}</span> menit `;
+    timeStr += `<span>${secs}</span> detik`;
+
+    overlay.innerHTML = `
+      <div class="idle-reward-container">
+        <div class="idle-reward-header">
+          <h2 class="idle-reward-title">OFFLINE RECOVERY</h2>
+          <div class="idle-reward-subtitle">WELCOME BACK, HERO!</div>
+        </div>
+        <div class="idle-reward-body">
+          <div class="idle-reward-chest">🎁</div>
+          <div class="idle-reward-time-text">
+            Kamu telah pergi selama:<br>${timeStr}
+          </div>
+          <div class="idle-reward-amount-box">
+            <span class="idle-reward-amount-val">🪙 +${goldGained} Gold</span>
+          </div>
+        </div>
+        <div class="idle-reward-footer">
+          <button class="idle-reward-btn" id="claim-idle-btn">CLAIM REWARDS</button>
+        </div>
+      </div>
+    `;
+
+    const claimBtn = overlay.querySelector('#claim-idle-btn');
+    claimBtn.addEventListener('mouseenter', () => soundManager.playSFX(this, 'hover'));
+    claimBtn.addEventListener('click', () => {
+      soundManager.playSFX(this, 'click');
+      
+      const currentGold = GameManager.get('gold') || 0;
+      const newGold = currentGold + goldGained;
+      GameManager.set('gold', newGold);
+      
+      savePlayerData(GameManager.getState());
+      
+      if (this.goldText) {
+        this.goldText.setText(this.formatCurrency(newGold));
+      }
+
+      overlay.remove();
+      
+      if (this.input) {
+        this.input.enabled = true;
+        if (this.input.keyboard) {
+          this.input.keyboard.enabled = true;
+        }
+      }
+      if (uiRoot) {
+        uiRoot.style.pointerEvents = 'none';
+      }
+    });
+
+    uiRoot.appendChild(overlay);
   }
 }

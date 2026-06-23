@@ -1,18 +1,20 @@
 import Phaser from 'phaser';
 
-const MONSTER_TEXTURE = 'monster-circle';
-
 export default class Monster extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, player, options = {}) {
-    Monster.createTexture(scene);
+    const typeData = options.typeData || { id: 'basic_minion', baseHp: 30, baseDamage: 12, speed: 140, color: 0xef4444, strokeColor: 0xfecaca };
+    const textureKey = `monster-circle-${typeData.id}`;
 
-    super(scene, x, y, MONSTER_TEXTURE);
+    Monster.createTexture(scene, textureKey, typeData.color, typeData.strokeColor);
+
+    super(scene, x, y, textureKey);
 
     this.player = player;
-    this.speed = 140;
-    this.hp = Math.round(30 * (options.hpMultiplier || 1));
+    this.speed = typeData.speed;
+    this.hp = Math.round(typeData.baseHp * (options.hpMultiplier || 1));
     this.maxHp = this.hp;
-    this.damage = Math.round(12 * (options.damageMultiplier || 1));
+    this.damage = Math.round(typeData.baseDamage * (options.damageMultiplier || 1));
+    this.color = typeData.color;
     this.isDying = false;
     this.isDead = false;
 
@@ -27,18 +29,18 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
     this.hpBar.setDepth(this.depth + 1);
   }
 
-  static createTexture(scene) {
-    if (scene.textures.exists(MONSTER_TEXTURE)) {
+  static createTexture(scene, textureKey, color, strokeColor) {
+    if (scene.textures.exists(textureKey)) {
       return;
     }
 
     const graphics = scene.make.graphics({ x: 0, y: 0 });
 
-    graphics.fillStyle(0xef4444, 1);
+    graphics.fillStyle(color, 1);
     graphics.fillCircle(22, 22, 20);
-    graphics.lineStyle(4, 0xfecaca, 1);
+    graphics.lineStyle(4, strokeColor, 1);
     graphics.strokeCircle(22, 22, 20);
-    graphics.generateTexture(MONSTER_TEXTURE, 44, 44);
+    graphics.generateTexture(textureKey, 44, 44);
     graphics.destroy();
   }
 
@@ -81,9 +83,9 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
     this.hpBar.lineStyle(2.5, 0x450a0a, 0.65);
     this.hpBar.strokeCircle(this.x, this.y, radius);
 
-    // Neon red active HP border
+    // Neon active HP border
     if (hpPercent > 0) {
-      this.hpBar.lineStyle(2.5, 0xef4444, 0.9);
+      this.hpBar.lineStyle(2.5, this.color, 0.9);
       this.hpBar.beginPath();
       this.hpBar.arc(
         this.x,
