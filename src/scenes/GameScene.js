@@ -162,6 +162,7 @@ export default class GameScene extends Phaser.Scene {
     this.skillHud = new SkillHud(this, this.activeSkillSystem);
 
     this.createPauseButton();
+    this.createVirtualJoystick();
 
     this.resizeListener = () => {
       this.createPauseButton();
@@ -429,5 +430,79 @@ export default class GameScene extends Phaser.Scene {
     });
 
     this.pauseBtnContainer = container;
+  }
+
+  createVirtualJoystick() {
+    this.joystickActive = false;
+    this.joystickDirection = null;
+
+    // Outer background circle (translucent with neon cyan border)
+    const joystickBg = this.add.graphics();
+    joystickBg.fillStyle(0x07111f, 0.45);
+    joystickBg.lineStyle(2.5, 0x00d6ff, 0.75);
+    joystickBg.fillCircle(0, 0, 52);
+    joystickBg.strokeCircle(0, 0, 52);
+
+    // Inner thumb stick circle (translucent neon cyan)
+    const joystickThumb = this.add.graphics();
+    joystickThumb.fillStyle(0x00d6ff, 0.7);
+    joystickThumb.fillCircle(0, 0, 22);
+
+    // Container for dynamic positioning
+    this.joystickContainer = this.add.container(0, 0);
+    this.joystickContainer.add([joystickBg, joystickThumb]);
+    this.joystickContainer.setScrollFactor(0);
+    this.joystickContainer.setDepth(3000);
+    this.joystickContainer.setVisible(false);
+
+    this.joystickThumbObj = joystickThumb;
+
+    // Pointer event listeners for dynamic spawn joystick on click/touch
+    this.input.on('pointerdown', (pointer) => {
+      if (this.isGameplayPaused || this.isStageFinished) return;
+
+      // Ignore clicking near the Pause Button
+      if (this.pauseBtnContainer) {
+        const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.pauseBtnContainer.x, this.pauseBtnContainer.y);
+        if (dist < 40) return;
+      }
+
+      this.joystickActive = true;
+      this.joystickBase = new Phaser.Math.Vector2(pointer.x, pointer.y);
+      this.joystickContainer.setPosition(pointer.x, pointer.y);
+      this.joystickThumbObj.setPosition(0, 0);
+      this.joystickContainer.setVisible(true);
+      this.joystickDirection = new Phaser.Math.Vector2(0, 0);
+    });
+
+    this.input.on('pointermove', (pointer) => {
+      if (!this.joystickActive) return;
+
+      const deltaX = pointer.x - this.joystickBase.x;
+      const deltaY = pointer.y - this.joystickBase.y;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+      const maxDistance = 45;
+
+      if (distance === 0) {
+        this.joystickDirection.set(0, 0);
+        this.joystickThumbObj.setPosition(0, 0);
+      } else {
+        const angle = Math.atan2(deltaY, deltaX);
+        const clampDist = Math.min(distance, maxDistance);
+
+        const stickX = Math.cos(angle) * clampDist;
+        const stickY = Math.sin(angle) * clampDist;
+        this.joystickThumbObj.setPosition(stickX, stickY);
+
+        this.joystickDirection.set(Math.cos(angle), Math.sin(angle));
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      this.joystickActive = false;
+      this.joystickContainer.setVisible(false);
+      this.joystickDirection = null;
+    });
   }
 }

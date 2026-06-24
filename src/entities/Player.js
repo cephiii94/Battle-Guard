@@ -141,8 +141,16 @@ export default class Player extends Phaser.GameObjects.Container {
       direction.y += 1;
     }
 
+    // 2. Virtual Joystick Input (Mouse/Touch Drag)
+    if (this.scene.joystickDirection && this.scene.joystickDirection.lengthSq() > 0) {
+      direction.x = this.scene.joystickDirection.x;
+      direction.y = this.scene.joystickDirection.y;
+    }
+
     if (direction.lengthSq() > 0) {
-      direction.normalize();
+      if (!this.scene.joystickDirection) {
+        direction.normalize();
+      }
       const distance = this.speed * (delta / 1000);
       this.x += direction.x * distance;
       this.y += direction.y * distance;

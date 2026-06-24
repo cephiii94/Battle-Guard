@@ -20,15 +20,16 @@ import './style.css';
 import './ui/dom/inventory.css';
 import './ui/dom/hero.css';
 
+const isPortrait = window.innerHeight > window.innerWidth;
+const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+
 const savedScaleMode = localStorage.getItem('game-scale-mode') || 'stretch';
 let initialScaleMode = Phaser.Scale.FIT;
-if (savedScaleMode === 'canvas') {
+if (savedScaleMode === 'canvas' && !isPortrait && !isMobile) {
   initialScaleMode = Phaser.Scale.NONE;
 } else if (savedScaleMode === 'stretch_exact') {
   initialScaleMode = Phaser.Scale.EXACT_FIT;
 }
-
-const isPortrait = window.innerHeight > window.innerWidth;
 
 const config = {
   type: Phaser.AUTO,
@@ -86,6 +87,18 @@ async function startApp() {
 
   // Launch Phaser Game
   const game = new Phaser.Game(config);
+
+  // Dynamically resize game canvas to match device orientation on resize
+  window.addEventListener('resize', () => {
+    const isPortraitNow = window.innerHeight > window.innerWidth;
+    const targetWidth = isPortraitNow ? 720 : 1280;
+    const targetHeight = isPortraitNow ? 1280 : 720;
+    
+    if (game.scale.width !== targetWidth || game.scale.height !== targetHeight) {
+      game.scale.resize(targetWidth, targetHeight);
+    }
+  });
+
   const playerData = loadPlayerData();
 
   savePlayerData(playerData);

@@ -65,6 +65,7 @@ export default class MainMenuScene extends Phaser.Scene {
     this.refreshHeroLoadout();
 
     this.drawCleanBackground(width, height);
+
     this.addRedesignedTopBar(width);
     this.addCenterHeroArea(width, height);
     this.addSideButtons(width, height);
