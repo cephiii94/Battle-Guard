@@ -140,7 +140,7 @@ export class ModeSelectionTab {
 
             this.clear();
 
-            const highestStageId = this.scene.playerProgress.highestStageUnlocked || 1;
+            const highestStageId = this.scene.playerProgress.highestStage || 1;
             this.scene.scene.start('LoadingScene', {
               stageId: highestStageId,
               gameMode: modeId,

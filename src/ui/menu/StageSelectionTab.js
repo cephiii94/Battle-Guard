@@ -22,7 +22,7 @@ export class StageSelectionTab {
     this.scene.refreshHeroLoadout();
     this.scene.playerProgress = getPlayerProgress(this.scene);
 
-    const highestStage = this.scene.playerProgress.highestStageUnlocked || 1;
+    const highestStage = this.scene.playerProgress.highestStage || 1;
     const stageTimes = this.scene.playerProgress.stageTimes || {};
     let cardsHtml = '';
 
