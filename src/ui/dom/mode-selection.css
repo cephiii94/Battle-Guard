@@ -237,3 +237,18 @@
   0% { transform: translate(-50%, 0); opacity: 1; }
   100% { transform: translate(-50%, -15px); opacity: 0; }
 }
+
+@media (max-width: 650px) {
+  .mode-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .mode-card {
+    min-height: 180px;
+    padding: 15px;
+  }
+  .mode-selection-content {
+    padding: 15px;
+  }
+}
+

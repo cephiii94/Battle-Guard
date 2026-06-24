@@ -160,6 +160,17 @@ export default class GameScene extends Phaser.Scene {
       this.gameStats
     );
     this.skillHud = new SkillHud(this, this.activeSkillSystem);
+
+    this.createPauseButton();
+
+    this.resizeListener = () => {
+      this.createPauseButton();
+    };
+    this.scale.on('resize', this.resizeListener);
+
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', this.resizeListener);
+    });
   }
 
   update(_, delta) {
@@ -365,5 +376,58 @@ export default class GameScene extends Phaser.Scene {
     this.pauseOverlay.hide();
     soundManager.stopBGM();
     this.scene.start('MainMenuScene');
+  }
+
+  createPauseButton() {
+    if (this.pauseBtnContainer) {
+      this.pauseBtnContainer.destroy();
+    }
+
+    const { width, height } = this.scale;
+    const isPortrait = height > width;
+
+    let x, y;
+    if (isPortrait) {
+      x = width - 36;
+      y = 36;
+    } else {
+      // In landscape, put it to the left of Skill HUD
+      const slotSize = 36;
+      const gap = 8;
+      const panelW = 5 * slotSize + 4 * gap + 16; // 228
+      x = width - panelW - 40;
+      y = 10 + 26; // Center of Skill HUD vertically
+    }
+
+    const container = this.add.container(x, y);
+    container.setScrollFactor(0);
+    container.setDepth(2000);
+
+    const bg = this.add.circle(0, 0, 18, 0x07111f, 0.9);
+    bg.setStrokeStyle(1.5, 0x0ea5e9, 0.85);
+    bg.setInteractive({ useHandCursor: true });
+
+    const pauseIcon = this.add.text(0, 0, '⏸', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '16px',
+      color: '#00d6ff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    container.add([bg, pauseIcon]);
+
+    bg.on('pointerover', () => {
+      container.setScale(1.1);
+      if (soundManager) soundManager.playSFX(this, 'hover');
+    });
+    bg.on('pointerout', () => {
+      container.setScale(1.0);
+    });
+    bg.on('pointerup', () => {
+      if (soundManager) soundManager.playSFX(this, 'click');
+      this.handleEscPress();
+    });
+
+    this.pauseBtnContainer = container;
   }
 }

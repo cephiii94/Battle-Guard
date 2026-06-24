@@ -7,44 +7,108 @@ export default class StatsPanel {
     this.stageSystem = stageSystem;
     this.activeSkin = activeSkin;
     this.items = [];
+    this.bossIcons = [];
+    this.timelineSetupComplete = false;
+    this.flashTimer = 0;
+    this.flashVisible = true;
 
-    const x = 16;
-    const y = 16;
-    const width = 240;
-    const height = 178;
+    this.buildPanel();
+
+    // Listeners (Register once)
+    const statsHandler = (stats) => this.updateHeroStats(stats);
+    const tickHandler = (snapshot) => this.updateMatchStats(snapshot);
+    const killCountHandler = () => this.updateMatchStats(this.stageSystem.getSnapshot());
+    const goldHandler = () => this.updateMatchStats(this.stageSystem.getSnapshot());
+
+    this.gameStats.on('stats', statsHandler);
+    this.stageSystem.on('tick', tickHandler);
+    this.gameStats.on('killCount', killCountHandler);
+    this.gameStats.on('gold', goldHandler);
+
+    this.resizeListener = () => this.rebuild();
+    this.scene.scale.on('resize', this.resizeListener);
+
+    this.scene.events.once('shutdown', () => {
+      this.scene.scale.off('resize', this.resizeListener);
+      this.gameStats.off('stats', statsHandler);
+      this.stageSystem.off('tick', tickHandler);
+      this.gameStats.off('killCount', killCountHandler);
+      this.gameStats.off('gold', goldHandler);
+    });
+  }
+
+  clearPanel() {
+    this.items.forEach((item) => {
+      if (item && item.destroy) {
+        item.destroy();
+      }
+    });
+    this.items = [];
+    this.bossIcons = [];
+    this.timelineSetupComplete = false;
+  }
+
+  rebuild() {
+    this.clearPanel();
+    this.buildPanel();
+  }
+
+  buildPanel() {
+    const scene = this.scene;
+    const activeSkin = this.activeSkin;
+
+    const isPortrait = scene.scale.height > scene.scale.width;
+    const scaleFactor = Math.min(scene.scale.width / 1280, scene.scale.height / 720, 1.0);
+    this.scaleFactor = scaleFactor;
+
+    const width = 240 * scaleFactor;
+    const height = 178 * scaleFactor;
+
+    let x, y;
+    if (isPortrait) {
+      // Bottom center, above bottom HUD
+      x = (scene.scale.width - width) / 2;
+      y = scene.scale.height - height - 90;
+    } else {
+      x = 16;
+      y = 16;
+    }
+
+    this.currentX = x;
+    this.currentY = y;
 
     // 1. Super Compact Glassmorphic Background Panel
     const bgGraphics = scene.add.graphics();
     bgGraphics.fillStyle(0x07111f, 0.92);
-    bgGraphics.fillRoundedRect(x, y, width, height, 12);
-    bgGraphics.lineStyle(1.5, 0x0ea5e9, 0.85); // Neon cyan border
-    bgGraphics.strokeRoundedRect(x, y, width, height, 12);
+    bgGraphics.fillRoundedRect(x, y, width, height, 12 * scaleFactor);
+    bgGraphics.lineStyle(1.5 * scaleFactor, 0x0ea5e9, 0.85); // Neon cyan border
+    bgGraphics.strokeRoundedRect(x, y, width, height, 12 * scaleFactor);
     
     // Top highlight line
     bgGraphics.fillStyle(0x38bdf8, 0.4);
-    bgGraphics.fillRoundedRect(x + 8, y + 4, width - 16, 1.5, 1);
+    bgGraphics.fillRoundedRect(x + 8 * scaleFactor, y + 4 * scaleFactor, width - 16 * scaleFactor, 1.5 * scaleFactor, 1 * scaleFactor);
 
     // Separator line between Hero Info and Match Info
-    bgGraphics.lineStyle(1.2, 0x1e293b, 0.7);
-    bgGraphics.lineBetween(x + 12, y + 90, x + width - 12, y + 90);
+    bgGraphics.lineStyle(1.2 * scaleFactor, 0x1e293b, 0.7);
+    bgGraphics.lineBetween(x + 12 * scaleFactor, y + 90 * scaleFactor, x + width - 12 * scaleFactor, y + 90 * scaleFactor);
     this.add(bgGraphics);
 
     // 2. Compact Avatar ring & frame
-    const avatarX = x + 28;
-    const avatarY = y + 42;
+    const avatarX = x + 28 * scaleFactor;
+    const avatarY = y + 42 * scaleFactor;
     const skinColor = activeSkin.colors.border || 0x38bdf8;
     
-    const avatarBg = scene.add.circle(avatarX, avatarY, 20, 0x111e30, 1);
-    avatarBg.setStrokeStyle(2, skinColor, 0.9);
+    const avatarBg = scene.add.circle(avatarX, avatarY, 20 * scaleFactor, 0x111e30, 1);
+    avatarBg.setStrokeStyle(2 * scaleFactor, skinColor, 0.9);
     this.add(avatarBg);
 
     // Visual Avatar (Skin Sprite/Image)
     const visualKey = activeSkin.assetKey || (scene.selectedHero && scene.selectedHero.assetKey);
     if (visualKey && scene.textures.exists(visualKey)) {
-      this.avatarImg = scene.add.image(avatarX, avatarY, visualKey).setDisplaySize(30, 30);
+      this.avatarImg = scene.add.image(avatarX, avatarY, visualKey).setDisplaySize(30 * scaleFactor, 30 * scaleFactor);
       this.add(this.avatarImg);
     } else {
-      this.avatarImg = scene.add.circle(avatarX, avatarY, 12, activeSkin.colors.hero || 0x2f6dff, 1);
+      this.avatarImg = scene.add.circle(avatarX, avatarY, 12 * scaleFactor, activeSkin.colors.hero || 0x2f6dff, 1);
       this.add(this.avatarImg);
     }
 
@@ -61,111 +125,100 @@ export default class StatsPanel {
     });
 
     // 3. Level Text
-    this.lvText = this.add(scene.add.text(x + 58, y + 14, '', {
+    this.lvText = this.add(scene.add.text(x + 58 * scaleFactor, y + 14 * scaleFactor, '', {
       fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '11px',
+      fontSize: `${11 * scaleFactor}px`,
       color: '#38bdf8',
       fontStyle: 'bold',
       stroke: '#020617',
-      strokeThickness: 2.5
+      strokeThickness: 2.5 * scaleFactor
     }));
 
     // EXP Progress Bar (Compact Width)
-    const expBarX = x + 58;
-    const expBarY = y + 32;
-    this.expBarWidth = 166;
-    this.expBarHeight = 7;
+    const expBarX = x + 58 * scaleFactor;
+    const expBarY = y + 32 * scaleFactor;
+    this.expBarWidth = 166 * scaleFactor;
+    this.expBarHeight = 7 * scaleFactor;
 
     const expBg = scene.add.graphics();
     expBg.fillStyle(0x1e293b, 1);
-    expBg.fillRoundedRect(expBarX, expBarY, this.expBarWidth, this.expBarHeight, 3.5);
+    expBg.fillRoundedRect(expBarX, expBarY, this.expBarWidth, this.expBarHeight, 3.5 * scaleFactor);
     this.add(expBg);
 
     this.expFill = scene.add.graphics();
     this.add(this.expFill);
 
-    this.expText = this.add(scene.add.text(x + 58, y + 43, '', {
+    this.expText = this.add(scene.add.text(x + 58 * scaleFactor, y + 43 * scaleFactor, '', {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '9px',
+      fontSize: `${9 * scaleFactor}px`,
       color: '#94a3b8',
       fontStyle: 'bold'
     }));
 
     // Gold Display
-    this.goldText = this.add(scene.add.text(x + 152, y + 43, '', {
+    this.goldText = this.add(scene.add.text(x + 152 * scaleFactor, y + 43 * scaleFactor, '', {
       fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '11px',
+      fontSize: `${11 * scaleFactor}px`,
       color: '#facc15',
       fontStyle: 'bold',
       stroke: '#020617',
-      strokeThickness: 2.5
+      strokeThickness: 2.5 * scaleFactor
     }));
 
     // 4. Match Statistics Section (Lower Half, Compact)
-    const matchY = y + 96;
+    const matchY = y + 96 * scaleFactor;
     
     // Stage Title
-    this.matchStageText = this.add(scene.add.text(x + 14, matchY + 2, '', {
+    this.matchStageText = this.add(scene.add.text(x + 14 * scaleFactor, matchY + 2 * scaleFactor, '', {
       fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '10.5px',
+      fontSize: `${10.5 * scaleFactor}px`,
       color: '#ffffff',
       fontStyle: 'bold',
       stroke: '#020617',
-      strokeThickness: 2.5
+      strokeThickness: 2.5 * scaleFactor
     }));
 
     // Timer
-    this.matchTimerText = this.add(scene.add.text(x + 14, matchY + 22, '', {
+    this.matchTimerText = this.add(scene.add.text(x + 14 * scaleFactor, matchY + 22 * scaleFactor, '', {
       fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '15px',
+      fontSize: `${15 * scaleFactor}px`,
       color: '#facc15',
       fontStyle: 'bold',
       stroke: '#020617',
-      strokeThickness: 2.5
+      strokeThickness: 2.5 * scaleFactor
     }));
 
     // Kills
-    this.matchKillsText = this.add(scene.add.text(x + 130, matchY + 2, '', {
+    this.matchKillsText = this.add(scene.add.text(x + 130 * scaleFactor, matchY + 2 * scaleFactor, '', {
       fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '10.5px',
+      fontSize: `${10.5 * scaleFactor}px`,
       color: '#f87171',
       fontStyle: 'bold',
       stroke: '#020617',
-      strokeThickness: 2.5
+      strokeThickness: 2.5 * scaleFactor
     }));
 
     // Gold Earned in Stage
-    this.matchGoldText = this.add(scene.add.text(x + 130, matchY + 22, '', {
+    this.matchGoldText = this.add(scene.add.text(x + 130 * scaleFactor, matchY + 22 * scaleFactor, '', {
       fontFamily: '"Trebuchet MS", Arial, Helvetica, sans-serif',
-      fontSize: '10.5px',
+      fontSize: `${10.5 * scaleFactor}px`,
       color: '#fbbf24',
       fontStyle: 'bold',
       stroke: '#020617',
-      strokeThickness: 2.5
+      strokeThickness: 2.5 * scaleFactor
     }));
 
-    // Listeners
-    this.gameStats.on('stats', (stats) => this.updateHeroStats(stats));
-    this.stageSystem.on('tick', (snapshot) => this.updateMatchStats(snapshot));
-    this.gameStats.on('killCount', () => this.updateMatchStats(this.stageSystem.getSnapshot()));
-    this.gameStats.on('gold', () => this.updateMatchStats(this.stageSystem.getSnapshot()));
-
     // 5. Timeline System Initialization
-    this.flashTimer = 0;
-    this.flashVisible = true;
-    this.timelineSetupComplete = false;
-    this.bossIcons = [];
-
-    this.timelineStartX = x + 30;
-    this.timelineStartY = y + 154;
-    this.timelineBarWidth = 180;
+    this.timelineStartX = x + 30 * scaleFactor;
+    this.timelineStartY = y + 154 * scaleFactor;
+    this.timelineBarWidth = 180 * scaleFactor;
 
     this.timelineGraphics = scene.add.graphics();
     this.add(this.timelineGraphics);
 
     this.playerMarker = this.add(
-      scene.add.circle(this.timelineStartX, this.timelineStartY, 4.5, 0xffffff, 1)
-        .setStrokeStyle(2, 0x00d6ff, 1)
+      scene.add.circle(this.timelineStartX, this.timelineStartY, 4.5 * scaleFactor, 0xffffff, 1)
+        .setStrokeStyle(2 * scaleFactor, 0x00d6ff, 1)
     );
 
     // Initial population
@@ -179,19 +232,20 @@ export default class StatsPanel {
   }
 
   updateHeroStats(stats) {
+    if (!this.lvText) return;
     this.lvText.setText(`LEVEL ${stats.level}`);
     this.expText.setText(`EXP ${stats.exp}/${stats.expToNextLevel}`);
     this.goldText.setText(`🪙 ${stats.gold.toLocaleString()}`);
 
     // Update EXP Progress Bar Fill
     const ratio = Phaser.Math.Clamp(stats.exp / stats.expToNextLevel, 0, 1);
-    const expBarX = 16 + 58;
-    const expBarY = 16 + 32;
+    const expBarX = this.currentX + 58 * this.scaleFactor;
+    const expBarY = this.currentY + 32 * this.scaleFactor;
 
     this.expFill.clear();
     if (ratio > 0) {
       this.expFill.fillStyle(0xa855f7, 0.9); // Violet exp bar
-      this.expFill.fillRoundedRect(expBarX, expBarY, this.expBarWidth * ratio, this.expBarHeight, 3.5);
+      this.expFill.fillRoundedRect(expBarX, expBarY, this.expBarWidth * ratio, this.expBarHeight, 3.5 * this.scaleFactor);
     }
   }
 
@@ -248,6 +302,7 @@ export default class StatsPanel {
     this.bossIcons = [];
 
     const gameMode = this.scene.gameMode || 'campaign';
+    const scaleFactor = this.scaleFactor || 1.0;
 
     if (gameMode === 'campaign') {
       const interval = this.stageSystem.stage.bossInterval || 60;
@@ -259,12 +314,12 @@ export default class StatsPanel {
         const ratio = spawnTime / totalDuration;
         const xPos = this.timelineStartX + this.timelineBarWidth * ratio;
 
-        const icon = this.scene.add.text(xPos, this.timelineStartY - 12, '💀', {
+        const icon = this.scene.add.text(xPos, this.timelineStartY - 12 * scaleFactor, '💀', {
           fontFamily: 'Arial, sans-serif',
-          fontSize: '11px',
+          fontSize: `${11 * scaleFactor}px`,
           fontStyle: 'bold',
           stroke: '#020617',
-          strokeThickness: 2.5
+          strokeThickness: 2.5 * scaleFactor
         }).setOrigin(0.5, 0.5);
 
         this.add(icon);
@@ -274,23 +329,23 @@ export default class StatsPanel {
       const duration = this.stageSystem.stage.duration || 120;
       const xPos = this.timelineStartX + this.timelineBarWidth * (5 / duration);
 
-      const icon = this.scene.add.text(xPos, this.timelineStartY - 12, '💀', {
+      const icon = this.scene.add.text(xPos, this.timelineStartY - 12 * scaleFactor, '💀', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '11px',
+        fontSize: `${11 * scaleFactor}px`,
         fontStyle: 'bold',
         stroke: '#020617',
-        strokeThickness: 2.5
+        strokeThickness: 2.5 * scaleFactor
       }).setOrigin(0.5, 0.5);
 
       this.add(icon);
       this.bossIcons.push({ icon, index: 1 });
     } else if (gameMode === 'survival') {
-      const icon = this.scene.add.text(this.timelineStartX + this.timelineBarWidth, this.timelineStartY - 12, '🚩', {
+      const icon = this.scene.add.text(this.timelineStartX + this.timelineBarWidth, this.timelineStartY - 12 * scaleFactor, '🚩', {
         fontFamily: 'Arial, sans-serif',
-        fontSize: '11px',
+        fontSize: `${11 * scaleFactor}px`,
         fontStyle: 'bold',
         stroke: '#020617',
-        strokeThickness: 2.5
+        strokeThickness: 2.5 * scaleFactor
       }).setOrigin(0.5, 0.5);
 
       this.add(icon);
@@ -416,14 +471,16 @@ export default class StatsPanel {
     // 1. Redraw track and fill graphics
     this.timelineGraphics.clear();
 
+    const scaleFactor = this.scaleFactor || 1.0;
+
     // Background track line (Dark slate)
-    this.timelineGraphics.lineStyle(3, 0x1e293b, 0.7);
+    this.timelineGraphics.lineStyle(3 * scaleFactor, 0x1e293b, 0.7);
     this.timelineGraphics.lineBetween(this.timelineStartX, this.timelineStartY, this.timelineStartX + this.timelineBarWidth, this.timelineStartY);
 
     // Active progress fill line
     if (ratio > 0) {
       const fillColor = isBossActive ? (this.flashVisible ? 0xef4444 : 0x7f1d1d) : 0x0ea5e9; // Cyan active fill color (matching StatsPanel theme)
-      this.timelineGraphics.lineStyle(3, fillColor, 1.0);
+      this.timelineGraphics.lineStyle(3 * scaleFactor, fillColor, 1.0);
       this.timelineGraphics.lineBetween(this.timelineStartX, this.timelineStartY, this.timelineStartX + this.timelineBarWidth * ratio, this.timelineStartY);
     }
 
@@ -433,10 +490,10 @@ export default class StatsPanel {
     // Change marker color based on alert
     if (isBossActive) {
       this.playerMarker.setFillStyle(this.flashVisible ? 0xef4444 : 0xffffff, 1);
-      this.playerMarker.setStrokeStyle(2, 0xffffff, 1);
+      this.playerMarker.setStrokeStyle(2 * scaleFactor, 0xffffff, 1);
     } else {
       this.playerMarker.setFillStyle(0xffffff, 1);
-      this.playerMarker.setStrokeStyle(2, 0x0ea5e9, 1); // Cyan border
+      this.playerMarker.setStrokeStyle(2 * scaleFactor, 0x0ea5e9, 1); // Cyan border
     }
   }
 

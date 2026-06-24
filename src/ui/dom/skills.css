@@ -312,3 +312,21 @@
   width: 120px;
 }
 .cumul-effect.active { color: #4ade80; }
+
+@media (orientation: portrait), (max-width: 900px) {
+  .skills-content {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .skills-road-panel {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: 400px;
+  }
+  .skills-cumulative-panel {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: 250px;
+  }
+}
+

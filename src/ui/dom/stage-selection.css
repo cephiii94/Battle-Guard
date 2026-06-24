@@ -189,3 +189,19 @@
   from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+@media (max-width: 600px) {
+  .stage-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .stage-selection-content {
+    padding: 15px;
+  }
+}
+@media (max-width: 380px) {
+  .stage-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

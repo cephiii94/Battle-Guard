@@ -11,6 +11,7 @@ export default class TitleScreen extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    const isPortrait = height > width;
 
     // Background Setup
     const bg = this.add.graphics();
@@ -25,17 +26,17 @@ export default class TitleScreen extends Phaser.Scene {
       bg.lineBetween(0, py, width, py);
     }
     for (let i = -10; i <= 10; i++) {
-      bg.lineBetween(width / 2 + i * 14, floorY - 120, width / 2 + i * 100, height);
+      bg.lineBetween(width / 2 + i * (isPortrait ? 8 : 14), floorY - 120, width / 2 + i * (isPortrait ? 60 : 100), height);
     }
 
     // Logo / Title
     const title = this.add.text(width / 2, height / 3, 'BATTLE GUARD', {
       fontFamily: 'Outfit, "Trebuchet MS", Arial, sans-serif',
-      fontSize: '80px',
+      fontSize: isPortrait ? '48px' : '80px',
       color: UI.yellow,
       fontStyle: '900',
       stroke: '#081735',
-      strokeThickness: 8,
+      strokeThickness: isPortrait ? 5 : 8,
       shadow: { offsetX: 0, offsetY: 4, color: '#000000', blur: 10, stroke: true, fill: true }
     }).setOrigin(0.5);
 
@@ -56,6 +57,17 @@ export default class TitleScreen extends Phaser.Scene {
       this.showTapToStart(width, height);
     }
     
+    this.resizeListener = (gameSize, baseSize, displaySize, prevWidth, prevHeight) => {
+      if (prevWidth && prevHeight && (gameSize.width !== prevWidth || gameSize.height !== prevHeight)) {
+        this.scene.restart();
+      }
+    };
+    this.scale.on('resize', this.resizeListener);
+
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', this.resizeListener);
+    });
+
     // Attempt to start bgm
     soundManager.playBGM(this, 'menu-bgm');
   }
@@ -76,11 +88,11 @@ export default class TitleScreen extends Phaser.Scene {
     const inputHtml = `
       <input type="text" id="heroNameInput" name="heroName" placeholder="Novice" autocomplete="off"
         style="
-          width: 300px;
+          width: min(300px, 80vw);
           height: 40px;
           padding: 8px 16px;
           font-family: Outfit, Arial, sans-serif;
-          font-size: 20px;
+          font-size: 16px;
           font-weight: bold;
           color: #ffffff;
           background-color: rgba(7, 17, 31, 0.85);

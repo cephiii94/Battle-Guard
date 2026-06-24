@@ -91,6 +91,17 @@ export class DOMUIManager {
     wrapper.innerHTML = htmlString;
     wrapper.style.pointerEvents = 'auto'; // Block clicks from passing to Phaser
 
+    // Auto-scale content for smaller screens (especially portrait mobile)
+    if (wrapper.firstElementChild) {
+      const scaleX = window.innerWidth / 950;
+      const scaleY = window.innerHeight / 700;
+      const scale = Math.min(1, scaleX, scaleY);
+      if (scale < 1) {
+        wrapper.firstElementChild.style.transform = `scale(${scale})`;
+        wrapper.firstElementChild.style.transformOrigin = 'center';
+      }
+    }
+
     // Prevent clicks from reaching Phaser canvas
     wrapper.addEventListener('pointerdown', (e) => e.stopPropagation());
     wrapper.addEventListener('pointerup', (e) => e.stopPropagation());

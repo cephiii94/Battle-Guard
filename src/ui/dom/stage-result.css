@@ -16,7 +16,7 @@
 }
 
 .stage-result-container {
-  width: 560px;
+  width: min(560px, 92vw);
   background: rgba(15, 30, 50, 0.96);
   border-radius: 12px;
   display: flex;
@@ -44,7 +44,7 @@
 }
 
 .stage-result-title {
-  font-size: 48px;
+  font-size: clamp(24px, 8vw, 48px);
   font-weight: 900;
   letter-spacing: 2px;
   margin: 0;
@@ -260,3 +260,22 @@
   box-shadow: 0 0 10px rgba(71, 85, 105, 0.3);
   transform: scale(1.03);
 }
+
+@media (max-width: 500px) {
+  .stage-result-columns {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .stage-result-column.defeat-col {
+    grid-column: span 1;
+  }
+  .stage-result-btn {
+    width: 130px;
+    font-size: 13px;
+  }
+  .stage-result-footer {
+    gap: 10px;
+    padding: 15px 15px 20px 15px;
+  }
+}
+

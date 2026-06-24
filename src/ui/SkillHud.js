@@ -10,7 +10,17 @@ export default class SkillHud {
     this.items = [];
     this.tooltip = null;
 
-    activeSkillSystem.on('skillsChanged', () => this.render());
+    this.skillsChangedListener = () => this.render();
+    activeSkillSystem.on('skillsChanged', this.skillsChangedListener);
+
+    this.resizeListener = () => this.render();
+    this.scene.scale.on('resize', this.resizeListener);
+
+    this.scene.events.once('shutdown', () => {
+      this.activeSkillSystem.off('skillsChanged', this.skillsChangedListener);
+      this.scene.scale.off('resize', this.resizeListener);
+    });
+
     this.render();
   }
 
@@ -18,12 +28,23 @@ export default class SkillHud {
     this.clear();
     const skills = this.activeSkillSystem.getOwnedSkills();
 
-    const slotSize = 36;
-    const gap      = 8;
+    const isPortrait = this.scene.scale.height > this.scene.scale.width;
+    const slotSize = isPortrait ? 30 : 36;
+    const gap      = isPortrait ? 6 : 8;
     const panelW   = MAX_SKILL_SLOTS * slotSize + (MAX_SKILL_SLOTS - 1) * gap + 16;
     const panelH   = slotSize + 16;
-    const x        = 1280 - panelW - 10;
-    const y        = 10;
+    const sceneW   = this.scene.scale.width;
+    const sceneH   = this.scene.scale.height;
+
+    let x, y;
+    if (isPortrait) {
+      // Bottom center, above screen bottom
+      x = (sceneW - panelW) / 2;
+      y = sceneH - panelH - 12;
+    } else {
+      x = sceneW - panelW - 10;
+      y = 10;
+    }
 
     // ── Background strip ─────────────────────────────────────
     const bg = this.scene.add.graphics();
@@ -63,22 +84,24 @@ export default class SkillHud {
           ease: 'Sine.easeInOut'
         });
 
+        const imgSize = Math.floor(slotSize * 0.72);
         const icon = this.add(
           this.scene.add.image(sx, slotY, skill.assetKey)
-            .setDisplaySize(26, 26)
+            .setDisplaySize(imgSize, imgSize)
             .setInteractive({ useHandCursor: false })
         );
 
         // Level badge
+        const scale = slotSize / 36;
         const badgeBg = this.scene.add.graphics();
         badgeBg.fillStyle(0x020f1a, 0.95);
-        badgeBg.fillRoundedRect(sx + 8, slotY + 9, 18, 12, 4);
+        badgeBg.fillRoundedRect(sx + 8 * scale, slotY + 9 * scale, 18 * scale, 12 * scale, 4 * scale);
         this.add(badgeBg);
 
         this.add(
-          this.scene.add.text(sx + 17, slotY + 15, `${skill.level}`, {
+          this.scene.add.text(sx + 17 * scale, slotY + 15 * scale, `${skill.level}`, {
             fontFamily: '"Trebuchet MS", Arial, sans-serif',
-            fontSize: '9px',
+            fontSize: `${9 * scale}px`,
             color: lvlColor,
             fontStyle: 'bold'
           }).setOrigin(0.5)
@@ -146,11 +169,13 @@ export default class SkillHud {
              + PAD_BOT;
 
     // ── Clamp to screen ──────────────────────────────────────
+    const sceneW = this.scene.scale.width;
+    const sceneH = this.scene.scale.height;
     let tx = anchorX - tw / 2;
     let ty = anchorY + 6;
     if (tx < 8) tx = 8;
-    if (tx + tw > 1272) tx = 1272 - tw;
-    if (ty + th > 710)  ty = anchorY - th - 12;
+    if (tx + tw > sceneW - 8) tx = sceneW - 8 - tw;
+    if (ty + th > sceneH - 10)  ty = anchorY - th - 12;
 
     const tips = [];
     const t = (item) => {

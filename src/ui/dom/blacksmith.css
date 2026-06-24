@@ -493,3 +493,19 @@
 }
 .specs-status.owned { color: #4ade80; }
 .specs-status.ready { color: #00f0ff; }
+
+@media (orientation: portrait), (max-width: 900px) {
+  .blacksmith-content {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .blacksmith-panel.left, .blacksmith-panel.right {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+  .blacksmith-panel.center {
+    min-height: 250px;
+    padding: 20px 0;
+  }
+}
+

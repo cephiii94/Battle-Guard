@@ -20,8 +20,8 @@
 
 /* Inventory Container */
 .inv-container {
-  width: 900px;
-  height: 600px;
+  width: min(900px, 95vw);
+  height: min(600px, 92vh);
   background: #fdfbf7;
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
@@ -403,3 +403,29 @@
   color: #16a34a;
   font-weight: bold;
 }
+
+@media (orientation: portrait), (max-width: 600px) {
+  .inv-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .inv-left {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 12px;
+  }
+  .inv-hero-circle {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 15px;
+  }
+  .inv-hero-circle img {
+    max-width: 100px;
+    max-height: 100px;
+  }
+  .inv-detail-panel {
+    height: auto;
+    min-height: 140px;
+  }
+}
+

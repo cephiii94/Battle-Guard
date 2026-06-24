@@ -28,11 +28,13 @@ if (savedScaleMode === 'canvas') {
   initialScaleMode = Phaser.Scale.EXACT_FIT;
 }
 
+const isPortrait = window.innerHeight > window.innerWidth;
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: 1280,
-  height: 720,
+  width: isPortrait ? 720 : 1280,
+  height: isPortrait ? 1280 : 720,
   backgroundColor: '#111827',
   resolution: window.devicePixelRatio || 1,
   antialias: true,

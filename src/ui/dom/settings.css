@@ -16,7 +16,7 @@
 }
 
 .settings-container {
-  width: 460px;
+  width: min(460px, 90vw);
   background: rgba(15, 30, 50, 0.95);
   border: 2px solid #00d6ff;
   border-radius: 12px;
@@ -195,3 +195,25 @@
   from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+@media (max-width: 500px) {
+  .settings-toggle-btn {
+    width: 80px;
+    font-size: 12px;
+  }
+  .settings-scale-btn {
+    width: 110px;
+    font-size: 10px;
+  }
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .settings-row-control {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+

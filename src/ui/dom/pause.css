@@ -16,7 +16,7 @@
 }
 
 .pause-container {
-  width: 380px;
+  width: min(380px, 90vw);
   background: rgba(15, 30, 50, 0.98);
   border-radius: 12px;
   border: 3px solid #38bdf8;
@@ -55,7 +55,7 @@
 }
 
 .pause-btn {
-  width: 240px;
+  width: min(240px, 75vw);
   height: 44px;
   border-radius: 6px;
   font-size: 15px;

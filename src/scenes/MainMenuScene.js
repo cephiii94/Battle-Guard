@@ -137,6 +137,17 @@ export default class MainMenuScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-S', handleCampaignOpen);
     this.input.keyboard.on('keydown-ENTER', handleCampaignOpen);
 
+    this.resizeListener = (gameSize, baseSize, displaySize, prevWidth, prevHeight) => {
+      if (prevWidth && prevHeight && (gameSize.width !== prevWidth || gameSize.height !== prevHeight)) {
+        this.scene.restart();
+      }
+    };
+    this.scale.on('resize', this.resizeListener);
+
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', this.resizeListener);
+    });
+
     soundManager.playBGM(this, 'menu-bgm');
   }
 
@@ -159,97 +170,153 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   addRedesignedTopBar(width) {
+    const isPortrait = this.scale.height > this.scale.width;
     const topY = 40;
 
-    // 1. Profile Area (Top Left)
-    const profileBg = this.add.graphics();
-    profileBg.fillStyle(0xf8f4ef, 1);
-    profileBg.fillRoundedRect(20, topY - 20, 220, 50, 12);
-    // Add a slight shadow
-    profileBg.lineStyle(2, 0xe2d5c8, 1);
-    profileBg.strokeRoundedRect(20, topY - 20, 220, 50, 12);
+    if (isPortrait) {
+      // 1. Compact Profile Area (Top Left)
+      const profileBg = this.add.graphics();
+      profileBg.fillStyle(0xf8f4ef, 1);
+      profileBg.fillRoundedRect(10, topY - 20, 140, 44, 10);
+      profileBg.lineStyle(1.5, 0xe2d5c8, 1);
+      profileBg.strokeRoundedRect(10, topY - 20, 140, 44, 10);
 
-    // Hexagon Avatar
-    const avatarX = 40;
-    const avatarY = topY + 5;
-    const hex = this.add.graphics();
-    hex.fillStyle(0xd5bda3, 1);
-    // draw simple hexagon shape
-    hex.fillPoints([
-      {x: avatarX, y: avatarY - 22}, {x: avatarX + 20, y: avatarY - 11}, 
-      {x: avatarX + 20, y: avatarY + 11}, {x: avatarX, y: avatarY + 22}, 
-      {x: avatarX - 20, y: avatarY + 11}, {x: avatarX - 20, y: avatarY - 11}
-    ], true);
-    
-    const activeSkin = this.activeSkin;
-    const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
-    this.add.image(avatarX, avatarY, visualKey).setDisplaySize(32, 32);
+      // Hexagon Avatar
+      const avatarX = 28;
+      const avatarY = topY + 2;
+      const hex = this.add.graphics();
+      hex.fillStyle(0xd5bda3, 1);
+      hex.fillPoints([
+        {x: avatarX, y: avatarY - 16}, {x: avatarX + 14, y: avatarY - 8}, 
+        {x: avatarX + 14, y: avatarY + 8}, {x: avatarX, y: avatarY + 16}, 
+        {x: avatarX - 14, y: avatarY + 8}, {x: avatarX - 14, y: avatarY - 8}
+      ], true);
+      
+      const activeSkin = this.activeSkin;
+      const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
+      this.add.image(avatarX, avatarY, visualKey).setDisplaySize(24, 24);
 
-    // Name
-    const pName = GameManager.get('playerName') || 'Hero';
-    this.add.text(75, topY - 12, pName, {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '16px',
-      color: '#4a3f35',
-      fontStyle: '900',
-    });
+      // Name & Level
+      const pName = GameManager.get('playerName') || 'Hero';
+      const displayName = pName.length > 8 ? pName.substring(0, 8) + '..' : pName;
+      this.add.text(50, topY - 14, displayName, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '11px',
+        color: '#4a3f35',
+        fontStyle: '900',
+      });
 
-    const playerLevel = this.playerProgress.playerLevel || 1;
-    const playerExp = this.playerProgress.playerExp || 0;
-    const requiredExp = playerLevel * 200;
-    const expRatio = Math.min(1.0, playerExp / requiredExp);
+      const playerLevel = this.playerProgress.playerLevel || 1;
+      this.add.text(50, topY, `Lv.${playerLevel}`, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '11px',
+        color: '#6ab5c7',
+        fontStyle: 'bold'
+      });
 
-    // Level bubble
-    this.add.circle(85, topY + 12, 10, 0x6ab5c7);
-    this.add.text(85, topY + 12, playerLevel, {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '11px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+      // 2. Resource capsules & Settings
+      // Gold
+      this.addCapsule(width - 130, topY + 2, '🪙', this.formatCurrency(this.playerProgress.gold), 0xcca677);
+      
+      // Settings Button
+      const setBtn = this.add.circle(width - 30, topY + 2, 16, 0xffffff)
+        .setInteractive({ useHandCursor: true });
+      this.add.text(width - 30, topY + 2, '⚙️', { fontSize: '16px', color: '#000' }).setOrigin(0.5);
+      
+      setBtn.on('pointerover', () => { setBtn.setScale(1.1); soundManager.playSFX(this, 'hover'); });
+      setBtn.on('pointerout', () => setBtn.setScale(1));
+      setBtn.on('pointerup', () => { soundManager.playSFX(this, 'click'); this.showSettingsTab(); });
 
-    // EXP Bar
-    const xpX = 100;
-    const xpY = topY + 8;
-    const xpW = 100;
-    const xpH = 8;
-    this.add.rectangle(xpX + xpW/2, xpY + xpH/2, xpW, xpH, 0xe2d5c8).setOrigin(0.5);
-    if (expRatio > 0) {
-      this.add.rectangle(xpX + (xpW * expRatio)/2, xpY + xpH/2, xpW * expRatio, xpH, 0xf6be4f).setOrigin(0.5);
+    } else {
+      // 1. Profile Area (Top Left)
+      const profileBg = this.add.graphics();
+      profileBg.fillStyle(0xf8f4ef, 1);
+      profileBg.fillRoundedRect(20, topY - 20, 220, 50, 12);
+      // Add a slight shadow
+      profileBg.lineStyle(2, 0xe2d5c8, 1);
+      profileBg.strokeRoundedRect(20, topY - 20, 220, 50, 12);
+
+      // Hexagon Avatar
+      const avatarX = 40;
+      const avatarY = topY + 5;
+      const hex = this.add.graphics();
+      hex.fillStyle(0xd5bda3, 1);
+      // draw simple hexagon shape
+      hex.fillPoints([
+        {x: avatarX, y: avatarY - 22}, {x: avatarX + 20, y: avatarY - 11}, 
+        {x: avatarX + 20, y: avatarY + 11}, {x: avatarX, y: avatarY + 22}, 
+        {x: avatarX - 20, y: avatarY + 11}, {x: avatarX - 20, y: avatarY - 11}
+      ], true);
+      
+      const activeSkin = this.activeSkin;
+      const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
+      this.add.image(avatarX, avatarY, visualKey).setDisplaySize(32, 32);
+
+      // Name
+      const pName = GameManager.get('playerName') || 'Hero';
+      this.add.text(75, topY - 12, pName, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '16px',
+        color: '#4a3f35',
+        fontStyle: '900',
+      });
+
+      const playerLevel = this.playerProgress.playerLevel || 1;
+      const playerExp = this.playerProgress.playerExp || 0;
+      const requiredExp = playerLevel * 200;
+      const expRatio = Math.min(1.0, playerExp / requiredExp);
+
+      // Level bubble
+      this.add.circle(85, topY + 12, 10, 0x6ab5c7);
+      this.add.text(85, topY + 12, playerLevel, {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '11px',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+
+      // EXP Bar
+      const xpX = 100;
+      const xpY = topY + 8;
+      const xpW = 100;
+      const xpH = 8;
+      this.add.rectangle(xpX + xpW/2, xpY + xpH/2, xpW, xpH, 0xe2d5c8).setOrigin(0.5);
+      if (expRatio > 0) {
+        this.add.rectangle(xpX + (xpW * expRatio)/2, xpY + xpH/2, xpW * expRatio, xpH, 0xf6be4f).setOrigin(0.5);
+      }
+
+      // 2. Center Top (Class Badge)
+      const cx = width / 2;
+      const classBadge = this.add.graphics();
+      classBadge.fillStyle(0x4a426b, 1);
+      // Draw polygon like reference
+      classBadge.fillPoints([
+        {x: cx - 40, y: topY - 15}, {x: cx + 20, y: topY - 15},
+        {x: cx + 40, y: topY + 5}, {x: cx + 20, y: topY + 25},
+        {x: cx - 40, y: topY + 25}, {x: cx - 60, y: topY + 5}
+      ], true);
+      
+      // Circle for level inside badge
+      this.add.circle(cx - 35, topY + 5, 14, 0x332b4d);
+      this.add.text(cx - 35, topY + 5, playerLevel, { fontSize: '14px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+      // White bar next to it
+      this.add.rectangle(cx + 10, topY + 5, 60, 10, 0xffffff);
+
+      // 3. Top Right Resources
+      // Gold
+      this.addCapsule(width - 250, topY, '🪙', this.formatCurrency(this.playerProgress.gold), 0xcca677);
+      // Gems
+      this.addCapsule(width - 150, topY, '💎', '50', 0xcca677);
+      
+      // Settings Button
+      const setBtn = this.add.circle(width - 50, topY + 5, 18, 0xffffff)
+        .setInteractive({ useHandCursor: true });
+      this.add.text(width - 50, topY + 5, '⚙️', { fontSize: '20px', color: '#000' }).setOrigin(0.5);
+      
+      setBtn.on('pointerover', () => { setBtn.setScale(1.1); soundManager.playSFX(this, 'hover'); });
+      setBtn.on('pointerout', () => setBtn.setScale(1));
+      setBtn.on('pointerup', () => { soundManager.playSFX(this, 'click'); this.showSettingsTab(); });
     }
-
-    // 2. Center Top (Class Badge)
-    const currentClass = GameManager.get('currentClass') || 'Novice';
-    const cx = width / 2;
-    const classBadge = this.add.graphics();
-    classBadge.fillStyle(0x4a426b, 1);
-    // Draw polygon like reference
-    classBadge.fillPoints([
-      {x: cx - 40, y: topY - 15}, {x: cx + 20, y: topY - 15},
-      {x: cx + 40, y: topY + 5}, {x: cx + 20, y: topY + 25},
-      {x: cx - 40, y: topY + 25}, {x: cx - 60, y: topY + 5}
-    ], true);
-    
-    // Circle for level inside badge
-    this.add.circle(cx - 35, topY + 5, 14, 0x332b4d);
-    this.add.text(cx - 35, topY + 5, playerLevel, { fontSize: '14px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-    // White bar next to it
-    this.add.rectangle(cx + 10, topY + 5, 60, 10, 0xffffff);
-
-    // 3. Top Right Resources
-    // Gold
-    this.addCapsule(width - 250, topY, '🪙', this.formatCurrency(this.playerProgress.gold), 0xcca677);
-    // Gems
-    this.addCapsule(width - 150, topY, '💎', '50', 0xcca677);
-    
-    // Settings Button
-    const setBtn = this.add.circle(width - 50, topY + 5, 18, 0xffffff)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(width - 50, topY + 5, '⚙️', { fontSize: '20px', color: '#000' }).setOrigin(0.5);
-    
-    setBtn.on('pointerover', () => { setBtn.setScale(1.1); soundManager.playSFX(this, 'hover'); });
-    setBtn.on('pointerout', () => setBtn.setScale(1));
-    setBtn.on('pointerup', () => { soundManager.playSFX(this, 'click'); this.showSettingsTab(); });
   }
 
   addCapsule(x, y, icon, value, bgColor) {
@@ -271,30 +338,48 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   addSideButtons(width, height) {
-    // Left Buttons (Shop, Hero, Inventory)
-    const lx = 60;
-    let ly = height * 0.35;
-    
-    const leftBtns = [
-      { label: 'SHOP', icon: '🏪', action: () => this.showShopTab() },
-      { label: 'HERO', icon: '👧', action: () => this.showHeroTab() },
-      { label: 'INVENTORY', icon: '🎒', action: () => this.showInventoryTab() }
-    ];
+    const isPortrait = this.scale.height > this.scale.width;
+    if (isPortrait) {
+      // Bottom Navigation Bar in Portrait mode
+      const y = height - 42;
+      const buttons = [
+        { label: 'SHOP', icon: '🏪', action: () => this.showShopTab() },
+        { label: 'HERO', icon: '👧', action: () => this.showHeroTab() },
+        { label: 'INVENTORY', icon: '🎒', action: () => this.showInventoryTab() },
+        { label: 'SKILLS', icon: '⚡', action: () => this.showSkillsTab() },
+        { label: 'SMITH', icon: '⚒️', action: () => this.showBlacksmithTab() }
+      ];
 
-    leftBtns.forEach((btn, i) => {
-      this.addSideButton(lx, ly + i * 85, btn.label, btn.icon, btn.action);
-    });
+      buttons.forEach((btn, i) => {
+        const x = (i + 0.5) * (width / buttons.length);
+        this.addSideButton(x, y, btn.label, btn.icon, btn.action);
+      });
+    } else {
+      // Left Buttons (Shop, Hero, Inventory)
+      const lx = 60;
+      let ly = height * 0.35;
+      
+      const leftBtns = [
+        { label: 'SHOP', icon: '🏪', action: () => this.showShopTab() },
+        { label: 'HERO', icon: '👧', action: () => this.showHeroTab() },
+        { label: 'INVENTORY', icon: '🎒', action: () => this.showInventoryTab() }
+      ];
 
-    // Right Buttons (Skills, Smith)
-    const rx = width - 60;
-    const rightBtns = [
-      { label: 'SKILLS', icon: '⚡', action: () => this.showSkillsTab() },
-      { label: 'SMITH', icon: '⚒️', action: () => this.showBlacksmithTab() }
-    ];
+      leftBtns.forEach((btn, i) => {
+        this.addSideButton(lx, ly + i * 85, btn.label, btn.icon, btn.action);
+      });
 
-    rightBtns.forEach((btn, i) => {
-      this.addSideButton(rx, ly + i * 85, btn.label, btn.icon, btn.action);
-    });
+      // Right Buttons (Skills, Smith)
+      const rx = width - 60;
+      const rightBtns = [
+        { label: 'SKILLS', icon: '⚡', action: () => this.showSkillsTab() },
+        { label: 'SMITH', icon: '⚒️', action: () => this.showBlacksmithTab() }
+      ];
+
+      rightBtns.forEach((btn, i) => {
+        this.addSideButton(rx, ly + i * 85, btn.label, btn.icon, btn.action);
+      });
+    }
   }
 
   addSideButton(x, y, label, icon, callback) {
@@ -320,19 +405,21 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   addCenterHeroArea(width, height) {
+    const isPortrait = this.scale.height > this.scale.width;
     const cx = width / 2;
-    const cy = height / 2 + 20;
+    const cy = isPortrait ? (height * 0.42) : (height / 2 + 20);
+    const heroSize = isPortrait ? 200 : 280;
 
     // Soft shadow under hero
-    this.add.ellipse(cx, cy + 190, 180, 40, 0x000000, 0.15).setDepth(90);
+    this.add.ellipse(cx, cy + (isPortrait ? 130 : 190), isPortrait ? 120 : 180, isPortrait ? 30 : 40, 0x000000, 0.15).setDepth(90);
 
     const activeSkin = this.activeSkin;
     const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
-    this.heroPortrait = this.add.image(cx, cy + 20, visualKey).setDisplaySize(280, 280);
+    this.heroPortrait = this.add.image(cx, cy + 20, visualKey).setDisplaySize(heroSize, heroSize);
     this.heroPortrait.setDepth(110);
 
     // Plus button on the right of hero
-    const plusContainer = this.add.container(cx + 140, cy + 20);
+    const plusContainer = this.add.container(cx + (isPortrait ? 90 : 140), cy + 20);
     const pBg = this.add.rectangle(0, 0, 36, 36, 0xe2d5c8, 0.8)
       .setInteractive({ useHandCursor: true });
     pBg.isStroked = false;
@@ -348,104 +435,156 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   addBottomUI(width, height) {
-    const rx = width - 180;
-    const by = height - 70;
+    const isPortrait = this.scale.height > this.scale.width;
 
-    // Event Banner (Shifted up)
-    const eventY = by - 105;
-    const eventBg = this.add.graphics();
-    eventBg.fillStyle(0xa58b76, 1);
-    eventBg.fillRoundedRect(rx - 120, eventY - 20, 240, 44, 8);
-    this.add.text(rx + 20, eventY - 5, 'New events in 02:02:30', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '10px',
-      color: '#d6c5b3'
-    }).setOrigin(0.5);
-    this.add.text(rx + 20, eventY + 10, 'FaCTory Brawl', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+    if (isPortrait) {
+      const cx = width / 2;
+      // Position buttons slightly higher up than the bottom nav bar (which is at height - 42)
+      const by = height - 120;
 
-    // Thumbnail for event (left side of banner)
-    const thumbBg = this.add.graphics();
-    thumbBg.fillStyle(0xcce8ef, 1);
-    thumbBg.fillRoundedRect(rx - 130, eventY - 25, 60, 45, 6);
-    thumbBg.lineStyle(2, 0xf6be4f, 1);
-    thumbBg.strokeRoundedRect(rx - 130, eventY - 25, 60, 45, 6);
+      // MODE Button
+      const modeBtn = this.add.container(cx, by - 52);
+      const mBg = this.add.graphics();
+      mBg.fillStyle(0x6ab5c7, 1);
+      mBg.fillRoundedRect(-120, -16, 240, 32, 10);
+      const mZone = this.add.zone(0, 0, 240, 32).setInteractive({ useHandCursor: true });
+      const mText = this.add.text(0, 0, 'MODE SELECTION', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '14px',
+        color: '#ffffff',
+        fontStyle: '800'
+      }).setOrigin(0.5);
+      modeBtn.add([mBg, mZone, mText]);
 
-    // Info icon on right of banner
-    this.add.circle(rx + 120, eventY - 20, 10, 0xc183a6);
-    this.add.text(rx + 120, eventY - 20, 'i', { fontSize: '12px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+      mZone.on('pointerover', () => { modeBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
+      mZone.on('pointerout', () => modeBtn.setScale(1));
+      mZone.on('pointerup', () => {
+        soundManager.playSFX(this, 'click');
+        this.showModeSelectionTab();
+      });
 
-    // MODE Button
-    const modeBtn = this.add.container(rx, by - 52);
-    const mBg = this.add.graphics();
-    mBg.fillStyle(0x6ab5c7, 1);
-    mBg.fillRoundedRect(-120, -16, 240, 32, 10);
-    const mZone = this.add.zone(0, 0, 240, 32).setInteractive({ useHandCursor: true });
-    const mText = this.add.text(0, 0, 'MODE SELECTION', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: '800'
-    }).setOrigin(0.5);
-    modeBtn.add([mBg, mZone, mText]);
+      // Giant PLAY Button
+      const playBtn = this.add.container(cx, by);
+      const pBg = this.add.graphics();
+      pBg.fillStyle(0xf6be4f, 1);
+      pBg.fillRoundedRect(-120, -30, 240, 60, 20);
+      const pZone = this.add.zone(0, 0, 240, 60).setInteractive({ useHandCursor: true });
+      
+      const pText = this.add.text(0, 0, 'PLAY', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '28px',
+        color: '#705c4b',
+        fontStyle: '900'
+      }).setOrigin(0.5);
+      
+      playBtn.add([pBg, pZone, pText]);
 
-    mZone.on('pointerover', () => { modeBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
-    mZone.on('pointerout', () => modeBtn.setScale(1));
-    mZone.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showModeSelectionTab();
-    });
+      pZone.on('pointerover', () => { playBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
+      pZone.on('pointerout', () => playBtn.setScale(1));
+      pZone.on('pointerup', () => {
+        soundManager.playSFX(this, 'click');
+        this.showStageSelectionTab();
+      });
 
-    // Giant PLAY Button
-    const playBtn = this.add.container(rx, by);
-    const pBg = this.add.graphics();
-    pBg.fillStyle(0xf6be4f, 1);
-    pBg.fillRoundedRect(-120, -30, 240, 60, 20);
-    // make interactive zone
-    const pZone = this.add.zone(0, 0, 240, 60).setInteractive({ useHandCursor: true });
-    
-    const pText = this.add.text(0, 0, 'PLAY', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '28px',
-      color: '#705c4b',
-      fontStyle: '900'
-    }).setOrigin(0.5);
-    
-    playBtn.add([pBg, pZone, pText]);
+    } else {
+      const rx = width - 180;
+      const by = height - 70;
 
-    pZone.on('pointerover', () => { playBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
-    pZone.on('pointerout', () => playBtn.setScale(1));
-    pZone.on('pointerup', () => {
-      soundManager.playSFX(this, 'click');
-      this.showStageSelectionTab();
-    });
+      // Event Banner (Shifted up)
+      const eventY = by - 105;
+      const eventBg = this.add.graphics();
+      eventBg.fillStyle(0xa58b76, 1);
+      eventBg.fillRoundedRect(rx - 120, eventY - 20, 240, 44, 8);
+      this.add.text(rx + 20, eventY - 5, 'New events in 02:02:30', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '10px',
+        color: '#d6c5b3'
+      }).setOrigin(0.5);
+      this.add.text(rx + 20, eventY + 10, 'FaCTory Brawl', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '14px',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
 
-    // Left Side "A GIRL PASS" placeholder
-    const passX = 140;
-    const passY = height - 50;
-    const passBg = this.add.graphics();
-    passBg.fillStyle(0x7f6756, 1);
-    passBg.fillRoundedRect(passX - 100, passY - 20, 200, 40, 8);
-    
-    // lightning icon placeholder (triangle)
-    const lightBg = this.add.graphics();
-    lightBg.fillStyle(0x38bdf8, 1);
-    lightBg.fillPoints([{x:passX+80,y:passY-25}, {x:passX+100,y:passY-25}, {x:passX+90,y:passY+15}], true);
-    
-    // progress bar in pass
-    this.add.rectangle(passX - 10, passY + 5, 120, 10, 0x614f40);
-    this.add.rectangle(passX - 60, passY + 5, 40, 10, 0xf6be4f).setOrigin(0, 0.5);
-    
-    this.add.text(passX - 20, passY - 10, 'A GIRL PASS', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '10px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+      // Thumbnail for event (left side of banner)
+      const thumbBg = this.add.graphics();
+      thumbBg.fillStyle(0xcce8ef, 1);
+      thumbBg.fillRoundedRect(rx - 130, eventY - 25, 60, 45, 6);
+      thumbBg.lineStyle(2, 0xf6be4f, 1);
+      thumbBg.strokeRoundedRect(rx - 130, eventY - 25, 60, 45, 6);
+
+      // Info icon on right of banner
+      this.add.circle(rx + 120, eventY - 20, 10, 0xc183a6);
+      this.add.text(rx + 120, eventY - 20, 'i', { fontSize: '12px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+
+      // MODE Button
+      const modeBtn = this.add.container(rx, by - 52);
+      const mBg = this.add.graphics();
+      mBg.fillStyle(0x6ab5c7, 1);
+      mBg.fillRoundedRect(-120, -16, 240, 32, 10);
+      const mZone = this.add.zone(0, 0, 240, 32).setInteractive({ useHandCursor: true });
+      const mText = this.add.text(0, 0, 'MODE SELECTION', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '14px',
+        color: '#ffffff',
+        fontStyle: '800'
+      }).setOrigin(0.5);
+      modeBtn.add([mBg, mZone, mText]);
+
+      mZone.on('pointerover', () => { modeBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
+      mZone.on('pointerout', () => modeBtn.setScale(1));
+      mZone.on('pointerup', () => {
+        soundManager.playSFX(this, 'click');
+        this.showModeSelectionTab();
+      });
+
+      // Giant PLAY Button
+      const playBtn = this.add.container(rx, by);
+      const pBg = this.add.graphics();
+      pBg.fillStyle(0xf6be4f, 1);
+      pBg.fillRoundedRect(-120, -30, 240, 60, 20);
+      const pZone = this.add.zone(0, 0, 240, 60).setInteractive({ useHandCursor: true });
+      
+      const pText = this.add.text(0, 0, 'PLAY', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '28px',
+        color: '#705c4b',
+        fontStyle: '900'
+      }).setOrigin(0.5);
+      
+      playBtn.add([pBg, pZone, pText]);
+
+      pZone.on('pointerover', () => { playBtn.setScale(1.05); soundManager.playSFX(this, 'hover'); });
+      pZone.on('pointerout', () => playBtn.setScale(1));
+      pZone.on('pointerup', () => {
+        soundManager.playSFX(this, 'click');
+        this.showStageSelectionTab();
+      });
+
+      // Left Side "A GIRL PASS" placeholder
+      const passX = 140;
+      const passY = height - 50;
+      const passBg = this.add.graphics();
+      passBg.fillStyle(0x7f6756, 1);
+      passBg.fillRoundedRect(passX - 100, passY - 20, 200, 40, 8);
+      
+      // lightning icon placeholder (triangle)
+      const lightBg = this.add.graphics();
+      lightBg.fillStyle(0x38bdf8, 1);
+      lightBg.fillPoints([{x:passX+80,y:passY-25}, {x:passX+100,y:passY-25}, {x:passX+90,y:passY+15}], true);
+      
+      // progress bar in pass
+      this.add.rectangle(passX - 10, passY + 5, 120, 10, 0x614f40);
+      this.add.rectangle(passX - 60, passY + 5, 40, 10, 0xf6be4f).setOrigin(0, 0.5);
+      
+      this.add.text(passX - 20, passY - 10, 'A GIRL PASS', {
+        fontFamily: 'Outfit, Arial, sans-serif',
+        fontSize: '10px',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+    }
   }
 
   cycleHero(dir) {

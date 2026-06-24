@@ -1,7 +1,7 @@
 /* Hero UI Overlay */
 .hero-container {
-  width: 900px;
-  height: 600px;
+  width: min(900px, 95vw);
+  height: min(600px, 92vh);
   background: #fdfbf7;
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
@@ -291,3 +291,27 @@
   font-weight: bold;
   color: #6ab5c7;
 }
+
+@media (orientation: portrait), (max-width: 600px) {
+  .hero-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .hero-left, .hero-center, .hero-right {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+  .hero-avatar-circle {
+    width: min(240px, 40vw);
+    height: min(240px, 40vw);
+    margin: 15px auto;
+  }
+  .hero-avatar-circle img {
+    max-width: min(200px, 32vw);
+    max-height: min(200px, 32vw);
+  }
+  .final-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
