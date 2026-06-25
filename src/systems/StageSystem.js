@@ -114,7 +114,6 @@ export default class StageSystem {
       playerLevel: expResult.level,
       playerLeveledUp: expResult.leveledUp,
       playerLevelsGained: expResult.levelsGained || 0,
-      playerStatusPointsGained: (expResult.levelsGained || 0) * 5,
       playerSkillPointsGained: (expResult.levelsGained || 0) * 1,
       heroXpGained
     };

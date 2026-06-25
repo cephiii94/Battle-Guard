@@ -10,18 +10,7 @@ export const defaultPlayerData = {
   unlockedSkillLevel: 1,
   selectedHeroId: 'guardian',
   selectedPetId: null,
-  // === RPG CLASS SYSTEM ===
-  // Possible values: 'Novice', 'Swordsman', 'Archer', 'Mage', 'Knight', 'Hunter', 'Wizard'
-  currentClass: 'Novice',
-  // Points awarded on level up (5 status points + 1 skill point per level)
-  statusPoints: 0,
   skillPoints: 0,
-  allocatedStats: {
-    strength: 0,  // +1.5 Damage per point
-    agility: 0,   // +1.5% Attack Speed, +1% Move Speed per point
-    intelligence: 0,  // +1 Armor, +1% CD Reduc, +0.5% Lifesteal per point
-  },
-  // === END RPG CLASS SYSTEM ===
   ownedEquipment: [
     'wooden-sword',
     'iron-sword',
@@ -217,14 +206,7 @@ function normalizePlayerData(playerData) {
       ...(safeData.tickets || {})
     },
     dailyAttempts,
-    // RPG Class System normalization
-    currentClass: safeData.currentClass || defaultPlayerData.currentClass,
-    statusPoints: Number.isFinite(safeData.statusPoints) ? safeData.statusPoints : 0,
     skillPoints: Number.isFinite(safeData.skillPoints) ? safeData.skillPoints : 0,
-    allocatedStats: {
-      ...defaultPlayerData.allocatedStats,
-      ...(safeData.allocatedStats || {})
-    },
     // Idle Offline Reward timestamp
     lastSavedTime: Number.isFinite(safeData.lastSavedTime) ? safeData.lastSavedTime : 0,
   };

@@ -76,26 +76,20 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
     // Only draw HP bar if damaged (less than 100% HP) to keep the screen clean
     if (this.hp >= this.maxHp) return;
 
-    const radius = 22; // half of displayWidth (44)
     const hpPercent = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1);
+    const barW = 40;
+    const barH = 4;
+    const startX = this.x - barW / 2;
+    const startY = this.y - 30; // Above monster head
 
-    // Dark red border background
-    this.hpBar.lineStyle(2.5, 0x450a0a, 0.65);
-    this.hpBar.strokeCircle(this.x, this.y, radius);
+    // 1. HP Background Bar (dark red fill)
+    this.hpBar.fillStyle(0x450a0a, 0.65);
+    this.hpBar.fillRect(startX, startY, barW, barH);
 
-    // Neon active HP border
+    // 2. Active HP Bar
     if (hpPercent > 0) {
-      this.hpBar.lineStyle(2.5, this.color, 0.9);
-      this.hpBar.beginPath();
-      this.hpBar.arc(
-        this.x,
-        this.y,
-        radius,
-        Phaser.Math.DegToRad(-90),
-        Phaser.Math.DegToRad(-90 + 360 * hpPercent),
-        false
-      );
-      this.hpBar.strokePath();
+      this.hpBar.fillStyle(this.color, 0.95);
+      this.hpBar.fillRect(startX, startY, barW * hpPercent, barH);
     }
   }
 

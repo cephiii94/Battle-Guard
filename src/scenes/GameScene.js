@@ -58,9 +58,7 @@ export default class GameScene extends Phaser.Scene {
       this.selectedHeroBaseStats, 
       this.equippedItems, 
       this.activeSkin, 
-      this.heroLevel, 
-      GameManager.get('allocatedStats'), 
-      GameManager.get('currentClass')
+      this.heroLevel
     );
     this.enemyDamageCooldown = 0;
     this.isStageFinished = false;
@@ -210,9 +208,7 @@ export default class GameScene extends Phaser.Scene {
       this.selectedHeroBaseStats,
       this.equippedItems,
       this.activeSkin,
-      this.heroLevel,
-      GameManager.get('allocatedStats'),
-      GameManager.get('currentClass')
+      this.heroLevel
     );
     const hpIncrease = nextStats.hp - this.finalStats.hp;
 

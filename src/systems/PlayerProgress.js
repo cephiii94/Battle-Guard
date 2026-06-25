@@ -30,21 +30,18 @@ export function addPlayerExp(scene, amount) {
     }
   }
 
-  let statusPoints = GameManager.get('statusPoints') || 0;
   let skillPoints = GameManager.get('skillPoints') || 0;
   if (levelsGained > 0) {
-    statusPoints += levelsGained * 5;
     skillPoints  += levelsGained * 1;
   }
 
   GameManager.setState({
     playerLevel: level,
     playerExp: exp,
-    statusPoints,
     skillPoints
   });
 
-  return { level, exp, leveledUp, levelsGained, statusPoints, skillPoints };
+  return { level, exp, leveledUp, levelsGained, skillPoints };
 }
 
 export function addPlayerMaterial(scene, materialId, amount) {
@@ -152,50 +149,27 @@ export function addHeroXP(scene, heroId, amount) {
   const heroLevels = GameManager.get('heroLevels') || {};
   const heroXP = GameManager.get('heroXP') || {};
 
-  const currentLevel = heroLevels[heroId] || 1;
-  const currentXP = heroXP[heroId] || 0;
+  let currentLevel = heroLevels[heroId] || 1;
+  let nextXP = (heroXP[heroId] || 0) + amount;
   
-  const nextXP = currentXP + amount;
-  const nextHeroXP = { ...heroXP, [heroId]: nextXP };
-  
-  GameManager.set('heroXP', nextHeroXP);
-  return nextXP;
-}
-
-export function setCurrentClass(scene, className) {
-  const currentClass = GameManager.get('currentClass');
-  
-  if (currentClass && currentClass !== className) {
-    const allocated = GameManager.get('allocatedStats') || {};
-    const refundedPoints = (allocated.strength || 0) + (allocated.agility || 0) + (allocated.intelligence || 0);
-    
-    if (refundedPoints > 0) {
-      const statusPoints = (GameManager.get('statusPoints') || 0) + refundedPoints;
-      GameManager.setState({
-        statusPoints,
-        allocatedStats: { strength: 0, agility: 0, intelligence: 0 }
-      });
+  while (true) {
+    const requiredXP = currentLevel * 100;
+    if (nextXP >= requiredXP) {
+      nextXP -= requiredXP;
+      currentLevel += 1;
+    } else {
+      break;
     }
   }
-
-  GameManager.set('currentClass', className);
-  return className;
-}
-
-export function allocateStatPoint(scene, stat) {
-  const statusPoints = GameManager.get('statusPoints') || 0;
-  if (statusPoints <= 0) return { success: false };
-
-  const allocatedStats = { ...(GameManager.get('allocatedStats') || { strength: 0, agility: 0, intelligence: 0 }) };
-  allocatedStats[stat] = (allocatedStats[stat] || 0) + 1;
-  const newStatusPoints = statusPoints - 1;
-
+  
+  const nextHeroXP = { ...heroXP, [heroId]: nextXP };
+  const nextHeroLevels = { ...heroLevels, [heroId]: currentLevel };
+  
   GameManager.setState({
-    statusPoints: newStatusPoints,
-    allocatedStats
+    heroXP: nextHeroXP,
+    heroLevels: nextHeroLevels
   });
-
-  return { success: true, allocatedStats, statusPoints: newStatusPoints };
+  return nextXP;
 }
 
 export function spendSkillPoint(scene) {

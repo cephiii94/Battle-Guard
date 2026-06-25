@@ -73,26 +73,20 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
     if (!this.hpBar) return;
     this.hpBar.clear();
 
-    const radius = 38; // half of displayWidth (76)
     const hpPercent = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1);
+    const barW = 80;
+    const barH = 8;
+    const startX = this.x - barW / 2;
+    const startY = this.y - 50; // Above boss head
 
-    // Deep purple border background
-    this.hpBar.lineStyle(3.5, 0x3b0764, 0.7);
-    this.hpBar.strokeCircle(this.x, this.y, radius);
+    // 1. HP Background Bar (dark purple fill)
+    this.hpBar.fillStyle(0x3b0764, 0.7);
+    this.hpBar.fillRect(startX, startY, barW, barH);
 
-    // Bright magenta active HP border
+    // 2. Active HP Bar
     if (hpPercent > 0) {
-      this.hpBar.lineStyle(3.5, 0xd946ef, 0.95);
-      this.hpBar.beginPath();
-      this.hpBar.arc(
-        this.x,
-        this.y,
-        radius,
-        Phaser.Math.DegToRad(-90),
-        Phaser.Math.DegToRad(-90 + 360 * hpPercent),
-        false
-      );
-      this.hpBar.strokePath();
+      this.hpBar.fillStyle(0xd946ef, 0.95);
+      this.hpBar.fillRect(startX, startY, barW * hpPercent, barH);
     }
   }
 

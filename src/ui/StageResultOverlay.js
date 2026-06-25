@@ -68,7 +68,7 @@ export default class StageResultOverlay {
     if (result.playerLeveledUp && result.playerLevelsGained > 0) {
       levelUpHtml += `
         <div class="stage-level-up-badge">
-          🎉 LEVEL UP! x${result.playerLevelsGained}  —  +${result.playerStatusPointsGained} Status Pts  +${result.playerSkillPointsGained} Skill Pt
+          🎉 LEVEL UP! x${result.playerLevelsGained}  —  +${result.playerSkillPointsGained} Skill Pt
         </div>
       `;
       levelUpHtml += `

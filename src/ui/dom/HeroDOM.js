@@ -1,4 +1,4 @@
-import { getPlayerProgress, allocateStatPoint } from '../../systems/PlayerProgress.js';
+import { getPlayerProgress, addPlayerGold } from '../../systems/PlayerProgress.js';
 import { GameManager } from '../../systems/GameManager.js';
 import { getSelectedHero, getSelectedHeroBaseStats } from '../../systems/HeroSelection.js';
 import { calculateFinalStats, MAX_HERO_LEVEL } from '../../systems/HeroStats.js';
@@ -24,43 +24,21 @@ export class HeroDOM {
         </div>
         
         <div class="hero-body">
-          <!-- LEFT: Class & Stats Allocation -->
-          <div class="hero-left">
-            <div class="hero-class-panel">
-              <h3>Current Class</h3>
-              <div class="hero-class-name" id="hero-class-name">Novice</div>
-              <div class="hero-level-text" id="hero-level-text">Level 1</div>
+          <!-- LEFT: Avatar & Info -->
+          <div class="hero-left" style="align-items: center; justify-content: center; gap: 20px;">
+            <div class="hero-class-panel" style="width: 100%; box-sizing: border-box;">
+              <h3 id="hero-name-title" style="font-size: 24px; font-weight: 900; color: #4a3f35; margin: 0 0 5px 0;">Hero</h3>
+              <div class="hero-level-text" id="hero-level-text" style="margin-bottom: 0;">Level 1</div>
             </div>
             
-            <div class="hero-alloc-panel">
-              <div class="alloc-header">
-                <h3>Attributes</h3>
-                <div class="stat-points" id="hero-stat-points">0 Pts</div>
-              </div>
-              
-              <div class="alloc-row">
-                <span class="alloc-name" title="Attack, Max HP, HP Regen">STR</span>
-                <span class="alloc-val" id="val-str">0</span>
-                <button class="alloc-btn" id="btn-add-str">+</button>
-              </div>
-              <div class="alloc-row">
-                <span class="alloc-name" title="Atk Speed, Move Speed, Crit, Evasion">AGI</span>
-                <span class="alloc-val" id="val-agi">0</span>
-                <button class="alloc-btn" id="btn-add-agi">+</button>
-              </div>
-              <div class="alloc-row">
-                <span class="alloc-name" title="CD Reduc, Lifesteal, Defense">INT</span>
-                <span class="alloc-val" id="val-int">0</span>
-                <button class="alloc-btn" id="btn-add-int">+</button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- CENTER: Avatar -->
-          <div class="hero-center">
             <div class="hero-avatar-circle">
               <img id="hero-avatar-img" src="" alt="Hero" />
             </div>
+
+            <button class="hero-upgrade-btn" id="hero-upgrade-btn">
+              UPGRADE<br>
+              <span id="hero-upgrade-cost" style="color: #f6be4f; font-size: 13px; font-weight: 900;">💰 0 Gold</span>
+            </button>
           </div>
           
           <!-- RIGHT: Final Stats Summary -->
@@ -89,23 +67,58 @@ export class HeroDOM {
       this.domManager.closeCurrent();
     });
 
-    // Bind Stat Allocation Buttons
-    const bindAddStat = (statName, btnId) => {
-      const btn = wrapper.querySelector(btnId);
-      btn.addEventListener('click', () => {
-        const statusPoints = GameManager.get('statusPoints') || 0;
-        if (statusPoints > 0) {
-          allocateStatPoint(this.scene, statName);
-          this.scene.soundManager?.playSFX(this.scene, 'click');
-          this.scene.refreshBottomStats(); // update main menu UI if needed
-          this.render(); // re-render DOM
-        }
-      });
-    };
+    // Bind Upgrade button
+    wrapper.querySelector('#hero-upgrade-btn').addEventListener('click', () => {
+      const selectedHero = getSelectedHero(this.scene);
+      const heroLevels = GameManager.get('heroLevels') || {};
+      const heroXP = GameManager.get('heroXP') || {};
+      
+      const heroLevel = heroLevels[selectedHero.id] || 1;
+      const currentXP = heroXP[selectedHero.id] || 0;
+      const xpRequired = heroLevel * 100;
+      const xpRemaining = Math.max(0, xpRequired - currentXP);
+      const upgradeCost = xpRemaining * heroLevel;
 
-    bindAddStat('strength', '#btn-add-str');
-    bindAddStat('agility', '#btn-add-agi');
-    bindAddStat('intelligence', '#btn-add-int');
+      const currentGold = GameManager.get('gold') || 0;
+      if (currentGold < upgradeCost) {
+        this.scene.soundManager?.playSFX(this.scene, 'hit');
+        const btn = wrapper.querySelector('#hero-upgrade-btn');
+        const oldContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span style="color: #ef4444; font-size: 13px; font-weight: 900;">Not enough gold!</span>`;
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = oldContent;
+        }, 1500);
+        return;
+      }
+
+      // Execute Upgrade
+      addPlayerGold(this.scene, -upgradeCost);
+      
+      const nextLevel = heroLevel + 1;
+      heroLevels[selectedHero.id] = nextLevel;
+      heroXP[selectedHero.id] = 0;
+      
+      GameManager.setState({
+        heroLevels,
+        heroXP
+      });
+
+      this.scene.soundManager?.playSFX(this.scene, 'upgrade');
+      
+      // Update Main Menu Scene textures/texts if active
+      this.scene.refreshHeroLoadout?.();
+      this.scene.refreshBottomStats?.();
+      if (this.scene.goldText) {
+        this.scene.goldText.setText(this.scene.formatCurrency(GameManager.get('gold') || 0));
+      }
+      if (this.scene.heroLevelText) {
+        this.scene.heroLevelText.setText(`Lv. ${nextLevel}`);
+      }
+
+      this.render();
+    });
 
     this.render();
   }
@@ -120,68 +133,25 @@ export class HeroDOM {
     
     const heroLevels = GameManager.get('heroLevels') || {};
     const heroLevel = heroLevels[selectedHero.id] || 1;
+    const finalHeroStats = calculateFinalStats(selectedHeroBaseStats, equippedItems, activeSkin, heroLevel);
+
+    const heroXP = GameManager.get('heroXP') || {};
+    const currentXP = heroXP[selectedHero.id] || 0;
+    const xpRequired = heroLevel * 100;
+    const xpRemaining = Math.max(0, xpRequired - currentXP);
+    const upgradeCost = xpRemaining * heroLevel;
     
-    const allocatedStats = GameManager.get('allocatedStats') || { strength: 0, agility: 0, intelligence: 0 };
-    const currentClass = GameManager.get('currentClass') || 'Novice';
-    const finalHeroStats = calculateFinalStats(selectedHeroBaseStats, equippedItems, activeSkin, heroLevel, allocatedStats, currentClass);
-    
-    const statusPoints = GameManager.get('statusPoints') || 0;
-    const playerLevel = GameManager.get('playerLevel') || 1;
+    // 2. Update Left Panel (Info & Avatar)
+    this.wrapper.querySelector('#hero-name-title').innerText = selectedHero.name;
+    this.wrapper.querySelector('#hero-level-text').innerText = `Level ${heroLevel}`;
 
-    // 2. Update Left Panel (Class & Allocation)
-    this.wrapper.querySelector('#hero-class-name').innerText = currentClass;
-    this.wrapper.querySelector('#hero-level-text').innerText = `Player Level ${playerLevel} (Hero Lv ${heroLevel})`;
-    this.wrapper.querySelector('#hero-stat-points').innerText = `${statusPoints} Pts`;
-
-    this.wrapper.querySelector('#val-str').innerText = allocatedStats.strength;
-    this.wrapper.querySelector('#val-agi').innerText = allocatedStats.agility;
-    this.wrapper.querySelector('#val-int').innerText = allocatedStats.intelligence || 0;
-
-    // Highlight Main Attribute
-    const agiClasses = ['Archer', 'Hunter', 'Assassin', 'Ranger'];
-    const intClasses = ['Mage', 'Wizard', 'Summoner'];
-    
-    let mainAttr = 'str';
-    if (agiClasses.includes(currentClass)) mainAttr = 'agi';
-    if (intClasses.includes(currentClass)) mainAttr = 'int';
-
-    ['str', 'agi', 'int'].forEach(attr => {
-      const row = this.wrapper.querySelector(`#val-${attr}`).parentElement;
-      const nameSpan = row.querySelector('.alloc-name');
-      row.classList.remove('main-attribute-highlight');
-      
-      // Reset tooltips
-      if (attr === 'str') nameSpan.title = "Max HP, HP Regen";
-      if (attr === 'agi') nameSpan.title = "Atk Speed, Move Speed, Crit, Evasion";
-      if (attr === 'int') nameSpan.title = "CD Reduc, Lifesteal, Defense";
-      nameSpan.innerText = attr.toUpperCase();
-      
-      if (attr === mainAttr) {
-        row.classList.add('main-attribute-highlight');
-        nameSpan.title = "Main Attribute (Increases Attack Damage) + " + nameSpan.title;
-        nameSpan.innerText = `🗡️ ${attr.toUpperCase()}`;
-      }
-    });
-
-    const btnStr = this.wrapper.querySelector('#btn-add-str');
-    const btnAgi = this.wrapper.querySelector('#btn-add-agi');
-    const btnInt = this.wrapper.querySelector('#btn-add-int');
-
-    if (statusPoints <= 0) {
-      btnStr.disabled = true;
-      btnAgi.disabled = true;
-      btnInt.disabled = true;
-    } else {
-      btnStr.disabled = false;
-      btnAgi.disabled = false;
-      btnInt.disabled = false;
-    }
-
-    // 3. Update Center Panel (Avatar)
     const heroImg = this.wrapper.querySelector('#hero-avatar-img');
     heroImg.src = activeSkin?.assetPath || selectedHero.assetPath;
 
-    // 4. Update Right Panel (Final Stats)
+    // Update upgrade button cost
+    this.wrapper.querySelector('#hero-upgrade-cost').innerText = `💰 ${upgradeCost} Gold`;
+
+    // 3. Update Right Panel (Final Stats)
     const statsGrid = this.wrapper.querySelector('#final-stats-grid');
     const secStatsGrid = this.wrapper.querySelector('#secondary-stats-grid');
     

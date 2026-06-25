@@ -212,13 +212,16 @@ export default class Player extends Phaser.GameObjects.Container {
     this.hpBar.clear();
 
     const hpPercent = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1);
-    const hpRadius = 31;
+    const barW = 60;
+    const barH = 6;
+    const startX = -barW / 2;
+    const startY = -42; // Above player head
 
-    // Faint dark border background
-    this.hpBar.lineStyle(3.5, 0x1e293b, 0.7);
-    this.hpBar.strokeCircle(0, 0, hpRadius);
+    // 1. HP Background Bar (dark fill)
+    this.hpBar.fillStyle(0x1e293b, 0.7);
+    this.hpBar.fillRect(startX, startY, barW, barH);
 
-    // Glowing dynamic active HP border
+    // 2. Active HP Bar
     if (hpPercent > 0) {
       let hpColor = 0x10b981; // Green by default
       if (hpPercent < 0.3) {
@@ -227,40 +230,23 @@ export default class Player extends Phaser.GameObjects.Container {
         hpColor = 0xf59e0b; // Yellow when medium
       }
 
-      this.hpBar.lineStyle(3.5, hpColor, 0.95);
-      this.hpBar.beginPath();
-      this.hpBar.arc(
-        0,
-        0,
-        hpRadius,
-        Phaser.Math.DegToRad(-90),
-        Phaser.Math.DegToRad(-90 + 360 * hpPercent),
-        false
-      );
-      this.hpBar.strokePath();
+      this.hpBar.fillStyle(hpColor, 0.95);
+      this.hpBar.fillRect(startX, startY, barW * hpPercent, barH);
     }
 
-    // Glowing concentric Shield border (slightly wider than HP bar)
+    // 3. Shield Bar (only if maxShield > 0)
     if (this.maxShield > 0) {
       const shieldPercent = Phaser.Math.Clamp(this.shield / this.maxShield, 0, 1);
-      const shieldRadius = 36;
+      const shieldBarH = 4;
+      const shieldStartY = startY - 7; // Stacked above HP bar
 
-      // Faint dark border background for shield
-      this.hpBar.lineStyle(2.5, 0x1e293b, 0.65);
-      this.hpBar.strokeCircle(0, 0, shieldRadius);
+      // Shield Background Bar
+      this.hpBar.fillStyle(0x1e293b, 0.65);
+      this.hpBar.fillRect(startX, shieldStartY, barW, shieldBarH);
 
       if (shieldPercent > 0) {
-        this.hpBar.lineStyle(2.5, 0x00d6ff, 0.95);
-        this.hpBar.beginPath();
-        this.hpBar.arc(
-          0,
-          0,
-          shieldRadius,
-          Phaser.Math.DegToRad(-90),
-          Phaser.Math.DegToRad(-90 + 360 * shieldPercent),
-          false
-        );
-        this.hpBar.strokePath();
+        this.hpBar.fillStyle(0x00d6ff, 0.95);
+        this.hpBar.fillRect(startX, shieldStartY, barW * shieldPercent, shieldBarH);
       }
     }
   }
@@ -588,21 +574,19 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   // ============================================================
-  // RPG CLASS SYSTEM — Floating Weapon
+  // ROGUELITE — Floating Weapon Based on Selected Hero
   // ============================================================
 
   /**
-   * Returns the weapon emoji and style for a given class name.
+   * Returns the weapon emoji and style for a given hero ID.
    */
-  static getClassWeaponConfig(className) {
-    switch (className) {
-      case 'Swordsman': return { emoji: '🗡️', fontSize: '20px', type: 'melee',  shield: false };
-      case 'Knight':    return { emoji: '⚔️', fontSize: '22px', type: 'melee',  shield: true  };
-      case 'Archer':    return { emoji: '🏹', fontSize: '20px', type: 'ranged', shield: false };
-      case 'Hunter':    return { emoji: '🏹', fontSize: '22px', type: 'ranged', shield: false };
-      case 'Mage':      return { emoji: '🪄', fontSize: '20px', type: 'magic',  shield: false };
-      case 'Wizard':    return { emoji: '🔮', fontSize: '22px', type: 'magic',  shield: false };
-      default:          return { emoji: '🗡️', fontSize: '16px', type: 'melee',  shield: false }; // Novice
+  static getHeroWeaponConfig(heroId) {
+    switch (heroId) {
+      case 'guardian': return { emoji: '⚔️', fontSize: '22px', type: 'melee',  shield: true  };
+      case 'ranger':   return { emoji: '🏹', fontSize: '20px', type: 'ranged', shield: false };
+      case 'mage':     return { emoji: '🪄', fontSize: '20px', type: 'magic',  shield: false };
+      case 'antman':   return { emoji: '🗡️', fontSize: '18px', type: 'melee',  shield: false };
+      default:         return { emoji: '🗡️', fontSize: '16px', type: 'melee',  shield: false };
     }
   }
 
@@ -614,8 +598,8 @@ export default class Player extends Phaser.GameObjects.Container {
     if (this.floatingWeapon) { this.floatingWeapon.destroy(); this.floatingWeapon = null; }
     if (this.floatingShield) { this.floatingShield.destroy(); this.floatingShield = null; }
 
-    const className = GameManager.get('currentClass') || 'Novice';
-    const config = Player.getClassWeaponConfig(className);
+    const heroId = scene.selectedHero?.id || GameManager.get('selectedHeroId') || 'guardian';
+    const config = Player.getHeroWeaponConfig(heroId);
     this._weaponType = config.type;
 
     // Create weapon emoji text object at orbit position
@@ -624,7 +608,7 @@ export default class Player extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
     this.add(this.floatingWeapon);
 
-    // Knight gets an orbiting shield as well
+    // Guardian/Shield heroes get an orbiting shield as well
     if (config.shield) {
       this.floatingShield = scene.add.text(-this.weaponOrbitRadius, 0, '🛡️', {
         fontSize: '18px',

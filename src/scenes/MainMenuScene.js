@@ -601,104 +601,7 @@ export default class MainMenuScene extends Phaser.Scene {
     this.scene.restart();
   }
 
-  drawHeroUpgradeButton(cx, y) {
-    if (this.upgradeContainer) {
-      this.upgradeContainer.destroy();
-    }
 
-    const upgradeCost = this.heroLevel * 150;
-    const container = this.add.container(cx, y);
-    
-    const bg = this.add.rectangle(0, 0, 160, 42, 0x1d4ed8, 0.9)
-      .setStrokeStyle(2, 0x60a5fa, 1)
-      .setInteractive({ useHandCursor: true });
-      
-    const btnText = this.add.text(0, -9, 'UPGRADE', {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '12px',
-      color: UI.white,
-      fontStyle: '900',
-    }).setOrigin(0.5);
-    
-    const goldIcon = this.add.image(-28, 11, 'ui-icon-gold').setDisplaySize(20, 20);
-    const costText = this.add.text(-12, 11, this.formatCurrency(upgradeCost), {
-      fontFamily: 'Outfit, Arial, sans-serif',
-      fontSize: '13px',
-      color: UI.yellow,
-      fontStyle: '900',
-    }).setOrigin(0, 0.5);
-    
-    container.add([bg, btnText, goldIcon, costText]);
-    
-    bg.on('pointerover', () => {
-      bg.setFillStyle(0x2563eb, 1);
-      bg.setStrokeStyle(2.5, 0x93c5fd, 1);
-      soundManager.playSFX(this, 'hover');
-    });
-    
-    bg.on('pointerout', () => {
-      bg.setFillStyle(0x1d4ed8, 0.9);
-      bg.setStrokeStyle(2, 0x60a5fa, 1);
-    });
-    
-    bg.on('pointerdown', () => {
-      bg.setScale(0.96);
-    });
-    
-    bg.on('pointerup', () => {
-      bg.setScale(1);
-      this.handleHeroUpgrade(upgradeCost);
-    });
-
-    this.upgradeContainer = container;
-    if (this.inventoryTab && this.inventoryTab.isActive()) {
-      this.inventoryTab.add(container);
-    }
-  }
-
-  handleHeroUpgrade(cost) {
-    const currentGold = this.playerProgress.gold;
-    if (currentGold < cost) {
-      soundManager.playSFX(this, 'hit');
-      this.showUpgradeFeedback(false, 'Not enough gold!');
-      return;
-    }
-
-    soundManager.playSFX(this, 'upgrade');
-
-    const nextGold = addPlayerGold(this, -cost);
-    this.playerProgress.gold = nextGold;
-    
-    const nextLevel = this.heroLevel + 1;
-    
-    const heroLevels = GameManager.get('heroLevels') || {};
-    heroLevels[this.selectedHero.id] = nextLevel;
-    GameManager.set('heroLevels', heroLevels);
-
-    this.refreshHeroLoadout();
-    this.refreshBottomStats();
-    
-    if (this.goldText) {
-      this.goldText.setText(this.formatCurrency(nextGold));
-    }
-    
-    if (this.heroLevelText) {
-      this.heroLevelText.setText(`Lv. ${this.heroLevel}`);
-    }
-    
-    if (this.inventoryTab && this.inventoryTab.isActive()) {
-      this.drawHeroUpgradeButton(520, 315);
-      // Redraw inventory tab to update stats panel values instantly
-      this.showInventoryTab();
-    } else {
-      if (this.upgradeContainer) {
-        this.upgradeContainer.destroy();
-        this.upgradeContainer = null;
-      }
-    }
-    
-    this.showUpgradeFeedback(true, 'Level Up!');
-  }
 
   showUpgradeFeedback(success, message) {
     const cx = this.scale.width / 2;
@@ -739,7 +642,7 @@ export default class MainMenuScene extends Phaser.Scene {
     const heroLevels = GameManager.get('heroLevels') || {};
     this.heroLevel = heroLevels[this.selectedHero.id] || 1;
     this.equippedItems = getEquippedItems(this);
-    this.finalHeroStats = calculateFinalStats(this.selectedHeroBaseStats, this.equippedItems, this.activeSkin, this.heroLevel, GameManager.get('allocatedStats'), GameManager.get('currentClass'));
+    this.finalHeroStats = calculateFinalStats(this.selectedHeroBaseStats, this.equippedItems, this.activeSkin, this.heroLevel);
   }
 
   refreshBottomStats() {
@@ -752,8 +655,7 @@ export default class MainMenuScene extends Phaser.Scene {
     this.bottomStatTexts.attackSpeed.setText(this.finalHeroStats.attackSpeed);
 
     if (this.heroClassText) {
-      const currentClass = GameManager.get('currentClass') || 'Novice';
-      this.heroClassText.setText(currentClass.toUpperCase());
+      this.heroClassText.setText(this.selectedHero.name.toUpperCase());
     }
 
     if (this.heroPortrait) {
@@ -766,14 +668,7 @@ export default class MainMenuScene extends Phaser.Scene {
       this.heroLevelText.setText(`Lv. ${this.heroLevel}`);
     }
 
-    if (this.inventoryTab && this.inventoryTab.isActive()) {
-      this.drawHeroUpgradeButton(520, 315);
-    } else {
-      if (this.upgradeContainer) {
-        this.upgradeContainer.destroy();
-        this.upgradeContainer = null;
-      }
-    }
+
 
     this.drawHeroFrame(this.scale.width / 2, this.scale.height / 2 + 30);
   }
