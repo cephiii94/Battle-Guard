@@ -5,7 +5,9 @@ export const EQUIPMENT_SLOTS = ['weapon', 'armor', 'accessory'];
 
 export function getEquipmentInventory(scene) {
   const ownedEquipment = GameManager.get('ownedEquipment') || [];
-  const equippedItems = GameManager.get('equippedItems') || { weapon: null, armor: null, accessory: null };
+  const allEquipped = GameManager.get('equippedItems') || {};
+  const selectedHeroId = GameManager.get('selectedHeroId') || 'guardian';
+  const equippedItems = allEquipped[selectedHeroId] || { weapon: null, armor: null, accessory: null };
   return { items: ownedEquipment, equipped: equippedItems };
 }
 
@@ -32,6 +34,12 @@ export function equipItem(scene, itemId) {
   const item = getEquipmentById(itemId);
 
   if (!item) {
+    return getEquipmentInventory(scene);
+  }
+
+  const selectedHeroId = GameManager.get('selectedHeroId') || 'guardian';
+  if (item.allowedHeroes && !item.allowedHeroes.includes(selectedHeroId)) {
+    // Incompatible item for the active hero, reject equipping
     return getEquipmentInventory(scene);
   }
 
@@ -115,7 +123,8 @@ export function getStatLabel(statName) {
     armor: 'Armor',
     lifesteal: 'Lifesteal',
     evasion: 'Evasion',
-    cooldownReduction: 'CDR'
+    cooldownReduction: 'CDR',
+    attackRange: 'Range'
   };
 
   return labels[statName] || statName;
@@ -133,8 +142,12 @@ function formatSignedValue(statName, value) {
 }
 
 function persistEquipment(inventory) {
+  const allEquipped = GameManager.get('equippedItems') || {};
+  const selectedHeroId = GameManager.get('selectedHeroId') || 'guardian';
+  allEquipped[selectedHeroId] = inventory.equipped;
+
   GameManager.setState({
     ownedEquipment: inventory.items,
-    equippedItems: inventory.equipped
+    equippedItems: allEquipped
   });
 }

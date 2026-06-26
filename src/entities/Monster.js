@@ -94,6 +94,10 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 
   destroy(fromScene) {
+    if (this.burnTimer) {
+      this.burnTimer.destroy();
+      this.burnTimer = null;
+    }
     if (this.hpBar) {
       this.hpBar.destroy();
     }

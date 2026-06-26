@@ -5,8 +5,10 @@ import {
   getEquipmentById,
   equipItem, 
   unequipSlot, 
-  EQUIPMENT_SLOTS 
+  EQUIPMENT_SLOTS,
+  getStatLabel
 } from '../../systems/EquipmentInventory.js';
+import { getSelectedHero } from '../../systems/HeroSelection.js';
 import equipmentSets from '../../data/equipmentSets.js';
 
 export class InventoryDOM {
@@ -190,11 +192,18 @@ export class InventoryDOM {
       return eq && eq.id === item.id;
     });
 
+    const selectedHero = getSelectedHero(this.scene);
+    const isCompatible = !item.allowedHeroes || item.allowedHeroes.includes(selectedHero.id);
+
     let actionBtnHTML = '';
     if (isEquipped) {
       actionBtnHTML = `<button class="inv-action-btn unequip" id="btn-unequip">UNEQUIP</button>`;
     } else {
-      actionBtnHTML = `<button class="inv-action-btn equip" id="btn-equip">EQUIP</button>`;
+      if (isCompatible) {
+        actionBtnHTML = `<button class="inv-action-btn equip" id="btn-equip">EQUIP</button>`;
+      } else {
+        actionBtnHTML = `<button class="inv-action-btn equip disabled" id="btn-equip" disabled style="background-color: #ef4444; border-color: #ef4444; cursor: not-allowed; opacity: 0.7;">TIDAK COCOK</button>`;
+      }
     }
 
     const rarity = item.rarity || 'common';
@@ -243,22 +252,45 @@ export class InventoryDOM {
       `;
     }
 
+    // Hero name map for readability
+    const heroNameMap = {
+      guardian: 'Guardian',
+      ranger: 'Ranger',
+      mage: 'Mage',
+      antman: 'Ant-Man'
+    };
+
     detail.innerHTML = `
       <div class="detail-header">
         <div class="item-icon-text large">${item.icon || '?'}</div>
         <div>
           <h3>${item.name}</h3>
           <p class="rarity-${rarity} text-sm">${rarity.toUpperCase()} ${slot.toUpperCase()}</p>
+          ${item.allowedHeroes ? `
+            <p class="allowed-heroes-text" style="font-size: 11px; color: #ef4444; font-weight: 900; margin-top: 4px;">
+              Hanya untuk: ${item.allowedHeroes.map(id => heroNameMap[id] || id).join(', ')}
+            </p>
+          ` : ''}
         </div>
       </div>
       <p class="detail-desc">${desc}</p>
       <div class="detail-stats">
-        ${Object.keys(item.bonus || {}).map(stat => `
-          <div class="stat-row">
-            <span>${stat}</span>
-            <span class="stat-val">+${item.bonus[stat]}</span>
-          </div>
-        `).join('')}
+        ${Object.entries(item.bonus || {}).map(([stat, val]) => {
+          let valStr = val;
+          if (stat === 'criticalChance' || stat === 'lifesteal' || stat === 'evasion' || stat === 'cooldownReduction') {
+            valStr = `+${Math.round(val * 100)}%`;
+          } else if (stat === 'healthRegen') {
+            valStr = `+${val}/s`;
+          } else {
+            valStr = `+${val}`;
+          }
+          return `
+            <div class="stat-row">
+              <span>${getStatLabel(stat)}</span>
+              <span class="stat-val">${valStr}</span>
+            </div>
+          `;
+        }).join('')}
       </div>
       ${setInfoHtml}
       <div class="detail-actions">

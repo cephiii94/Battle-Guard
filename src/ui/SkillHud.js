@@ -206,10 +206,11 @@ export default class SkillHud {
     t(this.scene.add.image(tx + 22, iconCY, skill.assetKey).setDisplaySize(30, 30));
 
     // Skill name
-    t(this.scene.add.text(tx + 42, ty + 10, skill.name.toUpperCase(), {
+    const titleText = skill.level >= 6 ? `${skill.name.toUpperCase()} (ULTIMATE)` : skill.name.toUpperCase();
+    t(this.scene.add.text(tx + 42, ty + 10, titleText, {
       fontFamily: '"Trebuchet MS", Arial, sans-serif',
       fontSize: '13px',
-      color: '#f8fafc',
+      color: skill.level >= 6 ? '#fb923c' : '#f8fafc',
       fontStyle: 'bold',
       stroke: '#020617',
       strokeThickness: 2
@@ -292,6 +293,12 @@ export default class SkillHud {
       case 'shield':      return `Shield: ${stats.shield} HP`;
       case 'attack-range':return `Attack Range: +${(stats.range * 100).toFixed(0)}%`;
       case 'knock':       return `Knockback Chance: ${(stats.chance * 100).toFixed(0)}%`;
+      case 'fireball':
+        return `DMG ${stats.damage} (+${stats.burnDamage}/s burn)  CD ${(stats.cooldown / 1000).toFixed(1)}s  RNG ${stats.range}`;
+      case 'multi-shot':
+        return `DMG ${stats.damage}  CD ${(stats.cooldown / 1000).toFixed(1)}s  TGT ${stats.targets}`;
+      case 'lightning-strike':
+        return `DMG ${stats.damage}  CD ${(stats.cooldown / 1000).toFixed(1)}s  TGT ${stats.targets}  RNG ${stats.range}`;
       default:
         if (stats.damage !== undefined)
           return `DMG ${stats.damage}  CD ${(stats.cooldown / 1000).toFixed(1)}s  RNG ${stats.range}`;

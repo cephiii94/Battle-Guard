@@ -149,7 +149,10 @@ export default class SkillChoicePopup {
   }
 
   getChoiceTitle(skill) {
-    const action = skill.level > 0 ? `LEVEL ${skill.level + 1}` : 'UNLOCK';
+    let action = skill.level > 0 ? `LEVEL ${skill.level + 1}` : 'UNLOCK';
+    if (skill.level === 5) {
+      action = 'ULTIMATE';
+    }
     return `${skill.name.toUpperCase()}  ${action}`;
   }
 

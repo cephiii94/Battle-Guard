@@ -65,7 +65,7 @@ const synths = {
     osc.frequency.setValueAtTime(600, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.08);
     
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.setValueAtTime(0.50, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
     
     osc.start();
@@ -85,7 +85,7 @@ const synths = {
     osc.frequency.setValueAtTime(800, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.08);
     
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
     
     osc.start();
@@ -111,7 +111,7 @@ const synths = {
       osc.frequency.setValueAtTime(freq, startTime);
       osc.frequency.exponentialRampToValueAtTime(freq * 1.05, startTime + duration);
       
-      gain.gain.setValueAtTime(0.12, startTime);
+      gain.gain.setValueAtTime(0.45, startTime);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
       
       osc.start(startTime);
@@ -132,7 +132,7 @@ const synths = {
     osc.frequency.setValueAtTime(750, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.07);
     
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
     
     osc.start();
@@ -152,7 +152,7 @@ const synths = {
     osc.frequency.setValueAtTime(180, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1);
     
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.setValueAtTime(0.45, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
     
     osc.start();
@@ -172,7 +172,7 @@ const synths = {
     osc.frequency.setValueAtTime(260, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.22);
     
-    gain.gain.setValueAtTime(0.14, ctx.currentTime);
+    gain.gain.setValueAtTime(0.55, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
     
     osc.start();
@@ -192,7 +192,7 @@ const synths = {
     osc.frequency.setValueAtTime(150, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.18);
     
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.setValueAtTime(0.50, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
     
     osc.start();
@@ -217,7 +217,7 @@ const synths = {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, startTime);
       
-      gain.gain.setValueAtTime(0.1, startTime);
+      gain.gain.setValueAtTime(0.45, startTime);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
       
       osc.start(startTime);
@@ -243,7 +243,7 @@ const synths = {
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(freq, startTime);
       
-      gain.gain.setValueAtTime(0.12, startTime);
+      gain.gain.setValueAtTime(0.50, startTime);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
       
       osc.start(startTime);

@@ -207,6 +207,19 @@ export default class CombatSystem {
     }
   }
 
+  applyDotDamage(monster, damage, textColor = '#f97316') {
+    if (!monster.active || monster.isDying || monster.isDead) {
+      return;
+    }
+
+    monster.hp -= damage;
+    this.showDamageText(monster, damage, false, textColor);
+
+    if (monster.hp <= 0) {
+      this.killMonster(monster);
+    }
+  }
+
   applyKnockback(monster, distance) {
     if (!monster.body) return;
     const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, monster.x, monster.y);
@@ -276,11 +289,11 @@ export default class CombatSystem {
     return false; // not dodged
   }
 
-  showDamageText(monster, damage, isCritical = false) {
+  showDamageText(monster, damage, isCritical = false, customColor = null) {
     const damageText = this.scene.add.text(monster.x, monster.y - 34, `-${damage}`, {
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: isCritical ? '28px' : '22px',
-      color: isCritical ? '#ef4444' : '#facc15', // Crimson for critical hits, Gold for standard
+      color: customColor || (isCritical ? '#ef4444' : '#facc15'), // Crimson for critical hits, Gold for standard
       fontStyle: 'bold',
       stroke: '#111827',
       strokeThickness: isCritical ? 6 : 4

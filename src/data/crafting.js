@@ -51,6 +51,62 @@ const craftingRecipes = [
       'magic-gem': 10,
       'dragon-scale': 1
     }
+  },
+  // --- BOW RECIPES ---
+  {
+    resultItemId: 'wooden-bow',
+    name: 'Wooden Bow',
+    costGold: 200,
+    materials: {
+      'iron-ore': 2
+    }
+  },
+  {
+    resultItemId: 'composite-bow',
+    name: 'Composite Bow',
+    costGold: 1000,
+    materials: {
+      'iron-ore': 6,
+      'magic-gem': 2
+    }
+  },
+  {
+    resultItemId: 'phantom-bow',
+    name: 'Phantom Bow',
+    costGold: 3500,
+    materials: {
+      'iron-ore': 12,
+      'magic-gem': 6,
+      'dragon-scale': 3
+    }
+  },
+  // --- STAFF RECIPES ---
+  {
+    resultItemId: 'apprentice-staff',
+    name: 'Apprentice Staff',
+    costGold: 250,
+    materials: {
+      'magic-gem': 1
+    }
+  },
+  {
+    resultItemId: 'scholar-staff',
+    name: 'Scholar Staff',
+    costGold: 1200,
+    materials: {
+      'iron-ore': 4,
+      'magic-gem': 4
+    }
+  },
+  {
+    resultItemId: 'archmage-staff',
+    name: 'Archmage Staff',
+    costGold: 3800,
+    materials: {
+      'iron-ore': 10,
+      'magic-gem': 8,
+      'dragon-scale': 3
+    }
   }
 ];
 

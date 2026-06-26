@@ -87,6 +87,14 @@ export default class LootSystem {
     // Spawn death particles!
     EffectSystem.createDeathEffect(this.scene, monster.x, monster.y);
     
+    // Ultimate Fireball effect: leaves fire mark on corpse
+    if (monster.burnTimer && this.scene.activeSkillSystem) {
+      const fireball = this.scene.activeSkillSystem.ownedSkills.find(s => s.id === 'fireball');
+      if (fireball && fireball.level >= 6) {
+        this.scene.activeSkillSystem.createFireMark(monster.x, monster.y);
+      }
+    }
+
     monster.die();
   }
 

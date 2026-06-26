@@ -195,7 +195,7 @@ export default class MainMenuScene extends Phaser.Scene {
       
       const activeSkin = this.activeSkin;
       const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
-      this.add.image(avatarX, avatarY, visualKey).setDisplaySize(24, 24);
+      this.topBarAvatar = this.add.image(avatarX, avatarY, visualKey).setDisplaySize(24, 24);
 
       // Name & Level
       const pName = GameManager.get('playerName') || 'Hero';
@@ -251,7 +251,7 @@ export default class MainMenuScene extends Phaser.Scene {
       
       const activeSkin = this.activeSkin;
       const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
-      this.add.image(avatarX, avatarY, visualKey).setDisplaySize(32, 32);
+      this.topBarAvatar = this.add.image(avatarX, avatarY, visualKey).setDisplaySize(32, 32);
 
       // Name
       const pName = GameManager.get('playerName') || 'Hero';
@@ -646,13 +646,11 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   refreshBottomStats() {
-    if (!this.bottomStatTexts) {
-      return;
+    if (this.bottomStatTexts) {
+      this.bottomStatTexts.damage.setText(this.finalHeroStats.damage);
+      this.bottomStatTexts.hp.setText(this.finalHeroStats.hp);
+      this.bottomStatTexts.attackSpeed.setText(this.finalHeroStats.attackSpeed);
     }
-
-    this.bottomStatTexts.damage.setText(this.finalHeroStats.damage);
-    this.bottomStatTexts.hp.setText(this.finalHeroStats.hp);
-    this.bottomStatTexts.attackSpeed.setText(this.finalHeroStats.attackSpeed);
 
     if (this.heroClassText) {
       this.heroClassText.setText(this.selectedHero.name.toUpperCase());
@@ -662,13 +660,25 @@ export default class MainMenuScene extends Phaser.Scene {
       const activeSkin = this.activeSkin;
       const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
       this.heroPortrait.setTexture(visualKey);
+
+      const isPortrait = this.scale.height > this.scale.width;
+      const heroSize = isPortrait ? 200 : 280;
+      this.heroPortrait.setDisplaySize(heroSize, heroSize);
+    }
+
+    if (this.topBarAvatar) {
+      const activeSkin = this.activeSkin;
+      const visualKey = activeSkin?.assetKey || this.selectedHero.assetKey;
+      this.topBarAvatar.setTexture(visualKey);
+
+      const isPortrait = this.scale.height > this.scale.width;
+      const avatarSize = isPortrait ? 24 : 32;
+      this.topBarAvatar.setDisplaySize(avatarSize, avatarSize);
     }
 
     if (this.heroLevelText) {
       this.heroLevelText.setText(`Lv. ${this.heroLevel}`);
     }
-
-
 
     this.drawHeroFrame(this.scale.width / 2, this.scale.height / 2 + 30);
   }

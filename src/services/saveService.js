@@ -19,9 +19,10 @@ export const defaultPlayerData = {
     'lucky-ring'
   ],
   equippedItems: {
-    weapon: null,
-    armor: null,
-    accessory: null
+    guardian: { weapon: null, armor: null, accessory: null },
+    ranger: { weapon: null, armor: null, accessory: null },
+    mage: { weapon: null, armor: null, accessory: null },
+    antman: { weapon: null, armor: null, accessory: null }
   },
   unlockedHeroes: ['guardian', 'ranger', 'mage'],
   unlockedPets: [],
@@ -185,10 +186,7 @@ function normalizePlayerData(playerData) {
     playerExp: Number.isFinite(safeData.playerExp) ? safeData.playerExp : defaultPlayerData.playerExp,
     unlockedSkillLevel: Number.isFinite(safeData.unlockedSkillLevel) ? safeData.unlockedSkillLevel : defaultPlayerData.unlockedSkillLevel,
     ownedEquipment: uniqueIds(safeData.ownedEquipment || defaultPlayerData.ownedEquipment),
-    equippedItems: {
-      ...defaultPlayerData.equippedItems,
-      ...(safeData.equippedItems || {})
-    },
+    equippedItems: sanitizeEquippedItems(safeData.equippedItems),
     unlockedHeroes: uniqueIds(safeData.unlockedHeroes || defaultPlayerData.unlockedHeroes),
     unlockedPets: uniqueIds(safeData.unlockedPets || defaultPlayerData.unlockedPets),
     highestStage: Math.max(1, safeData.highestStage || defaultPlayerData.highestStage),
@@ -218,4 +216,31 @@ function uniqueIds(ids) {
 
 function isLocalStorageAvailable() {
   return typeof window !== 'undefined' && Boolean(window.localStorage);
+}
+
+function sanitizeEquippedItems(data) {
+  if (data && ('weapon' in data || 'armor' in data || 'accessory' in data)) {
+    return {
+      guardian: {
+        weapon: data.weapon || null,
+        armor: data.armor || null,
+        accessory: data.accessory || null
+      },
+      ranger: { weapon: null, armor: null, accessory: null },
+      mage: { weapon: null, armor: null, accessory: null },
+      antman: { weapon: null, armor: null, accessory: null }
+    };
+  }
+
+  const result = {};
+  const heroIds = ['guardian', 'ranger', 'mage', 'antman'];
+  heroIds.forEach(heroId => {
+    const heroEquip = (data && data[heroId]) || {};
+    result[heroId] = {
+      weapon: heroEquip.weapon || null,
+      armor: heroEquip.armor || null,
+      accessory: heroEquip.accessory || null
+    };
+  });
+  return result;
 }

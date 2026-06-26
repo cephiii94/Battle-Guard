@@ -3,9 +3,9 @@ const skills = [
     id: 'fireball',
     name: 'Fireball',
     type: 'active',
-    description: 'Menembakkan bola api ke enemy terdekat.',
+    description: 'Menembakkan bola api ke enemy terdekat dan memberikan efek burn.',
     level: 0,
-    maxLevel: 5,
+    maxLevel: 6,
     cooldown: 2200,
     damage: 28,
     range: 360,
@@ -19,12 +19,12 @@ const skills = [
     id: 'multi-shot',
     name: 'Multiple Attack',
     type: 'active',
-    description: 'Melakukan serangan multi-target ke arah enemy terdekat.',
+    description: 'Melakukan serangan ke beberapa target sesuai status jangkauan hero.',
     level: 0,
-    maxLevel: 5,
+    maxLevel: 6,
     cooldown: 2800,
     damage: 18,
-    range: 330,
+    range: 0,
     area: 0,
     assetKey: 'skill-multi-shot',
     assetPath: '/assets/skills/multi-shot.svg',
@@ -35,13 +35,13 @@ const skills = [
     id: 'lightning-strike',
     name: 'Lightning Strike',
     type: 'active',
-    description: 'Petir instan menyerang enemy terdekat.',
+    description: 'Petir instan menyambar beberapa target terdekat.',
     level: 0,
-    maxLevel: 5,
+    maxLevel: 6,
     cooldown: 3400,
     damage: 42,
     range: 430,
-    area: 70,
+    area: 0,
     assetKey: 'skill-lightning-strike',
     assetPath: '/assets/skills/lightning-strike.svg',
     requiredPlayerLevel: 3,
@@ -53,7 +53,7 @@ const skills = [
     type: 'active',
     description: 'Serangan area di sekitar hero.',
     level: 0,
-    maxLevel: 5,
+    maxLevel: 6,
     cooldown: 3000,
     damage: 24,
     range: 0,
@@ -212,10 +212,42 @@ export function getSkillLevelStats(skill) {
   }
 
   const levelBonus = Math.max(0, skill.level - 1);
+  const baseCooldown = Math.max(550, skill.cooldown - (levelBonus * 60));
+  const baseDamage = Math.round(skill.damage * (1 + (levelBonus * 0.12)));
+
+  if (skill.id === 'fireball') {
+    return {
+      cooldown: baseCooldown,
+      damage: baseDamage,
+      range: skill.range + (levelBonus * 8),
+      area: skill.area + (levelBonus * 6),
+      burnDamage: skill.level * 2
+    };
+  }
+
+  if (skill.id === 'multi-shot') {
+    return {
+      cooldown: baseCooldown,
+      damage: baseDamage,
+      range: 0,
+      area: 0,
+      targets: 1 + skill.level
+    };
+  }
+
+  if (skill.id === 'lightning-strike') {
+    return {
+      cooldown: baseCooldown,
+      damage: baseDamage,
+      range: skill.range + (levelBonus * 8),
+      area: 0,
+      targets: 1 + skill.level
+    };
+  }
 
   return {
-    cooldown: Math.max(550, skill.cooldown - (levelBonus * 60)),
-    damage: Math.round(skill.damage * (1 + (levelBonus * 0.12))),
+    cooldown: baseCooldown,
+    damage: baseDamage,
     range: skill.range + (levelBonus * 8),
     area: skill.area + (levelBonus * 6)
   };
